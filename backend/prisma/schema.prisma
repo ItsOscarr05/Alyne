@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserType {
+  PROVIDER
+  CLIENT
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  DECLINED
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  phoneNumber   String?   @unique
+  passwordHash  String
+  userType      UserType
+  firstName     String
+  lastName      String
+  profilePhoto  String?
+  isVerified    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Provider-specific fields
+  providerProfile ProviderProfile?
+
+  // Client-specific fields
+  clientProfile ClientProfile?
+
+  // Relations
+  bookingsAsClient Booking[] @relation("ClientBookings")
+  bookingsAsProvider Booking[] @relation("ProviderBookings")
+  sentMessages Message[] @relation("SenderMessages")
+  receivedMessages Message[] @relation("ReceiverMessages")
+  reviewsGiven Review[] @relation("ClientReviews")
+  reviewsReceived Review[] @relation("ProviderReviews")
+
+  @@index([email])
+  @@index([userType])
+}
+
+model ProviderProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  specialties   String[] // Array of specialty tags
+  serviceArea   Json     // Service area radius and center coordinates
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  services      Service[]
+  credentials   Credential[]
+  availability  AvailabilitySlot[]
+
+  @@index([userId])
+}
+
+model ClientProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  preferences   Json?    // Wellness goals, preferences
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  reviews       Review[] @relation("ClientReviews")
+
+  @@index([userId])
+}
+
+model Service {
+  id            String   @id @default(cuid())
+  providerId    String
+  name          String   // e.g., "Personal Training", "Yoga Session"
+  description   String?
+  price         Float    // Price per session
+  duration      Int      // Duration in minutes
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider      ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+
+  @@index([providerId])
+}
+
+model Credential {
+  id            String   @id @default(cuid())
+  providerId    String
+  name          String   // e.g., "NASM Certified Personal Trainer"
+  issuer        String?  // Issuing organization
+  issueDate     DateTime?
+  expiryDate    DateTime?
+  documentUrl   String?  // Link to uploaded certificate
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider      ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+}
+
+model AvailabilitySlot {
+  id            String   @id @default(cuid())
+  providerId    String
+  dayOfWeek     Int      // 0 = Sunday, 1 = Monday, etc.
+  startTime     String   // "09:00" format
+  endTime       String   // "17:00" format
+  isRecurring   Boolean  @default(true)
+  specificDate  DateTime? // For one-time availability
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  provider      ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  clientId      String
+  providerId    String
+  serviceId     String
+  status        BookingStatus @default(PENDING)
+  scheduledDate DateTime
+  scheduledTime String        // "14:00" format
+  location      Json?         // Location details (address, coordinates)
+  notes         String?
+  price         Float
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  client        User          @relation("ClientBookings", fields: [clientId], references: [id])
+  provider      User          @relation("ProviderBookings", fields: [providerId], references: [id])
+  service       Service       @relation(fields: [serviceId], references: [id])
+  payment       Payment?
+  review        Review?
+
+  @@index([clientId])
+  @@index([providerId])
+  @@index([status])
+  @@index([scheduledDate])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  amount        Float
+  currency      String   @default("USD")
+  stripePaymentId String? @unique
+  status        String   // "pending", "completed", "refunded", "failed"
+  paidAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([stripePaymentId])
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  clientId      String
+  providerId    String
+  rating        Int      // 1-5 stars
+  comment       String?
+  isVisible     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  booking       Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  client        User     @relation("ClientReviews", fields: [clientId], references: [id])
+  provider      User     @relation("ProviderReviews", fields: [providerId], references: [id])
+
+  @@index([providerId])
+  @@index([rating])
+  @@index([createdAt])
+}
+
+model Message {
+  id            String        @id @default(cuid())
+  senderId      String
+  receiverId   String
+  bookingId     String?       // Optional: link message to a booking
+  content       String
+  status        MessageStatus @default(SENT)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  sender        User          @relation("SenderMessages", fields: [senderId], references: [id])
+  receiver      User          @relation("ReceiverMessages", fields: [receiverId], references: [id])
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([bookingId])
+  @@index([createdAt])
+}
+

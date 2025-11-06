@@ -3,8 +3,8 @@
 ## Alyne - MVP
 
 **Version:** 1.0  
-**Date:** December 2024  
-**Document Owner:** Product Team
+**Date:** November 2025  
+**Document Owner:** Oscar Berrigan
 
 ---
 
