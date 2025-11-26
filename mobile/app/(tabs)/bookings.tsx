@@ -10,15 +10,24 @@ import { useAuth } from '../../hooks/useAuth';
 
 export default function BookingsScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    loadBookings();
-  }, []);
+    // Only load bookings when user is available and auth is not loading
+    if (user && !authLoading) {
+      console.log('User available, loading bookings...');
+      loadBookings();
+    } else if (!authLoading && !user) {
+      // User is not authenticated, clear bookings
+      console.log('User not authenticated, clearing bookings');
+      setBookings([]);
+      setIsLoading(false);
+    }
+  }, [user, authLoading]);
 
   useEffect(() => {
     // Check which bookings have reviews
@@ -47,17 +56,29 @@ export default function BookingsScreen() {
 
   const loadBookings = async () => {
     try {
+      console.log('Loading bookings for user:', {
+        userId: user?.id,
+        userType: user?.userType,
+      });
       const role = user?.userType === 'PROVIDER' ? 'provider' : 'client';
+      console.log('Fetching bookings with role:', role);
       const data = await bookingService.getMyBookings(undefined, role);
+      console.log('Bookings loaded:', data.length, 'bookings');
+      console.log('Bookings data:', data);
       setBookings(data);
     } catch (error: any) {
       console.error('Error loading bookings:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       // Fallback to mock data if API fails
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
         const { mockBookings } = await import('../../data/mockBookings');
         setBookings(mockBookings as any);
       } else {
-        Alert.alert('Error', 'Failed to load bookings');
+        Alert.alert('Error', error.response?.data?.error?.message || 'Failed to load bookings');
       }
     } finally {
       setIsLoading(false);
@@ -73,11 +94,15 @@ export default function BookingsScreen() {
   const upcomingBookings = bookings.filter(
     (b) => b.status === 'PENDING' || b.status === 'CONFIRMED'
   );
-  const pastBookings = bookings.filter((b) => b.status === 'COMPLETED' || b.status === 'CANCELLED');
+  const pastBookings = bookings.filter(
+    (b) => b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'DECLINED'
+  );
 
   const handleBookingPress = (bookingId: string) => {
-    // TODO: Navigate to booking detail screen
-    console.log('Navigate to booking:', bookingId);
+    router.push({
+      pathname: '/booking/[id]',
+      params: { id: bookingId },
+    });
   };
 
   const handleAccept = async (bookingId: string) => {
@@ -91,26 +116,19 @@ export default function BookingsScreen() {
   };
 
   const handleDecline = async (bookingId: string) => {
-    Alert.alert(
-      'Decline Booking',
-      'Are you sure you want to decline this booking?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Decline',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await bookingService.decline(bookingId);
-              Alert.alert('Success', 'Booking declined');
-              loadBookings();
-            } catch (error: any) {
-              Alert.alert('Error', error.response?.data?.error?.message || 'Failed to decline booking');
-            }
-          },
-        },
-      ]
-    );
+    try {
+      console.log('Declining booking:', bookingId);
+      const result = await bookingService.decline(bookingId);
+      console.log('Decline result:', result);
+      console.log('Result status:', result?.status);
+      Alert.alert('Success', 'Booking declined');
+      // Force reload bookings
+      await loadBookings();
+    } catch (error: any) {
+      console.error('Error declining booking:', error);
+      console.error('Error response:', error.response?.data);
+      Alert.alert('Error', error.response?.data?.error?.message || 'Failed to decline booking');
+    }
   };
 
   const handleReview = (booking: BookingDetail) => {

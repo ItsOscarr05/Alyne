@@ -20,21 +20,7 @@ export const bookingService = {
   async createBooking(data: CreateBookingData) {
     const { clientId, providerId, serviceId, scheduledDate, scheduledTime, location, notes } = data;
 
-    // Verify service belongs to provider
-    const service = await prisma.service.findFirst({
-      where: {
-        id: serviceId,
-        provider: {
-          userId: providerId,
-        },
-      },
-    });
-
-    if (!service) {
-      throw createError('Service not found or does not belong to provider', 404);
-    }
-
-    // Verify provider exists and is active
+    // Verify provider exists and is active first
     const provider = await prisma.user.findUnique({
       where: { id: providerId },
       include: {
@@ -44,6 +30,18 @@ export const bookingService = {
 
     if (!provider || provider.userType !== 'PROVIDER' || !provider.providerProfile?.isActive) {
       throw createError('Provider not found or inactive', 404);
+    }
+
+    // Verify service belongs to provider
+    const service = await prisma.service.findFirst({
+      where: {
+        id: serviceId,
+        providerId: provider.providerProfile.id,
+      },
+    });
+
+    if (!service) {
+      throw createError('Service not found or does not belong to provider', 404);
     }
 
     // Create booking
@@ -98,6 +96,13 @@ export const bookingService = {
     if (status) {
       where.status = status as BookingStatus;
     }
+
+    console.log('getUserBookings query:', {
+      userId,
+      role,
+      status,
+      where,
+    });
 
     const bookings = await prisma.booking.findMany({
       where,
@@ -260,7 +265,7 @@ export const bookingService = {
       where: {
         id: bookingId,
         providerId,
-        status: 'PENDING',
+        status: { in: ['PENDING', 'CONFIRMED'] }, // Allow declining both pending and confirmed bookings
       },
     });
 

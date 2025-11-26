@@ -14,7 +14,7 @@ const createBookingSchema = z.object({
   body: z.object({
     providerId: z.string(),
     serviceId: z.string(),
-    scheduledDate: z.string(), // ISO date string
+    scheduledDate: z.string(), // ISO date string or YYYY-MM-DD
     scheduledTime: z.string(), // "14:00" format
     location: z.object({
       address: z.string().optional(),
@@ -22,8 +22,8 @@ const createBookingSchema = z.object({
         lat: z.number(),
         lng: z.number(),
       }).optional(),
-    }).optional(),
-    notes: z.string().optional(),
+    }).optional().nullable(),
+    notes: z.string().optional().nullable(),
   }),
 });
 

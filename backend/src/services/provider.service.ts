@@ -36,19 +36,20 @@ function calculateDistance(
 
 export const providerService = {
   async discoverProviders(filters: DiscoveryFilters) {
-    const {
-      location,
-      radius = 20,
-      serviceType,
-      minPrice,
-      maxPrice,
-      minRating,
-      availableNow,
-      search,
-    } = filters;
+    try {
+      const {
+        location,
+        radius = 20,
+        serviceType,
+        minPrice,
+        maxPrice,
+        minRating,
+        availableNow,
+        search,
+      } = filters;
 
-    // Get all active providers with their profiles
-    let providers = await prisma.user.findMany({
+      // Get all active providers with their profiles
+      let providers = await prisma.user.findMany({
       where: {
         userType: 'PROVIDER',
         providerProfile: {
@@ -63,11 +64,11 @@ export const providerService = {
                 isActive: true,
               },
             },
-            reviews: {
-              where: {
-                isVisible: true,
-              },
-            },
+          },
+        },
+        reviewsReceived: {
+          where: {
+            isVisible: true,
           },
         },
       },
@@ -78,7 +79,8 @@ export const providerService = {
       const searchLower = search.toLowerCase();
       providers = providers.filter((provider) => {
         const nameMatch = `${provider.firstName} ${provider.lastName}`.toLowerCase().includes(searchLower);
-        const specialtyMatch = provider.providerProfile?.specialties.some((s) =>
+        const specialties = provider.providerProfile?.specialties || [];
+        const specialtyMatch = specialties.some((s) =>
           s.toLowerCase().includes(searchLower)
         );
         return nameMatch || specialtyMatch;
@@ -102,17 +104,24 @@ export const providerService = {
 
         let distance = 0;
         if (location && profile.serviceArea) {
-          const serviceArea = profile.serviceArea as { center: { lat: number; lng: number }; radius: number };
-          distance = calculateDistance(
-            location.lat,
-            location.lng,
-            serviceArea.center.lat,
-            serviceArea.center.lng
-          );
+          try {
+            const serviceArea = profile.serviceArea as { center?: { lat?: number; lng?: number }; radius?: number };
+            if (serviceArea?.center && typeof serviceArea.center.lat === 'number' && typeof serviceArea.center.lng === 'number') {
+              distance = calculateDistance(
+                location.lat,
+                location.lng,
+                serviceArea.center.lat,
+                serviceArea.center.lng
+              );
+            }
+          } catch (error) {
+            console.error('Error calculating distance:', error);
+            distance = 0;
+          }
         }
 
-        // Calculate average rating
-        const reviews = profile.reviews || [];
+        // Calculate average rating (reviews are on the user, not profile)
+        const reviews = provider.reviewsReceived || [];
         const avgRating = reviews.length > 0
           ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
           : 0;
@@ -120,7 +129,7 @@ export const providerService = {
         // Get minimum service price
         const services = profile.services || [];
         const minServicePrice = services.length > 0
-          ? Math.min(...services.map((s) => s.price))
+          ? Math.min(...services.map((s) => Number(s.price) || 0))
           : 0;
 
         return {
@@ -128,7 +137,7 @@ export const providerService = {
           name: `${provider.firstName} ${provider.lastName}`,
           email: provider.email,
           profilePhoto: provider.profilePhoto,
-          specialties: profile.specialties || [],
+          specialties: Array.isArray(profile.specialties) ? profile.specialties : [],
           distance,
           startingPrice: minServicePrice,
           rating: avgRating,
@@ -184,6 +193,10 @@ export const providerService = {
     }
 
     return providersWithDistance;
+    } catch (error) {
+      console.error('Error in discoverProviders:', error);
+      throw error;
+    }
   },
 
   async getProviderById(providerId: string) {
@@ -206,26 +219,26 @@ export const providerService = {
               },
             },
             availability: true,
-            reviews: {
-              where: {
-                isVisible: true,
+          },
+        },
+        reviewsReceived: {
+          where: {
+            isVisible: true,
+          },
+          include: {
+            client: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                profilePhoto: true,
               },
-              include: {
-                client: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    profilePhoto: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: 'desc',
-              },
-              take: 20,
             },
           },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 20,
         },
       },
     });
@@ -234,7 +247,7 @@ export const providerService = {
       return null;
     }
 
-    const reviews = provider.providerProfile.reviews || [];
+    const reviews = provider.reviewsReceived || [];
     const avgRating = reviews.length > 0
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
       : 0;
@@ -245,7 +258,9 @@ export const providerService = {
       email: provider.email,
       profilePhoto: provider.profilePhoto,
       bio: provider.providerProfile.bio,
-      specialties: provider.providerProfile.specialties,
+      specialties: Array.isArray(provider.providerProfile.specialties) 
+        ? provider.providerProfile.specialties 
+        : [],
       serviceArea: provider.providerProfile.serviceArea,
       services: provider.providerProfile.services,
       credentials: provider.providerProfile.credentials,

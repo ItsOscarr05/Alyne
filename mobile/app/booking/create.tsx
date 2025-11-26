@@ -44,13 +44,31 @@ export default function CreateBookingScreen() {
   };
 
   const handleCreateBooking = async () => {
+    console.log('handleCreateBooking called');
+    console.log('Form state:', {
+      providerId,
+      selectedService: selectedService?.id,
+      selectedDate,
+      selectedTime,
+      isSubmitting,
+    });
+
     if (!providerId || !selectedService || !selectedDate || !selectedTime) {
+      console.warn('Validation failed - missing required fields');
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      console.log('Creating booking with data:', {
+        providerId,
+        serviceId: selectedService.id,
+        scheduledDate: selectedDate,
+        scheduledTime: selectedTime,
+        notes: notes || undefined,
+      });
+
       const bookingData: CreateBookingData = {
         providerId,
         serviceId: selectedService.id,
@@ -59,21 +77,45 @@ export default function CreateBookingScreen() {
         notes: notes || undefined,
       };
 
-      await bookingService.create(bookingData);
-      Alert.alert('Success', 'Booking request sent!', [
-        {
-          text: 'OK',
-          onPress: () => router.replace('/(tabs)/bookings'),
-        },
-      ]);
+      console.log('Calling bookingService.create...');
+      const result = await bookingService.create(bookingData);
+      console.log('Booking created successfully:', result);
+      
+      // Show success message
+      console.log('Showing success alert...');
+      try {
+        Alert.alert('Success', 'Booking request sent!', [
+          {
+            text: 'OK',
+            onPress: () => {
+              console.log('Alert OK pressed, navigating to bookings tab...');
+              router.replace('/(tabs)/bookings');
+            },
+          },
+        ]);
+      } catch (alertError) {
+        console.warn('Alert.alert failed (might be web):', alertError);
+      }
+      
+      // Navigate directly after a short delay (works on both web and native)
+      setTimeout(() => {
+        console.log('Navigating to bookings tab...');
+        router.replace('/(tabs)/bookings');
+      }, 1000);
     } catch (error: any) {
       console.error('Error creating booking:', error);
-      Alert.alert(
-        'Error',
-        error.response?.data?.error?.message || 'Failed to create booking'
-      );
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+      });
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to create booking';
+      console.error('Showing error alert:', errorMessage);
+      Alert.alert('Error', errorMessage);
     } finally {
       setIsSubmitting(false);
+      console.log('Booking submission finished, isSubmitting set to false');
     }
   };
 
@@ -226,12 +268,17 @@ export default function CreateBookingScreen() {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Date:</Text>
               <Text style={styles.summaryValue}>
-                {new Date(selectedDate).toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                })}
+                {(() => {
+                  // Parse date string (YYYY-MM-DD) without timezone conversion
+                  const [year, month, day] = selectedDate.split('-').map(Number);
+                  const date = new Date(year, month - 1, day);
+                  return date.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  });
+                })()}
               </Text>
             </View>
             <View style={styles.summaryRow}>
@@ -258,13 +305,20 @@ export default function CreateBookingScreen() {
             (!selectedService || !selectedDate || !selectedTime || isSubmitting) &&
               styles.submitButtonDisabled,
           ]}
-          onPress={handleCreateBooking}
+          onPress={() => {
+            console.log('Button pressed!');
+            handleCreateBooking();
+          }}
           disabled={!selectedService || !selectedDate || !selectedTime || isSubmitting}
         >
           {isSubmitting ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.submitButtonText}>Request Booking</Text>
+            <Text style={styles.submitButtonText}>
+              {!selectedService || !selectedDate || !selectedTime
+                ? 'Fill all fields'
+                : 'Request Booking'}
+            </Text>
           )}
         </TouchableOpacity>
       </View>

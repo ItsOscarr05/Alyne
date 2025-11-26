@@ -20,11 +20,14 @@ export default function ProviderDetailScreen() {
 
     setIsLoading(true);
     try {
+      console.log('Loading provider with ID:', id);
       const data = await providerService.getById(id);
+      console.log('Provider data loaded:', data);
       setProvider(data);
     } catch (error: any) {
       console.error('Error loading provider:', error);
-      Alert.alert('Error', 'Failed to load provider details');
+      console.error('Error details:', error.response?.data || error.message);
+      Alert.alert('Error', error.response?.data?.error?.message || 'Failed to load provider details');
     } finally {
       setIsLoading(false);
     }

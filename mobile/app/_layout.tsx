@@ -32,6 +32,7 @@ export default function RootLayout() {
         <Stack.Screen name="provider/[id]" />
         <Stack.Screen name="provider/onboarding" />
         <Stack.Screen name="booking/create" />
+        <Stack.Screen name="booking/[id]" />
         <Stack.Screen name="messages/[userId]" />
         <Stack.Screen name="review/submit" />
         <Stack.Screen name="payment/checkout" />

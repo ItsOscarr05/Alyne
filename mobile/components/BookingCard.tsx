@@ -31,6 +31,8 @@ export function BookingCard({ booking, onPress }: BookingCardProps) {
         return '#6366f1';
       case 'CANCELLED':
         return '#ef4444';
+      case 'DECLINED':
+        return '#ef4444';
       default:
         return '#64748b';
     }
@@ -46,6 +48,8 @@ export function BookingCard({ booking, onPress }: BookingCardProps) {
         return 'Completed';
       case 'CANCELLED':
         return 'Cancelled';
+      case 'DECLINED':
+        return 'Declined';
       default:
         return status;
     }
