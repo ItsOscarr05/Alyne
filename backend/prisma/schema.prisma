@@ -88,8 +88,6 @@ model ClientProfile {
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  reviews       Review[] @relation("ClientReviews")
-
   @@index([userId])
 }
 

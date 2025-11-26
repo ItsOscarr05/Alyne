@@ -1,19 +1,38 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { register } = useAuth();
   const [userType, setUserType] = useState<'provider' | 'client' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleRegister = () => {
-    // TODO: Implement registration
-    console.log('Register:', { userType, email, password, firstName, lastName });
-    router.replace('/(tabs)');
+  const handleRegister = async () => {
+    if (!userType || !email || !password || !firstName || !lastName) {
+      Alert.alert('Error', 'Please fill in all fields');
+      return;
+    }
+
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await register(email, password, firstName, lastName, userType);
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Registration Failed', error.response?.data?.error?.message || error.message || 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -106,11 +125,15 @@ export default function RegisterScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.button, !userType && styles.buttonDisabled]}
+          style={[styles.button, (!userType || isLoading) && styles.buttonDisabled]}
           onPress={handleRegister}
-          disabled={!userType}
+          disabled={!userType || isLoading}
         >
-          <Text style={styles.buttonText}>Create Account</Text>
+          {isLoading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.buttonText}>Create Account</Text>
+          )}
         </TouchableOpacity>
 
         <TouchableOpacity

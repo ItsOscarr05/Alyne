@@ -11,29 +11,31 @@ export interface RegisterData {
   password: string;
   firstName: string;
   lastName: string;
-  userType: UserType;
+  userType: 'PROVIDER' | 'CLIENT';
   phoneNumber?: string;
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
+  success: boolean;
+  data: {
+    user: User;
+    token: string;
+  };
 }
 
 export const authService = {
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+  async login(credentials: LoginCredentials) {
     const response = await apiClient.post<AuthResponse>('/auth/login', credentials);
-    return response.data;
+    return response.data.data; // Extract data from response
   },
 
-  async register(data: RegisterData): Promise<AuthResponse> {
+  async register(data: RegisterData) {
     const response = await apiClient.post<AuthResponse>('/auth/register', data);
-    return response.data;
+    return response.data.data; // Extract data from response
   },
 
   async logout(): Promise<void> {
     await apiClient.post('/auth/logout');
-    // TODO: Clear token from secure storage
   },
 
   async verifyEmail(token: string): Promise<void> {

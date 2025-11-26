@@ -1,17 +1,30 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../hooks/useAuth';
 
 export default function Index() {
   const router = useRouter();
+  const { isAuthenticated, isLoading } = useAuth();
 
   useEffect(() => {
-    // TODO: Check authentication status
-    // For now, redirect to auth screen
-    setTimeout(() => {
-      router.replace('/(auth)/welcome');
-    }, 2000);
-  }, []);
+    if (!isLoading) {
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/(auth)/welcome');
+      }
+    }
+  }, [isAuthenticated, isLoading]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text style={styles.subtitle}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>

@@ -38,27 +38,89 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes (to be added)
-// app.use('/api/auth', authRoutes);
+// API Routes
+import { authRoutes } from './routes/auth.routes';
+import { providerRoutes } from './routes/provider.routes';
+import { bookingRoutes } from './routes/booking.routes';
+import { messageRoutes } from './routes/message.routes';
+
+app.use('/api/auth', authRoutes);
+app.use('/api/providers', providerRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/messages', messageRoutes);
+import { reviewRoutes } from './routes/review.routes';
+app.use('/api/reviews', reviewRoutes);
+import { paymentRoutes } from './routes/payment.routes';
+app.use('/api/payments', paymentRoutes);
 // app.use('/api/users', userRoutes);
-// app.use('/api/providers', providerRoutes);
-// app.use('/api/bookings', bookingRoutes);
-// app.use('/api/messages', messageRoutes);
-// app.use('/api/reviews', reviewRoutes);
-// app.use('/api/payments', paymentRoutes);
 
 // Socket.io for real-time messaging
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
+import { messageService } from './services/message.service';
+import jwt from 'jsonwebtoken';
 
-  socket.on('join-room', (roomId: string) => {
-    socket.join(roomId);
-    console.log(`User ${socket.id} joined room ${roomId}`);
+// Socket.io authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  if (!token) {
+    return next(new Error('Authentication error'));
+  }
+
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    return next(new Error('JWT_SECRET not configured'));
+  }
+
+  try {
+    const decoded = jwt.verify(token, secret) as { userId: string };
+    (socket as any).userId = decoded.userId;
+    next();
+  } catch (error) {
+    next(new Error('Invalid token'));
+  }
+});
+
+io.on('connection', (socket: any) => {
+  const userId = socket.userId;
+  console.log('User connected:', socket.id, 'userId:', userId);
+
+  // Join user's personal room
+  socket.join(`user:${userId}`);
+
+  // Join a conversation room
+  socket.on('join-conversation', (otherUserId: string) => {
+    const roomId = [userId, otherUserId].sort().join(':');
+    socket.join(`conversation:${roomId}`);
+    console.log(`User ${userId} joined conversation ${roomId}`);
   });
 
-  socket.on('send-message', (data) => {
-    // Broadcast message to room
-    io.to(data.roomId).emit('receive-message', data);
+  // Handle sending messages
+  socket.on('send-message', async (data: {
+    receiverId: string;
+    content: string;
+    bookingId?: string;
+  }) => {
+    try {
+      // Save message to database
+      const message = await messageService.sendMessage({
+        senderId: userId,
+        receiverId: data.receiverId,
+        content: data.content,
+        bookingId: data.bookingId,
+      });
+
+      // Create room ID for the conversation
+      const roomId = [userId, data.receiverId].sort().join(':');
+
+      // Emit to both users
+      io.to(`conversation:${roomId}`).emit('receive-message', message);
+      io.to(`user:${data.receiverId}`).emit('new-message', message);
+
+      // Confirm to sender
+      socket.emit('message-sent', message);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      socket.emit('message-error', { error: 'Failed to send message' });
+    }
   });
 
   socket.on('disconnect', () => {

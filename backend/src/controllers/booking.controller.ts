@@ -1,0 +1,144 @@
+import { Response, NextFunction } from 'express';
+import { bookingService } from '../services/booking.service';
+import { createError } from '../middleware/errorHandler';
+import { AuthRequest } from '../middleware/auth';
+
+export const bookingController = {
+  async create(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const { providerId, serviceId, scheduledDate, scheduledTime, location, notes } = req.body;
+
+      const booking = await bookingService.createBooking({
+        clientId: userId,
+        providerId,
+        serviceId,
+        scheduledDate,
+        scheduledTime,
+        location,
+        notes,
+      });
+
+      res.status(201).json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getMyBookings(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const { status, role } = req.query; // role: 'client' or 'provider'
+
+      const bookings = await bookingService.getUserBookings(
+        userId,
+        status as string | undefined,
+        role as 'client' | 'provider' | undefined
+      );
+
+      res.json({
+        success: true,
+        data: bookings,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async getById(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      const booking = await bookingService.getBookingById(id, userId);
+
+      if (!booking) {
+        return next(createError('Booking not found', 404));
+      }
+
+      res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async update(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+      const updates = req.body;
+
+      const booking = await bookingService.updateBooking(id, userId, updates);
+
+      res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async accept(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      const booking = await bookingService.acceptBooking(id, userId);
+
+      res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async decline(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      const booking = await bookingService.declineBooking(id, userId);
+
+      res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async cancel(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      const booking = await bookingService.cancelBooking(id, userId);
+
+      res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+};
+
