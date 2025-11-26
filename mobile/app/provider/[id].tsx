@@ -191,6 +191,32 @@ export default function ProviderDetailScreen() {
                   ))}
                 </View>
               )}
+
+              {provider.availability && provider.availability.length > 0 && (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Availability</Text>
+                  {provider.availability.map((slot) => {
+                    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayName = daysOfWeek[slot.dayOfWeek];
+                    return (
+                      <View key={slot.id} style={styles.availabilityItem}>
+                        <View style={styles.availabilityDayRow}>
+                          <Ionicons name="calendar-outline" size={20} color="#2563eb" />
+                          <Text style={styles.availabilityDay}>{dayName}</Text>
+                        </View>
+                        <View style={styles.availabilityTimeRow}>
+                          <Text style={styles.availabilityTime}>
+                            {slot.startTime} - {slot.endTime}
+                          </Text>
+                          {slot.isRecurring && (
+                            <Text style={styles.availabilityRecurring}>Recurring</Text>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
             </View>
           )}
 
@@ -421,6 +447,38 @@ const styles = StyleSheet.create({
   credentialIssuer: {
     fontSize: 14,
     color: '#64748b',
+  },
+  availabilityItem: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  availabilityDayRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  availabilityDay: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  availabilityTimeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  availabilityTime: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '500',
+  },
+  availabilityRecurring: {
+    fontSize: 12,
+    color: '#10b981',
+    fontWeight: '500',
   },
   serviceCard: {
     backgroundColor: '#f8fafc',
