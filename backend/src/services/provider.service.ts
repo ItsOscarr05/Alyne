@@ -69,6 +69,7 @@ export const providerService = {
         reviewsReceived: {
           where: {
             isVisible: true,
+            isFlagged: false,
           },
         },
       },
@@ -224,6 +225,7 @@ export const providerService = {
         reviewsReceived: {
           where: {
             isVisible: true,
+            isFlagged: false,
           },
           include: {
             client: {
@@ -312,6 +314,7 @@ export const providerService = {
             reviews: {
               where: {
                 isVisible: true,
+                isFlagged: false,
               },
               include: {
                 client: {

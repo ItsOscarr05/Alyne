@@ -87,6 +87,13 @@ export const bookingService = {
     return response.data.data;
   },
 
+  async complete(bookingId: string) {
+    const response = await apiClient.post<{ success: boolean; data: BookingDetail }>(
+      `/bookings/${bookingId}/complete`
+    );
+    return response.data.data;
+  },
+
   async update(bookingId: string, updates: Partial<CreateBookingData>) {
     const response = await apiClient.patch<{ success: boolean; data: BookingDetail }>(
       `/bookings/${bookingId}`,

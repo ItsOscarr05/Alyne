@@ -219,6 +219,16 @@ export const useSocket = () => {
     };
   };
 
+  const onBookingUpdate = (callback: (data: { bookingId: string; status: string; booking: any }) => void) => {
+    if (!socket) return () => {};
+
+    socket.on('booking-updated', callback);
+
+    return () => {
+      socket.off('booking-updated', callback);
+    };
+  };
+
   return {
     socket,
     isConnected,
@@ -227,6 +237,7 @@ export const useSocket = () => {
     sendMessage,
     onMessage,
     onMessagesRead,
+    onBookingUpdate,
   };
 };
 

@@ -178,5 +178,28 @@ export const reviewService = {
 
     return review;
   },
+
+  async flagReview(reviewId: string, userId: string, reason?: string) {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw createError('Review not found', 404);
+    }
+
+    // Users can flag reviews (both clients and providers)
+    // For MVP: when flagged, hide the review
+    const updated = await prisma.review.update({
+      where: { id: reviewId },
+      data: {
+        isFlagged: true,
+        flagReason: reason || undefined,
+        isVisible: false, // Hide flagged reviews
+      },
+    });
+
+    return updated;
+  },
 };
 

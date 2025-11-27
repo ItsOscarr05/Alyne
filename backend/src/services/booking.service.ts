@@ -341,5 +341,45 @@ export const bookingService = {
 
     return updated;
   },
+
+  async completeBooking(bookingId: string, providerId: string) {
+    const booking = await prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        providerId,
+        status: 'CONFIRMED', // Only confirmed bookings can be marked as completed
+      },
+    });
+
+    if (!booking) {
+      throw createError('Booking not found or cannot be completed', 404);
+    }
+
+    const updated = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: 'COMPLETED' },
+      include: {
+        client: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        provider: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+          },
+        },
+        service: true,
+      },
+    });
+
+    return updated;
+  },
 };
 

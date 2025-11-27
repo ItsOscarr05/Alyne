@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { bookingService } from '../services/booking.service';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { io } from '../index';
 
 export const bookingController = {
   async create(req: AuthRequest, res: Response, next: NextFunction) {
@@ -131,6 +132,40 @@ export const bookingController = {
       const { id } = req.params;
 
       const booking = await bookingService.cancelBooking(id, userId);
+
+      res.json({
+        success: true,
+        data: booking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async complete(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const { id } = req.params;
+
+      const booking = await bookingService.completeBooking(id, userId);
+
+      // Emit real-time update to the client
+      if (booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
+      // Also notify the provider
+      if (booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
 
       res.json({
         success: true,

@@ -14,54 +14,30 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewService } from '../../services/review';
 
-export default function SubmitReviewScreen() {
+export default function EditReviewScreen() {
   const router = useRouter();
-  const { bookingId, providerId, providerName } = useLocalSearchParams<{
-    bookingId: string;
-    providerId: string;
+  const { reviewId, providerName, initialRating, initialComment } = useLocalSearchParams<{
+    reviewId: string;
     providerName?: string;
+    initialRating?: string;
+    initialComment?: string;
   }>();
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [hasExistingReview, setHasExistingReview] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Check if review already exists
+  // Load initial review data from route params
   useEffect(() => {
-    const checkExistingReview = async () => {
-      if (!bookingId) {
-        setChecking(false);
-        return;
-      }
-
-      try {
-        const result = await reviewService.getReviewByBooking(bookingId);
-        if (result.data) {
-          setHasExistingReview(true);
-          if (Platform.OS === 'web') {
-            alert('You have already submitted a review for this booking.');
-          } else {
-            Alert.alert('Already Reviewed', 'You have already submitted a review for this booking.', [
-              { text: 'OK', onPress: () => router.back() },
-            ]);
-          }
-          // Navigate back after a short delay
-          setTimeout(() => {
-            router.back();
-          }, 1000);
-        }
-      } catch (error: any) {
-        // Review doesn't exist, which is fine
-        console.log('No existing review found (this is expected)');
-      } finally {
-        setChecking(false);
-      }
-    };
-
-    checkExistingReview();
-  }, [bookingId, router]);
+    if (initialRating) {
+      setRating(parseInt(initialRating, 10));
+    }
+    if (initialComment !== undefined) {
+      setComment(initialComment);
+    }
+    setLoading(false);
+  }, [initialRating, initialComment]);
 
   const handleSubmit = async () => {
     if (!rating) {
@@ -73,34 +49,32 @@ export default function SubmitReviewScreen() {
       return;
     }
 
-    if (!bookingId || !providerId) {
+    if (!reviewId) {
       if (Platform.OS === 'web') {
-        alert('Error: Missing booking or provider information');
+        alert('Error: Missing review information');
       } else {
-        Alert.alert('Error', 'Missing booking or provider information');
+        Alert.alert('Error', 'Missing review information');
       }
       return;
     }
 
     setSubmitting(true);
     try {
-      console.log('Submitting review with data:', { bookingId, providerId, rating, comment: comment.trim() || undefined });
-      const result = await reviewService.submitReview({
-        bookingId,
-        providerId,
+      console.log('Updating review with data:', { reviewId, rating, comment: comment.trim() || undefined });
+      const result = await reviewService.updateReview(reviewId, {
         rating,
         comment: comment.trim() || undefined,
       });
-      console.log('Review submitted successfully:', result);
+      console.log('Review updated successfully:', result);
 
       if (Platform.OS === 'web') {
-        alert('Thank you for your review!');
+        alert('Review updated successfully!');
         // Navigate back after a short delay
         setTimeout(() => {
           router.back();
         }, 500);
       } else {
-        Alert.alert('Success', 'Thank you for your review!', [
+        Alert.alert('Success', 'Review updated successfully!', [
           {
             text: 'OK',
             onPress: () => router.back(),
@@ -108,32 +82,16 @@ export default function SubmitReviewScreen() {
         ]);
       }
     } catch (error: any) {
-      console.error('Error submitting review:', error);
-      console.error('Error response:', error.response);
-      console.error('Error response data:', error.response?.data);
+      console.error('Error updating review:', error);
       const errorMessage = error.response?.data?.error?.message 
         || error.response?.data?.message 
         || error.message 
-        || 'Failed to submit review. Please try again.';
+        || 'Failed to update review. Please try again.';
       
-      // Handle "review already exists" error gracefully
-      if (errorMessage.includes('already exists') || errorMessage.includes('already submitted')) {
-        if (Platform.OS === 'web') {
-          alert('You have already submitted a review for this booking.');
-        } else {
-          Alert.alert('Already Reviewed', 'You have already submitted a review for this booking.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
-        }
-        setTimeout(() => {
-          router.back();
-        }, 1000);
+      if (Platform.OS === 'web') {
+        alert(`Error: ${errorMessage}`);
       } else {
-        if (Platform.OS === 'web') {
-          alert(`Error: ${errorMessage}`);
-        } else {
-          Alert.alert('Error', errorMessage);
-        }
+        Alert.alert('Error', errorMessage);
       }
     } finally {
       setSubmitting(false);
@@ -160,40 +118,19 @@ export default function SubmitReviewScreen() {
     return stars;
   };
 
-  if (checking) {
+  if (loading) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Write a Review</Text>
+          <Text style={styles.headerTitle}>Edit Review</Text>
           <View style={{ width: 24 }} />
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={styles.loadingText}>Checking...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (hasExistingReview) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Write a Review</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <Ionicons name="checkmark-circle" size={64} color="#10b981" />
-          <Text style={styles.alreadyReviewedText}>You have already reviewed this booking</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </View>
     );
@@ -205,7 +142,7 @@ export default function SubmitReviewScreen() {
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1e293b" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Write a Review</Text>
+        <Text style={styles.headerTitle}>Edit Review</Text>
         <View style={{ width: 24 }} />
       </View>
 
@@ -250,7 +187,7 @@ export default function SubmitReviewScreen() {
           {submitting ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.submitButtonText}>Submit Review</Text>
+            <Text style={styles.submitButtonText}>Update Review</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -356,25 +293,6 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: '#64748b',
-  },
-  alreadyReviewedText: {
-    marginTop: 16,
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1e293b',
-    textAlign: 'center',
-  },
-  backButton: {
-    marginTop: 24,
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 

@@ -87,5 +87,11 @@ router.post(
   bookingController.cancel
 );
 
+router.post(
+  '/:id/complete',
+  validateRequest(getBookingSchema),
+  bookingController.complete
+);
+
 export { router as bookingRoutes };
 

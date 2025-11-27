@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, RefreshControl, TouchableOpacity } from 'react-native';
-import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, RefreshControl, TouchableOpacity, Platform } from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BookingCard, BookingCardData } from '../../components/BookingCard';
@@ -7,54 +7,18 @@ import { bookingService, BookingDetail } from '../../services/booking';
 import { reviewService } from '../../services/review';
 import { paymentService } from '../../services/payment';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
 
 export default function BookingsScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { onBookingUpdate } = useSocket();
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    // Only load bookings when user is available and auth is not loading
-    if (user && !authLoading) {
-      console.log('User available, loading bookings...');
-      loadBookings();
-    } else if (!authLoading && !user) {
-      // User is not authenticated, clear bookings
-      console.log('User not authenticated, clearing bookings');
-      setBookings([]);
-      setIsLoading(false);
-    }
-  }, [user, authLoading]);
-
-  useEffect(() => {
-    // Check which bookings have reviews
-    const checkReviews = async () => {
-      const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
-      const reviewed = new Set<string>();
-      
-      for (const booking of completedBookings) {
-        try {
-          const review = await reviewService.getReviewByBooking(booking.id);
-          if (review.data) {
-            reviewed.add(booking.id);
-          }
-        } catch (error) {
-          // Review doesn't exist, that's fine
-        }
-      }
-      
-      setReviewedBookings(reviewed);
-    };
-
-    if (bookings.length > 0 && user?.userType === 'CLIENT') {
-      checkReviews();
-    }
-  }, [bookings, user]);
-
-  const loadBookings = async () => {
+  const loadBookings = useCallback(async () => {
     try {
       console.log('Loading bookings for user:', {
         userId: user?.id,
@@ -84,12 +48,63 @@ export default function BookingsScreen() {
       setIsLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [user]);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadBookings();
   };
+
+  useEffect(() => {
+    // Only load bookings when user is available and auth is not loading
+    if (user && !authLoading) {
+      console.log('User available, loading bookings...');
+      loadBookings();
+    } else if (!authLoading && !user) {
+      // User is not authenticated, clear bookings
+      console.log('User not authenticated, clearing bookings');
+      setBookings([]);
+      setIsLoading(false);
+    }
+  }, [user, authLoading, loadBookings]);
+
+  useEffect(() => {
+    // Check which bookings have reviews
+    const checkReviews = async () => {
+      const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
+      const reviewed = new Set<string>();
+      
+      for (const booking of completedBookings) {
+        try {
+          const review = await reviewService.getReviewByBooking(booking.id);
+          if (review.data) {
+            reviewed.add(booking.id);
+          }
+        } catch (error) {
+          // Review doesn't exist, that's fine
+        }
+      }
+      
+      setReviewedBookings(reviewed);
+    };
+
+    if (bookings.length > 0 && user?.userType === 'CLIENT') {
+      checkReviews();
+    }
+  }, [bookings, user]);
+
+  // Listen for real-time booking updates
+  useEffect(() => {
+    const unsubscribe = onBookingUpdate((data) => {
+      console.log('Booking updated via Socket.io:', data);
+      // Refresh bookings when a booking status changes
+      if (user && !authLoading) {
+        loadBookings();
+      }
+    });
+
+    return unsubscribe;
+  }, [onBookingUpdate, user, authLoading, loadBookings]);
 
   const upcomingBookings = bookings.filter(
     (b) => b.status === 'PENDING' || b.status === 'CONFIRMED'
@@ -128,6 +143,62 @@ export default function BookingsScreen() {
       console.error('Error declining booking:', error);
       console.error('Error response:', error.response?.data);
       Alert.alert('Error', error.response?.data?.error?.message || 'Failed to decline booking');
+    }
+  };
+
+  const handleComplete = async (bookingId: string) => {
+    // On web, Alert.alert might not work properly, so use window.confirm as fallback
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to mark this booking as completed? The client will be able to leave a review.');
+      if (!confirmed) {
+        return;
+      }
+    } else {
+      // Show confirmation dialog for native
+      Alert.alert(
+        'Mark as Completed',
+        'Are you sure you want to mark this booking as completed? The client will be able to leave a review.',
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel'
+          },
+          {
+            text: 'Complete',
+            onPress: async () => {
+              await completeBookingAction(bookingId);
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+      return;
+    }
+
+    // Execute the completion for web
+    await completeBookingAction(bookingId);
+  };
+
+  const completeBookingAction = async (bookingId: string) => {
+    try {
+      await bookingService.complete(bookingId);
+      if (Platform.OS === 'web') {
+        alert('Success! Booking marked as completed!');
+      } else {
+        Alert.alert('Success', 'Booking marked as completed!');
+      }
+      await loadBookings();
+    } catch (error: any) {
+      console.error('Error completing booking:', error);
+      const errorMessage = error.response?.data?.error?.message 
+        || error.response?.data?.message 
+        || error.message 
+        || 'Failed to complete booking';
+      if (Platform.OS === 'web') {
+        alert(`Error: ${errorMessage}`);
+      } else {
+        Alert.alert('Error', errorMessage);
+      }
     }
   };
 
@@ -221,6 +292,8 @@ export default function BookingsScreen() {
                 notes: booking.notes || undefined,
               };
 
+              const showCompleteButton = user?.userType === 'PROVIDER' && booking.status === 'CONFIRMED';
+              
               return (
                 <View key={booking.id}>
                   <BookingCard
@@ -242,6 +315,15 @@ export default function BookingsScreen() {
                         <Text style={styles.declineButtonText}>Decline</Text>
                       </TouchableOpacity>
                     </View>
+                  )}
+                  {showCompleteButton && (
+                    <TouchableOpacity
+                      style={styles.completeButton}
+                      onPress={() => handleComplete(booking.id)}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={18} color="#ffffff" />
+                      <Text style={styles.completeButtonText}>Mark as Completed</Text>
+                    </TouchableOpacity>
                   )}
                   {user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' && !booking.payment?.status && (
                     <TouchableOpacity
@@ -473,6 +555,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#10b981',
+  },
+  completeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  completeButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
 

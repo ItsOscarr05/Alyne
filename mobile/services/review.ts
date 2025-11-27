@@ -15,6 +15,8 @@ export interface Review {
   rating: number;
   comment?: string;
   isVisible: boolean;
+  isFlagged?: boolean;
+  flagReason?: string;
   createdAt: string;
   updatedAt: string;
   client?: {
@@ -48,6 +50,11 @@ export const reviewService = {
     isVisible?: boolean;
   }) {
     const response = await apiClient.put(`/reviews/${reviewId}`, data);
+    return response.data;
+  },
+
+  async flagReview(reviewId: string, reason?: string) {
+    const response = await apiClient.post(`/reviews/${reviewId}/flag`, { reason });
     return response.data;
   },
 };

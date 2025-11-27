@@ -1,12 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Platform } from 'react-native';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
+import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { providerService, ProviderDetail, Service, Review } from '../../services/provider';
+import { reviewService } from '../../services/review';
+import { useAuth } from '../../hooks/useAuth';
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>('about');
@@ -14,6 +17,15 @@ export default function ProviderDetailScreen() {
   useEffect(() => {
     loadProvider();
   }, [id]);
+
+  // Reload provider when screen comes into focus (e.g., after editing a review)
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        loadProvider();
+      }
+    }, [id])
+  );
 
   const loadProvider = async () => {
     if (!id) return;
@@ -57,6 +69,56 @@ export default function ProviderDetailScreen() {
       pathname: '/booking/create',
       params: { providerId: id },
     });
+  };
+
+  const handleFlagReview = async (reviewId: string) => {
+    // On web, use window.confirm as fallback
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to flag this review? It will be hidden and reviewed by our team.');
+      if (!confirmed) {
+        return;
+      }
+      
+      try {
+        await reviewService.flagReview(reviewId);
+        window.alert('Success! Review has been flagged. Thank you for your report.');
+        // Reload provider to refresh reviews
+        loadProvider();
+      } catch (error: any) {
+        const errorMessage = error.response?.data?.error?.message 
+          || error.response?.data?.message 
+          || error.message 
+          || 'Failed to flag review';
+        window.alert(`Error: ${errorMessage}`);
+      }
+    } else {
+      // Show confirmation dialog for native
+      Alert.alert(
+        'Flag Review',
+        'Are you sure you want to flag this review? It will be hidden and reviewed by our team.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Flag',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await reviewService.flagReview(reviewId);
+                Alert.alert('Success', 'Review has been flagged. Thank you for your report.');
+                // Reload provider to refresh reviews
+                loadProvider();
+              } catch (error: any) {
+                const errorMessage = error.response?.data?.error?.message 
+                  || error.response?.data?.message 
+                  || error.message 
+                  || 'Failed to flag review';
+                Alert.alert('Error', errorMessage);
+              }
+            },
+          },
+        ]
+      );
+    }
   };
 
   if (isLoading) {
@@ -265,9 +327,39 @@ export default function ProviderDetailScreen() {
                           </View>
                         </View>
                       </View>
-                      <Text style={styles.reviewDate}>
-                        {new Date(review.createdAt).toLocaleDateString()}
-                      </Text>
+                      <View style={styles.reviewHeaderRight}>
+                        <Text style={styles.reviewDate}>
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </Text>
+                        <View style={styles.reviewActions}>
+                          {user && user.id === review.clientId && (
+                            <TouchableOpacity
+                              style={styles.editButton}
+                              onPress={() => {
+                                router.push({
+                                  pathname: '/review/edit',
+                                  params: {
+                                    reviewId: review.id,
+                                    providerName: provider.name,
+                                    initialRating: review.rating.toString(),
+                                    initialComment: review.comment || '',
+                                  },
+                                });
+                              }}
+                            >
+                              <Ionicons name="pencil-outline" size={16} color="#2563eb" />
+                            </TouchableOpacity>
+                          )}
+                          {user && user.id !== review.clientId && (
+                            <TouchableOpacity
+                              style={styles.flagButton}
+                              onPress={() => handleFlagReview(review.id)}
+                            >
+                              <Ionicons name="flag-outline" size={16} color="#ef4444" />
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
                     </View>
                     {review.comment && (
                       <Text style={styles.reviewComment}>{review.comment}</Text>
@@ -528,6 +620,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 8,
+  },
+  reviewHeaderRight: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  reviewActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+  },
+  editButton: {
+    padding: 4,
+  },
+  flagButton: {
+    padding: 4,
   },
   reviewerInfo: {
     flexDirection: 'row',

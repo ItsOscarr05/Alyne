@@ -78,5 +78,27 @@ export const reviewController = {
       next(error);
     }
   },
+
+  async flagReview(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const { id } = req.params;
+      const { reason } = req.body;
+
+      const review = await reviewService.flagReview(id, userId, reason);
+
+      res.json({
+        success: true,
+        data: review,
+        message: 'Review has been flagged and will be reviewed',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
