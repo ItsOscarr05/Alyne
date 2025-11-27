@@ -243,6 +243,106 @@ async function main() {
   }
   console.log('✅ Created provider 3:', provider3.email);
 
+  // Create test messages for Phase 3 testing
+  console.log('💬 Creating test messages...');
+  
+  // Create conversation between client and provider1 (yoga@alyne.com)
+  const messages = [
+    {
+      senderId: clientUser.id,
+      receiverId: provider1.id,
+      content: 'Hi! I\'m interested in booking a yoga session. Are you available this weekend?',
+      status: 'READ' as const,
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+    },
+    {
+      senderId: provider1.id,
+      receiverId: clientUser.id,
+      content: 'Hello! Yes, I have availability this weekend. What time works best for you?',
+      status: 'READ' as const,
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000), // 2 days ago + 30 min
+    },
+    {
+      senderId: clientUser.id,
+      receiverId: provider1.id,
+      content: 'Saturday morning around 10am would be perfect!',
+      status: 'READ' as const,
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // 1 day ago
+    },
+    {
+      senderId: provider1.id,
+      receiverId: clientUser.id,
+      content: 'Perfect! I\'ll send you a booking request. Looking forward to our session!',
+      status: 'DELIVERED' as const,
+      createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 + 15 * 60 * 1000), // 1 day ago + 15 min
+    },
+    {
+      senderId: clientUser.id,
+      receiverId: provider1.id,
+      content: 'Great, thank you! See you Saturday!',
+      status: 'SENT' as const,
+      createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000), // 12 hours ago
+    },
+  ];
+
+  // Check if messages already exist to avoid duplicates
+  const existingMessages = await prisma.message.findFirst({
+    where: {
+      senderId: clientUser.id,
+      receiverId: provider1.id,
+    },
+  });
+
+  if (!existingMessages) {
+    await prisma.message.createMany({
+      data: messages,
+    });
+    console.log('✅ Created test conversation between client and provider1');
+  } else {
+    console.log('ℹ️  Test messages already exist, skipping...');
+  }
+
+  // Create another conversation between client and provider2 (massage@alyne.com)
+  const messages2 = [
+    {
+      senderId: provider2.id,
+      receiverId: clientUser.id,
+      content: 'Hi! I saw you were looking for massage services. I have availability this week!',
+      status: 'SENT' as const,
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+    },
+    {
+      senderId: clientUser.id,
+      receiverId: provider2.id,
+      content: 'Thanks for reaching out! What types of massage do you offer?',
+      status: 'DELIVERED' as const,
+      createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
+    },
+    {
+      senderId: provider2.id,
+      receiverId: clientUser.id,
+      content: 'I specialize in deep tissue and sports massage. I can also do Swedish massage for relaxation.',
+      status: 'SENT' as const,
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+    },
+  ];
+
+  const existingMessages2 = await prisma.message.findFirst({
+    where: {
+      senderId: provider2.id,
+      receiverId: clientUser.id,
+    },
+  });
+
+  if (!existingMessages2) {
+    await prisma.message.createMany({
+      data: messages2,
+    });
+    console.log('✅ Created test conversation between client and provider2');
+  } else {
+    console.log('ℹ️  Test messages already exist, skipping...');
+  }
+
   console.log('✨ Seeding complete!');
 }
 

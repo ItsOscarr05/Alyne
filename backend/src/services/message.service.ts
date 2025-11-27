@@ -54,6 +54,31 @@ export const messageService = {
     return message;
   },
 
+  async updateMessageStatus(messageId: string, status: 'SENT' | 'DELIVERED' | 'READ') {
+    return await prisma.message.update({
+      where: { id: messageId },
+      data: { status },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profilePhoto: true,
+          },
+        },
+        receiver: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profilePhoto: true,
+          },
+        },
+      },
+    });
+  },
+
   async getConversations(userId: string) {
     // Get all unique conversations for this user
     const messages = await prisma.message.findMany({
@@ -100,12 +125,13 @@ export const messageService = {
         conversationMap.set(conversationKey, {
           otherUser,
           lastMessage: message,
-          unreadCount: message.receiverId === userId && message.status === 'SENT' ? 1 : 0,
+          // Count as unread if message was received by this user and status is not READ
+          unreadCount: message.receiverId === userId && message.status !== 'READ' ? 1 : 0,
         });
       } else {
         const existing = conversationMap.get(conversationKey)!;
-        // Update unread count if message is unread
-        if (message.receiverId === userId && message.status === 'SENT') {
+        // Update unread count if message is unread (received by this user and not READ)
+        if (message.receiverId === userId && message.status !== 'READ') {
           existing.unreadCount += 1;
         }
         // Keep the most recent message

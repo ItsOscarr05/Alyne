@@ -5,32 +5,53 @@ import compression from 'compression';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 
 // Load environment variables
 dotenv.config();
 
+const prisma = new PrismaClient();
 const app: Express = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
+  path: '/socket.io/',
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:8081',
     methods: ['GET', 'POST'],
+    credentials: true,
   },
+  allowEIO3: true,
+  transports: ['polling', 'websocket'],
+  connectTimeout: 45000,
 });
+
+
+// Listen for connection errors at Engine.IO level
+io.engine.on('connection_error', (err: any) => {
+  console.error('Socket.io connection error:', err.message);
+});
+
 
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(helmet());
+// Configure Helmet to allow Socket.io connections
+app.use(helmet({
+  contentSecurityPolicy: false, // Disable CSP for Socket.io compatibility
+  crossOriginEmbedderPolicy: false,
+}));
 app.use(compression());
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:8081',
   credentials: true,
 }));
+
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(rateLimiter);
 
 // Health check
@@ -60,28 +81,40 @@ import jwt from 'jsonwebtoken';
 
 // Socket.io authentication middleware
 io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
-  if (!token) {
-    return next(new Error('Authentication error'));
-  }
-
-  const secret = process.env.JWT_SECRET;
-  if (!secret) {
-    return next(new Error('JWT_SECRET not configured'));
-  }
-
   try {
+    const token = socket.handshake.auth?.token;
+    
+    if (!token) {
+      return next(new Error('Authentication required'));
+    }
+
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return next(new Error('JWT_SECRET not configured'));
+    }
+
     const decoded = jwt.verify(token, secret) as { userId: string };
     (socket as any).userId = decoded.userId;
     next();
-  } catch (error) {
-    next(new Error('Invalid token'));
+  } catch (error: any) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      return next(new Error('Invalid token'));
+    }
+    if (error instanceof jwt.TokenExpiredError) {
+      return next(new Error('Token expired'));
+    }
+    next(new Error('Authentication failed'));
   }
 });
 
+// Handle Socket.io connections
 io.on('connection', (socket: any) => {
-  const userId = socket.userId;
-  console.log('User connected:', socket.id, 'userId:', userId);
+  const userId = (socket as any).userId;
+  
+  if (!userId) {
+    socket.disconnect();
+    return;
+  }
 
   // Join user's personal room
   socket.join(`user:${userId}`);
@@ -90,7 +123,12 @@ io.on('connection', (socket: any) => {
   socket.on('join-conversation', (otherUserId: string) => {
     const roomId = [userId, otherUserId].sort().join(':');
     socket.join(`conversation:${roomId}`);
-    console.log(`User ${userId} joined conversation ${roomId}`);
+  });
+
+  // Leave a conversation room (for cleanup when navigating away)
+  socket.on('leave-conversation', (otherUserId: string) => {
+    const roomId = [userId, otherUserId].sort().join(':');
+    socket.leave(`conversation:${roomId}`);
   });
 
   // Handle sending messages
@@ -111,15 +149,89 @@ io.on('connection', (socket: any) => {
       // Create room ID for the conversation
       const roomId = [userId, data.receiverId].sort().join(':');
 
-      // Emit to both users
-      io.to(`conversation:${roomId}`).emit('receive-message', message);
-      io.to(`user:${data.receiverId}`).emit('new-message', message);
+      // Update status to DELIVERED when message is received by server
+      // (In a real app, this would happen when recipient's device receives it)
+      // For MVP, we'll update to DELIVERED immediately after sending
+      const deliveredMessage = await prisma.message.update({
+        where: { id: message.id },
+        data: { status: 'DELIVERED' },
+        include: {
+          sender: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
+        },
+      });
 
-      // Confirm to sender
-      socket.emit('message-sent', message);
+      // Emit to conversation room (both users in the conversation)
+      io.to(`conversation:${roomId}`).emit('receive-message', deliveredMessage);
+      
+      // Also notify receiver's personal room (for conversation list updates)
+      io.to(`user:${data.receiverId}`).emit('new-message', deliveredMessage);
+
+      // Confirm to sender with DELIVERED status (only to this socket, not broadcast)
+      socket.emit('message-sent', deliveredMessage);
     } catch (error) {
       console.error('Error sending message:', error);
       socket.emit('message-error', { error: 'Failed to send message' });
+    }
+  });
+
+  // Handle marking messages as read
+  socket.on('mark-as-read', async (data: { otherUserId: string }) => {
+    try {
+      // Mark messages as read in database
+      await messageService.markAsRead(userId, data.otherUserId);
+
+      // Get the updated messages to send to the sender
+      const updatedMessages = await prisma.message.findMany({
+        where: {
+          senderId: data.otherUserId,
+          receiverId: userId,
+          status: 'READ',
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50, // Get recent read messages
+        include: {
+          sender: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
+          receiver: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
+        },
+      });
+
+      // Notify the sender that their messages were read
+      // The sender is the otherUserId, so we emit to their personal room
+      io.to(`user:${data.otherUserId}`).emit('messages-read', {
+        messages: updatedMessages,
+        readBy: userId,
+      });
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
     }
   });
 
@@ -135,6 +247,8 @@ app.use(errorHandler);
 httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔌 Socket.io server ready at http://localhost:${PORT}/socket.io/`);
+  console.log(`📡 CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:8081'}`);
 });
 
 export { app, io };

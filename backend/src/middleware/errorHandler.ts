@@ -14,11 +14,20 @@ export const errorHandler = (
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 
-  console.error('Error:', {
-    message,
-    statusCode,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
-  });
+  // Suppress noisy logs for expected errors
+  const isExpectedError = 
+    statusCode === 401 && req.method === 'OPTIONS' || // CORS preflight
+    statusCode === 401 && message === 'Authentication required'; // Expected auth failures
+
+  if (!isExpectedError) {
+    console.error('Error:', {
+      message,
+      statusCode,
+      method: req.method,
+      path: req.path,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    });
+  }
 
   res.status(statusCode).json({
     success: false,

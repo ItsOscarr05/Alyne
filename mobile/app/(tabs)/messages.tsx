@@ -1,41 +1,92 @@
 import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { ConversationItem } from '../../components/ConversationItem';
 import { messageService, Conversation } from '../../services/message';
 import { useSocket } from '../../hooks/useSocket';
+import { useAuth } from '../../hooks/useAuth';
+import { useCallback } from 'react';
 
 export default function MessagesScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const { onMessage } = useSocket();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    loadConversations();
-
-    // Listen for new messages to refresh conversations
-    const unsubscribe = onMessage(() => {
-      loadConversations();
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
-
   const loadConversations = async () => {
+    if (!user) {
+      console.log('Messages: No user, skipping conversation load');
+      setConversations([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
     try {
       const response = await messageService.getConversations();
-      setConversations(response.data || []);
+      const conversations = response.data || [];
+      
+      // CRITICAL: Filter conversations to ensure they belong to the current user
+      // This prevents conversations from other users from appearing
+      const validConversations = conversations.filter((conv) => {
+        // Each conversation should have messages between current user and otherUser
+        // The backend should already filter this, but we double-check here
+        const isValid = conv.otherUser && conv.otherUser.id !== user.id;
+        if (!isValid) {
+          console.log(`Messages: Filtering out invalid conversation for user ${user.id}:`, conv.id);
+        }
+        return isValid;
+      });
+      
+      // Deduplicate conversations by ID to prevent duplicate keys
+      const uniqueConversations = validConversations.filter((conv, index, self) =>
+        index === self.findIndex((c) => c.id === conv.id)
+      );
+      
+      console.log(`Messages: Loaded ${uniqueConversations.length} conversations for user ${user.id}`);
+      setConversations(uniqueConversations);
     } catch (error: any) {
       console.error('Error loading conversations:', error);
+      // On error, clear conversations to prevent stale data
+      setConversations([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadConversations();
+    }
+
+    // Listen for new messages to refresh conversations
+    // IMPORTANT: Only refresh if message is for current user
+    const unsubscribe = onMessage((message) => {
+      // Only refresh if the message involves the current user
+      if (user && (message.senderId === user.id || message.receiverId === user.id)) {
+        console.log(`Messages: Refreshing conversations after message for user ${user.id}`);
+        loadConversations();
+      } else {
+        console.log(`Messages: Ignoring message refresh - not for current user ${user?.id}`);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [user]);
+
+  // Refresh conversations when screen comes into focus (e.g., when navigating back from chat)
+  useFocusEffect(
+    useCallback(() => {
+      if (user) {
+        loadConversations();
+      }
+    }, [user])
+  );
 
   const handleRefresh = () => {
     setRefreshing(true);

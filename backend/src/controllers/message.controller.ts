@@ -24,9 +24,12 @@ export const messageController = {
         bookingId,
       });
 
+      // Update status to DELIVERED after successful send (for API fallback)
+      const deliveredMessage = await messageService.updateMessageStatus(message.id, 'DELIVERED');
+
       res.json({
         success: true,
-        data: message,
+        data: deliveredMessage || message,
       });
     } catch (error) {
       next(error);
