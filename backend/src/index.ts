@@ -10,6 +10,9 @@ import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { sanitizeInput } from './middleware/sanitizeInput';
 import { initRedis } from './utils/cache';
+import { monitoringMiddleware, monitoring } from './utils/monitoring';
+import { errorTracker } from './utils/errorTracking';
+import { logger } from './utils/logger';
 
 // Load environment variables
 dotenv.config();
@@ -65,30 +68,75 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-enc
 // Sanitize input to prevent XSS attacks
 app.use(sanitizeInput);
 
+// Monitoring middleware (track requests and performance)
+app.use(monitoringMiddleware);
+
 app.use(rateLimiter);
 
-// Health check
-// Enhanced health check endpoint
+// Health check endpoints
 app.get('/health', async (req, res) => {
   try {
     // Check database connection
+    const dbStart = Date.now();
     await prisma.$queryRaw`SELECT 1`;
-    
+    const dbResponseTime = Date.now() - dbStart;
+
+    // Check Redis connection (if available)
+    let redisStatus = 'not_configured';
+    try {
+      const { getCache } = await import('./utils/cache');
+      const testCache = await getCache('health-check');
+      redisStatus = 'connected';
+    } catch (redisError) {
+      redisStatus = 'disconnected';
+    }
+
+    const metrics = monitoring.getMetrics();
+
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV || 'development',
-      database: 'connected',
-      uptime: process.uptime(),
+      version: process.env.npm_package_version || '1.0.0',
+      services: {
+        database: {
+          status: 'connected',
+          responseTime: `${dbResponseTime}ms`,
+        },
+        redis: {
+          status: redisStatus,
+        },
+      },
+      metrics: {
+        uptime: metrics.uptimeFormatted,
+        totalRequests: metrics.requestCount,
+        errorCount: metrics.errorCount,
+        errorRate: `${metrics.errorRate}%`,
+        averageResponseTime: `${Math.round(metrics.averageResponseTime)}ms`,
+      },
     });
   } catch (error) {
     logger.error('Health check failed', error);
+    errorTracker.captureException(error as Error, { context: 'health_check' });
     res.status(503).json({
       status: 'error',
       timestamp: new Date().toISOString(),
-      database: 'disconnected',
+      services: {
+        database: {
+          status: 'disconnected',
+        },
+      },
     });
   }
+});
+
+// Metrics endpoint (for monitoring tools)
+app.get('/metrics', (req, res) => {
+  const metrics = monitoring.getMetrics();
+  res.json({
+    success: true,
+    data: metrics,
+  });
 });
 
 // API Routes

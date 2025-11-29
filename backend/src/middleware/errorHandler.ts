@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
+import { errorTracker } from '../utils/errorTracking';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -26,6 +27,22 @@ export const errorHandler = (
       method: req.method,
       path: req.path,
     });
+    
+    // Send to error tracking service
+    if (err instanceof Error) {
+      errorTracker.captureException(err, {
+        path: req.path,
+        method: req.method,
+        statusCode: statusCode,
+        userId: (req as any).user?.id,
+      });
+    } else {
+      errorTracker.captureMessage(String(err), 'error', {
+        path: req.path,
+        method: req.method,
+        statusCode: statusCode,
+      });
+    }
   }
 
   res.status(statusCode).json({

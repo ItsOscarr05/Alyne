@@ -1,52 +1,98 @@
 /**
- * Production-ready logger utility
- * Replaces console.log with proper logging levels
+ * Production-ready logger using Winston
+ * Provides structured logging with multiple transports
  */
-
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+import winston from 'winston';
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
 
-class Logger {
-  private shouldLog(level: LogLevel): boolean {
-    if (isDevelopment) return true; // Log everything in development
-    
-    // In production, only log warnings and errors
-    if (isProduction) {
-      return level === 'warn' || level === 'error';
-    }
-    
-    return true;
-  }
+// Define log format
+const logFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.errors({ stack: true }),
+  winston.format.splat(),
+  winston.format.json()
+);
 
-  debug(message: string, ...args: any[]): void {
-    if (this.shouldLog('debug')) {
-      console.debug(`[DEBUG] ${message}`, ...args);
+// Console format for development
+const consoleFormat = winston.format.combine(
+  winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  winston.format.colorize(),
+  winston.format.printf(
+    ({ level, message, timestamp, stack, ...meta }) => {
+      let msg = `${timestamp} ${level}: ${message}`;
+      if (Object.keys(meta).length > 0) {
+        msg += ` ${JSON.stringify(meta)}`;
+      }
+      if (stack) {
+        msg += `\n${stack}`;
+      }
+      return msg;
     }
-  }
+  )
+);
 
-  info(message: string, ...args: any[]): void {
-    if (this.shouldLog('info')) {
-      console.info(`[INFO] ${message}`, ...args);
-    }
-  }
+// Create transports
+const transports: winston.transport[] = [
+  // Console transport (always enabled)
+  new winston.transports.Console({
+    format: isDevelopment ? consoleFormat : logFormat,
+    level: isDevelopment ? 'debug' : 'info',
+  }),
+];
 
-  warn(message: string, ...args: any[]): void {
-    if (this.shouldLog('warn')) {
-      console.warn(`[WARN] ${message}`, ...args);
-    }
-  }
+// Add file transports in production
+if (isProduction) {
+  // Error log file
+  transports.push(
+    new winston.transports.File({
+      filename: 'logs/error.log',
+      level: 'error',
+      format: logFormat,
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+    })
+  );
 
-  error(message: string, error?: Error | any, ...args: any[]): void {
-    if (this.shouldLog('error')) {
-      console.error(`[ERROR] ${message}`, error, ...args);
-      
-      // In production, you would send this to error tracking service
-      // Example: Sentry.captureException(error);
-    }
-  }
+  // Combined log file
+  transports.push(
+    new winston.transports.File({
+      filename: 'logs/combined.log',
+      format: logFormat,
+      maxsize: 5242880, // 5MB
+      maxFiles: 5,
+    })
+  );
 }
 
-export const logger = new Logger();
+// Create logger instance
+export const logger = winston.createLogger({
+  level: isDevelopment ? 'debug' : 'info',
+  format: logFormat,
+  defaultMeta: {
+    service: 'alyne-backend',
+    environment: process.env.NODE_ENV || 'development',
+  },
+  transports,
+  // Handle exceptions and rejections
+  exceptionHandlers: isProduction
+    ? [
+        new winston.transports.File({
+          filename: 'logs/exceptions.log',
+          format: logFormat,
+        }),
+      ]
+    : [],
+  rejectionHandlers: isProduction
+    ? [
+        new winston.transports.File({
+          filename: 'logs/rejections.log',
+          format: logFormat,
+        }),
+      ]
+    : [],
+});
 
+// Export convenience methods
+export default logger;
