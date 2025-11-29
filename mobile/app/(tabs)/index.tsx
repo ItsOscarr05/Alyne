@@ -5,6 +5,8 @@ import * as Location from 'expo-location';
 import { SearchBar } from '../../components/SearchBar';
 import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
 import { providerService, DiscoveryFilters } from '../../services/provider';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -32,7 +34,7 @@ export default function DiscoverScreen() {
         });
       }
     } catch (error) {
-      console.error('Error getting location:', error);
+      logger.error('Error getting location', error);
     }
   };
 
@@ -52,7 +54,7 @@ export default function DiscoverScreen() {
       const results = await providerService.discover(filters);
       setProviders(results);
     } catch (error: any) {
-      console.error('Error loading providers:', error);
+      logger.error('Error loading providers', error);
       // Fallback to mock data if API fails
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
         Alert.alert(

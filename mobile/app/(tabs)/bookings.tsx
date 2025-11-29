@@ -8,6 +8,8 @@ import { reviewService } from '../../services/review';
 import { paymentService } from '../../services/payment';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -20,23 +22,13 @@ export default function BookingsScreen() {
 
   const loadBookings = useCallback(async () => {
     try {
-      console.log('Loading bookings for user:', {
-        userId: user?.id,
-        userType: user?.userType,
-      });
+      logger.debug('Loading bookings for user', { userId: user?.id, userType: user?.userType });
       const role = user?.userType === 'PROVIDER' ? 'provider' : 'client';
-      console.log('Fetching bookings with role:', role);
       const data = await bookingService.getMyBookings(undefined, role);
-      console.log('Bookings loaded:', data.length, 'bookings');
-      console.log('Bookings data:', data);
+      logger.debug('Bookings loaded', { count: data.length, role });
       setBookings(data);
     } catch (error: any) {
-      console.error('Error loading bookings:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
+      logger.error('Error loading bookings', error);
       // Fallback to mock data if API fails
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
         const { mockBookings } = await import('../../data/mockBookings');
@@ -58,11 +50,11 @@ export default function BookingsScreen() {
   useEffect(() => {
     // Only load bookings when user is available and auth is not loading
     if (user && !authLoading) {
-      console.log('User available, loading bookings...');
+      logger.debug('User available, loading bookings...');
       loadBookings();
     } else if (!authLoading && !user) {
       // User is not authenticated, clear bookings
-      console.log('User not authenticated, clearing bookings');
+      logger.debug('User not authenticated, clearing bookings');
       setBookings([]);
       setIsLoading(false);
     }
@@ -96,7 +88,7 @@ export default function BookingsScreen() {
   // Listen for real-time booking updates
   useEffect(() => {
     const unsubscribe = onBookingUpdate((data) => {
-      console.log('Booking updated via Socket.io:', data);
+      logger.debug('Booking updated via Socket.io', { bookingId: data.id, status: data.status });
       // Refresh bookings when a booking status changes
       if (user && !authLoading) {
         loadBookings();
@@ -132,17 +124,16 @@ export default function BookingsScreen() {
 
   const handleDecline = async (bookingId: string) => {
     try {
-      console.log('Declining booking:', bookingId);
+      logger.info('Declining booking', { bookingId });
       const result = await bookingService.decline(bookingId);
-      console.log('Decline result:', result);
-      console.log('Result status:', result?.status);
+      logger.info('Booking declined successfully', { bookingId, status: result?.status });
       Alert.alert('Success', 'Booking declined');
       // Force reload bookings
       await loadBookings();
     } catch (error: any) {
-      console.error('Error declining booking:', error);
-      console.error('Error response:', error.response?.data);
-      Alert.alert('Error', error.response?.data?.error?.message || 'Failed to decline booking');
+      logger.error('Error declining booking', error);
+      const errorMessage = getUserFriendlyError(error);
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -189,11 +180,8 @@ export default function BookingsScreen() {
       }
       await loadBookings();
     } catch (error: any) {
-      console.error('Error completing booking:', error);
-      const errorMessage = error.response?.data?.error?.message 
-        || error.response?.data?.message 
-        || error.message 
-        || 'Failed to complete booking';
+      logger.error('Error completing booking', error);
+      const errorMessage = getUserFriendlyError(error);
       if (Platform.OS === 'web') {
         alert(`Error: ${errorMessage}`);
       } else {

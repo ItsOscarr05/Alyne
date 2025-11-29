@@ -44,29 +44,26 @@ export default function CreateBookingScreen() {
   };
 
   const handleCreateBooking = async () => {
-    console.log('handleCreateBooking called');
-    console.log('Form state:', {
+    logger.debug('handleCreateBooking called', {
       providerId,
       selectedService: selectedService?.id,
       selectedDate,
       selectedTime,
-      isSubmitting,
     });
 
     if (!providerId || !selectedService || !selectedDate || !selectedTime) {
-      console.warn('Validation failed - missing required fields');
+      logger.warn('Validation failed - missing required fields');
       Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      console.log('Creating booking with data:', {
+      logger.debug('Creating booking', {
         providerId,
         serviceId: selectedService.id,
         scheduledDate: selectedDate,
         scheduledTime: selectedTime,
-        notes: notes || undefined,
       });
 
       const bookingData: CreateBookingData = {
@@ -77,45 +74,34 @@ export default function CreateBookingScreen() {
         notes: notes || undefined,
       };
 
-      console.log('Calling bookingService.create...');
       const result = await bookingService.create(bookingData);
-      console.log('Booking created successfully:', result);
+      logger.info('Booking created successfully', { bookingId: result.id });
       
       // Show success message
-      console.log('Showing success alert...');
       try {
         Alert.alert('Success', 'Booking request sent!', [
           {
             text: 'OK',
             onPress: () => {
-              console.log('Alert OK pressed, navigating to bookings tab...');
               router.replace('/(tabs)/bookings');
             },
           },
         ]);
       } catch (alertError) {
-        console.warn('Alert.alert failed (might be web):', alertError);
+        logger.warn('Alert.alert failed (might be web)', alertError);
       }
       
       // Navigate directly after a short delay (works on both web and native)
       setTimeout(() => {
-        console.log('Navigating to bookings tab...');
         router.replace('/(tabs)/bookings');
       }, 1000);
     } catch (error: any) {
-      console.error('Error creating booking:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-      });
-      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to create booking';
-      console.error('Showing error alert:', errorMessage);
-      Alert.alert('Error', errorMessage);
+      logger.error('Error creating booking', error);
+      const errorMessage = getUserFriendlyError(error);
+      const errorTitle = getErrorTitle(error);
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsSubmitting(false);
-      console.log('Booking submission finished, isSubmitting set to false');
     }
   };
 

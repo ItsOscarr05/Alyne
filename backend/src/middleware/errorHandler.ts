@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -20,12 +21,10 @@ export const errorHandler = (
     statusCode === 401 && message === 'Authentication required'; // Expected auth failures
 
   if (!isExpectedError) {
-    console.error('Error:', {
-      message,
+    logger.error('Request error', err, {
       statusCode,
       method: req.method,
       path: req.path,
-      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
     });
   }
 

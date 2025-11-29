@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { storage } from '../utils/storage';
 import { authService, AuthResponse } from '../services/auth';
 import { User } from '../types';
+import { logger } from '../utils/logger';
 
 interface AuthState {
   user: User | null;
@@ -50,7 +51,7 @@ export const useAuth = () => {
         });
       }
     } catch (error) {
-      console.error('Error loading auth state:', error);
+      logger.error('Error loading auth state', error);
       setAuthState({
         user: null,
         token: null,
@@ -114,7 +115,7 @@ export const useAuth = () => {
     try {
       await authService.logout();
     } catch (error) {
-      console.error('Error during logout:', error);
+      logger.error('Error during logout', error);
     } finally {
       await Promise.all([
         storage.removeItem(AUTH_TOKEN_KEY),
@@ -141,7 +142,7 @@ export const useAuth = () => {
         }));
       }
     } catch (error) {
-      console.error('Error refreshing user:', error);
+      logger.error('Error refreshing user', error);
     }
   };
 

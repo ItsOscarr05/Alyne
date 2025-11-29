@@ -4,6 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useState, useEffect } from 'react';
 import { providerService } from '../../services/provider';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 
 interface ProviderProfile {
   id: string;
@@ -31,14 +33,14 @@ export default function ProfileScreen() {
     
     setIsLoadingProfile(true);
     try {
-      console.log('Loading provider profile for user:', user.id);
+      logger.debug('Loading provider profile for user', { userId: user.id });
       // Get provider profile using the user's own ID
       const profile = await providerService.getById(user.id);
-      console.log('Provider profile loaded:', profile);
-      console.log('Specialties:', profile?.specialties);
-      console.log('Services:', profile?.services);
-      console.log('Credentials:', profile?.credentials);
-      console.log('Availability:', profile?.availability);
+      logger.debug('Provider profile loaded', { 
+        hasProfile: !!profile,
+        specialtiesCount: Array.isArray(profile?.specialties) ? profile.specialties.length : 0,
+        servicesCount: profile?.services?.length || 0,
+      });
       
       if (profile) {
         setProviderProfile({
@@ -49,7 +51,7 @@ export default function ProfileScreen() {
           credentials: Array.isArray(profile.credentials) ? profile.credentials : [],
           availability: Array.isArray(profile.availability) ? profile.availability : [],
         });
-        console.log('Provider profile state set:', {
+        logger.debug('Provider profile state set', {
           bio: profile.bio,
           specialtiesCount: Array.isArray(profile.specialties) ? profile.specialties.length : 0,
           servicesCount: Array.isArray(profile.services) ? profile.services.length : 0,
@@ -58,8 +60,7 @@ export default function ProfileScreen() {
         });
       }
     } catch (error: any) {
-      console.error('Error loading provider profile:', error);
-      console.error('Error details:', error.response?.data || error.message);
+      logger.error('Error loading provider profile', error);
       // Profile might not exist yet, that's okay
     } finally {
       setIsLoadingProfile(false);

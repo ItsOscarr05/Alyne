@@ -1,4 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
+import { logger } from './logger';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
@@ -13,7 +14,7 @@ const getWebStorage = () => {
   }
   // Fallback to localStorage if sessionStorage is not available
   if (typeof window !== 'undefined' && window.localStorage) {
-    console.warn('sessionStorage not available, falling back to localStorage');
+    logger.warn('sessionStorage not available, falling back to localStorage');
     return window.localStorage;
   }
   // Last resort: use AsyncStorage (shared across tabs, but better than nothing)
@@ -33,7 +34,7 @@ export const storage = {
       try {
         return await SecureStore.getItemAsync(key);
       } catch (error) {
-        console.error('Error getting item from SecureStore:', error);
+        logger.error('Error getting item from SecureStore', error);
         return null;
       }
     }
@@ -52,7 +53,7 @@ export const storage = {
       try {
         await SecureStore.setItemAsync(key, value);
       } catch (error) {
-        console.error('Error setting item in SecureStore:', error);
+        logger.error('Error setting item in SecureStore', error);
         throw error;
       }
     }
@@ -71,7 +72,7 @@ export const storage = {
       try {
         await SecureStore.deleteItemAsync(key);
       } catch (error) {
-        console.error('Error removing item from SecureStore:', error);
+        logger.error('Error removing item from SecureStore', error);
       }
     }
   },

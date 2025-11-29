@@ -1,5 +1,6 @@
 import { PrismaClient, BookingStatus } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -97,12 +98,7 @@ export const bookingService = {
       where.status = status as BookingStatus;
     }
 
-    console.log('getUserBookings query:', {
-      userId,
-      role,
-      status,
-      where,
-    });
+    logger.debug('getUserBookings query', { userId, role, status, where });
 
     const bookings = await prisma.booking.findMany({
       where,

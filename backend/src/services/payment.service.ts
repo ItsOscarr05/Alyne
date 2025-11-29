@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import Stripe from 'stripe';
 import { createError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -86,7 +87,7 @@ export const paymentService = {
     
     // Warn if provider doesn't have bank account set up (but don't block payment intent creation)
     if (!providerProfile?.plaidAccountId || !providerProfile?.bankAccountVerified) {
-      console.warn(`[Payment Intent] Provider ${booking.providerId} does not have verified bank account. Plaid payment will need to be set up separately.`);
+      logger.warn(`Provider ${booking.providerId} does not have verified bank account. Plaid payment will need to be set up separately.`);
     }
 
     // Calculate payment amounts
@@ -188,7 +189,7 @@ export const paymentService = {
       throw createError('Payment not completed', 400);
     }
 
-    console.log(`[Confirm Payment] Confirming payment for booking ${bookingId}, paymentIntent ${paymentIntentId}`);
+    logger.info(`Confirming payment for booking ${bookingId}, paymentIntent ${paymentIntentId}`);
 
     // Get payment amounts from metadata or recalculate
     const providerAmount = booking.payment?.providerAmount 
@@ -204,10 +205,7 @@ export const paymentService = {
     // - We only confirm the Stripe payment here
     // - The Plaid payment is initiated by the client and confirmed via webhook
 
-    console.log(`[Confirm Payment] Platform fee payment confirmed:`);
-    console.log(`  - Platform fee paid via Stripe: $${platformFee}`);
-    console.log(`  - Provider amount to be paid via Plaid RTP: $${providerAmount}`);
-    console.log(`  - Total client pays: $${totalAmount}`);
+    logger.info(`Platform fee payment confirmed: $${platformFee} via Stripe, Provider amount: $${providerAmount} via Plaid, Total: $${totalAmount}`);
 
     // Upsert payment record (create if doesn't exist, update if it does)
     const payment = await prisma.payment.upsert({
@@ -233,7 +231,7 @@ export const paymentService = {
       },
     });
 
-    console.log(`[Confirm Payment] Payment record ${payment.id} updated/created with status: ${payment.status}`);
+    logger.info(`Payment record ${payment.id} updated/created with status: ${payment.status}`);
     return payment;
   },
 
@@ -294,7 +292,7 @@ export const paymentService = {
       },
     });
 
-    console.log(`[Provider Payment] Plaid transfer processed: ${transferResult.transferId} for $${providerAmount}`);
+    logger.info(`Plaid transfer processed: ${transferResult.transferId} for $${providerAmount}`);
     return {
       transferId: transferResult.transferId,
       status: transferResult.status,
@@ -357,8 +355,7 @@ export const paymentService = {
       },
     });
 
-    console.log(`[Payment History] Found ${bookings.length} bookings for user ${userId}`);
-    console.log(`[Payment History] Bookings with payments: ${bookings.filter(b => b.payment).length}`);
+    logger.debug(`Found ${bookings.length} bookings for user ${userId}, ${bookings.filter(b => b.payment).length} with payments`);
 
     // Filter to only bookings with payments
     const paymentsWithBookings = bookings
@@ -376,7 +373,7 @@ export const paymentService = {
         },
       }));
 
-    console.log(`[Payment History] Returning ${paymentsWithBookings.length} payments`);
+    logger.debug(`Returning ${paymentsWithBookings.length} payments for user ${userId}`);
     return paymentsWithBookings;
   },
 };

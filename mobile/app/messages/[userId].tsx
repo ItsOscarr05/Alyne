@@ -15,6 +15,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 import { messageService, Message } from '../../services/message';
 
 export default function ChatScreen() {
@@ -122,11 +124,11 @@ export default function ChatScreen() {
       
       const sentMessage = await Promise.race([socketPromise, timeoutPromise]) as any;
       // Socket returns message directly with updated status
-      console.log('Message sent via socket, status:', sentMessage?.status);
+      logger.debug('Message sent via socket', { status: sentMessage?.status });
       realMessage = sentMessage;
     } catch (socketError: any) {
       // Fallback to API if socket fails or times out
-      console.log('Socket failed, using API fallback:', socketError);
+      logger.debug('Socket failed, using API fallback', socketError);
       
       try {
         const apiResponse = await messageService.sendMessage({
@@ -135,9 +137,9 @@ export default function ChatScreen() {
         });
         // API returns { data: message } or just message
         realMessage = apiResponse.data || apiResponse;
-        console.log('Message sent via API, status:', realMessage?.status);
+        logger.debug('Message sent via API', { status: realMessage?.status });
       } catch (apiError: any) {
-        console.error('API fallback also failed:', apiError);
+        logger.error('API fallback also failed', apiError);
         // Enhance error message for network issues
         if (apiError?.message?.includes('fetch') || apiError?.message?.includes('network')) {
           throw new Error('Network error - unable to connect to server');
@@ -341,7 +343,7 @@ export default function ChatScreen() {
     try {
       await handleSendMessage(content, false);
     } catch (error: any) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error);
       
       // Check if it's a network error
       const isNetworkError = 
@@ -356,13 +358,13 @@ export default function ChatScreen() {
       // Keep temp message visible for a bit so user can see the attempt
       // Remove it after a delay (after user has seen the error)
       setTimeout(() => {
-        console.log('Removing temp message after error');
+        logger.debug('Removing temp message after error');
         setMessages((prev) => prev.filter((m) => !m.id.startsWith('temp-')));
       }, 2000); // Keep visible for 2 seconds so user can see it
       
       // Queue message for retry if it's a network error
       if (isNetworkError) {
-        console.log('Queueing message for retry:', content);
+        logger.debug('Queueing message for retry', { content });
         setFailedMessages((prev) => {
           // Check if this message is already in the queue to prevent duplicates
           const alreadyQueued = prev.some((msg) => msg.content === content);

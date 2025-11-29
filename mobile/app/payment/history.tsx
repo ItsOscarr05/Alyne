@@ -11,6 +11,8 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useAuth } from '../../hooks/useAuth';
 
 interface PaymentWithBooking {
@@ -60,20 +62,14 @@ export default function PaymentHistoryScreen() {
     try {
       setLoading(true);
       const payments = await paymentService.getPaymentHistory();
-      console.log('Payment history payments:', payments);
-      console.log('Payments count:', payments?.length || 0);
+      logger.debug('Payment history loaded', { count: payments?.length || 0 });
       setPayments(Array.isArray(payments) ? payments : []);
     } catch (error: any) {
-      console.error('Error loading payment history:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
+      logger.error('Error loading payment history', error);
       
       // If unauthorized, redirect to login
       if (error.response?.status === 401) {
-        console.log('Unauthorized - redirecting to login');
+        logger.warn('Unauthorized - redirecting to login');
         router.replace('/(auth)/login');
       }
     } finally {

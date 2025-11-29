@@ -6,6 +6,8 @@ import { messageService, Conversation } from '../../services/message';
 import { useSocket } from '../../hooks/useSocket';
 import { useAuth } from '../../hooks/useAuth';
 import { useCallback } from 'react';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError } from '../../utils/errorMessages';
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function MessagesScreen() {
 
   const loadConversations = async () => {
     if (!user) {
-      console.log('Messages: No user, skipping conversation load');
+      logger.debug('No user, skipping conversation load');
       setConversations([]);
       setLoading(false);
       setRefreshing(false);
@@ -35,7 +37,7 @@ export default function MessagesScreen() {
         // The backend should already filter this, but we double-check here
         const isValid = conv.otherUser && conv.otherUser.id !== user.id;
         if (!isValid) {
-          console.log(`Messages: Filtering out invalid conversation for user ${user.id}:`, conv.id);
+          logger.debug('Filtering out invalid conversation', { conversationId: conv.id, userId: user.id });
         }
         return isValid;
       });
@@ -45,10 +47,10 @@ export default function MessagesScreen() {
         index === self.findIndex((c) => c.id === conv.id)
       );
       
-      console.log(`Messages: Loaded ${uniqueConversations.length} conversations for user ${user.id}`);
+      logger.debug('Loaded conversations', { count: uniqueConversations.length, userId: user.id });
       setConversations(uniqueConversations);
     } catch (error: any) {
-      console.error('Error loading conversations:', error);
+      logger.error('Error loading conversations', error);
       // On error, clear conversations to prevent stale data
       setConversations([]);
     } finally {
@@ -67,10 +69,10 @@ export default function MessagesScreen() {
     const unsubscribe = onMessage((message) => {
       // Only refresh if the message involves the current user
       if (user && (message.senderId === user.id || message.receiverId === user.id)) {
-        console.log(`Messages: Refreshing conversations after message for user ${user.id}`);
+        logger.debug('Refreshing conversations after message', { userId: user.id });
         loadConversations();
       } else {
-        console.log(`Messages: Ignoring message refresh - not for current user ${user?.id}`);
+        logger.debug('Ignoring message refresh - not for current user', { currentUserId: user?.id });
       }
     });
 

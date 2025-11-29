@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
 import { bookingService } from '../../services/booking';
 import { plaidService } from '../../services/plaid';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import Constants from 'expo-constants';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
@@ -33,7 +35,7 @@ const loadStripeWeb = async () => {
     return false;
   }
   
-  console.log('Starting to load Stripe web modules from CDN...');
+  logger.debug('Starting to load Stripe web modules from CDN...');
   
   try {
     // Load Stripe.js from CDN
@@ -43,11 +45,11 @@ const loadStripeWeb = async () => {
         script.src = 'https://js.stripe.com/v3/';
         script.async = true;
         script.onload = () => {
-          console.log('Stripe.js CDN script loaded');
+          logger.debug('Stripe.js CDN script loaded');
           resolve();
         };
         script.onerror = () => {
-          console.error('Failed to load Stripe.js from CDN');
+          logger.error('Failed to load Stripe.js from CDN');
           reject(new Error('Failed to load Stripe.js'));
         };
         document.head.appendChild(script);
@@ -63,9 +65,9 @@ const loadStripeWeb = async () => {
       loadStripe = (publishableKey: string) => {
         return Promise.resolve((window as any).Stripe(publishableKey));
       };
-      console.log('Using CDN Stripe directly');
+      logger.debug('Using CDN Stripe directly');
       
-      console.log('Stripe.js loaded successfully:', {
+      logger.debug('Stripe.js loaded successfully', {
         hasLoadStripe: !!loadStripe,
         hasElements: !!Elements,
         hasPaymentElement: !!PaymentElement,
@@ -75,7 +77,7 @@ const loadStripeWeb = async () => {
     
     return false;
   } catch (e: any) {
-    console.error('Failed to load Stripe.js from CDN:', e);
+    logger.error('Failed to load Stripe.js from CDN', e);
     return false;
   }
 };
@@ -86,7 +88,7 @@ if (Platform.OS !== 'web') {
     const stripeModule = require('@stripe/stripe-react-native');
     useStripeNative = stripeModule.useStripe;
   } catch (e) {
-    console.warn('Stripe React Native not available');
+    logger.warn('Stripe React Native not available');
   }
 }
 
@@ -95,27 +97,27 @@ const getStripePublishableKey = () => {
   // Try Constants first (from app.config.js) - this is the main source
   const fromConstants = Constants.expoConfig?.extra?.STRIPE_PUBLISHABLE_KEY;
   if (fromConstants && fromConstants.length > 0) {
-    console.log('Stripe key found in Constants.expoConfig.extra');
+    logger.debug('Stripe key found in Constants.expoConfig.extra');
     return fromConstants;
   }
   
   // Try EXPO_PUBLIC_ prefix (Expo convention for public env vars)
   const fromExpoPublic = Constants.expoConfig?.extra?.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY;
   if (fromExpoPublic && fromExpoPublic.length > 0) {
-    console.log('Stripe key found in EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY');
+    logger.debug('Stripe key found in EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY');
     return fromExpoPublic;
   }
   
   // Try process.env (for web, might not work at runtime)
   if (typeof process !== 'undefined' && process.env?.STRIPE_PUBLISHABLE_KEY) {
-    console.log('Stripe key found in process.env');
+    logger.debug('Stripe key found in process.env');
     return process.env.STRIPE_PUBLISHABLE_KEY;
   }
   
   // TEMPORARY: Hardcode for testing (from your backend .env)
   // TODO: Fix .env loading and remove this
   const tempKey = 'pk_test_51RYelyBXiGe9D9aVI7EnVtfXkVjcBQjXMO27YlqPLh75eoakeV7SznlwD8vGgGt0l0KNMecIq1FONed1q16k1PDj00mwHDXmn1';
-  console.warn('Using temporary hardcoded key - please fix .env loading');
+  logger.warn('Using temporary hardcoded key - please fix .env loading');
   return tempKey;
 };
 
@@ -139,7 +141,7 @@ function initializePlaidLink(linkToken: string, onSuccess: () => void) {
         }
       };
       script.onerror = () => {
-        console.error('Failed to load Plaid Link script');
+        logger.error('Failed to load Plaid Link script');
         alert('Failed to load payment system. Please refresh the page.');
       };
       document.body.appendChild(script);
@@ -153,24 +155,24 @@ function createPlaidHandler(linkToken: string, onSuccess: () => void) {
       const handler = (window as any).Plaid.create({
         token: linkToken,
         onSuccess: async (publicToken: string, metadata: any) => {
-          console.log('Plaid payment successful:', { publicToken, metadata });
+            logger.info('Plaid payment successful', { publicToken, metadata });
           // The payment is automatically processed by Plaid Payment Initiation
           onSuccess();
         },
         onExit: (err: any, metadata: any) => {
-          console.log('Plaid exit:', { err, metadata });
+            logger.debug('Plaid exit', { err, metadata });
           if (err) {
             const errorMsg = err.error_message || err.message || 'Unknown error';
             alert(`Payment error: ${errorMsg}`);
           }
         },
         onEvent: (eventName: string, metadata: any) => {
-          console.log('Plaid event:', eventName, metadata);
+            logger.debug('Plaid event', { eventName, metadata });
         },
       });
       (window as any).plaidHandler = handler;
     } catch (error: any) {
-      console.error('Error initializing Plaid:', error);
+      logger.error('Error initializing Plaid', error);
       alert(`Failed to initialize payment: ${error.message || 'Unknown error'}`);
     }
   }
@@ -204,7 +206,7 @@ function WebPaymentForm({
   // Initialize Stripe Elements when Stripe instance is ready
   useEffect(() => {
     if (Platform.OS === 'web' && stripeInstance && clientSecret && paymentElementRef.current) {
-      console.log('Initializing Stripe Elements directly...');
+      logger.debug('Initializing Stripe Elements directly...');
       
       // Create Elements instance
       const elementsInstance = stripeInstance.elements({
@@ -233,7 +235,7 @@ function WebPaymentForm({
     e?.preventDefault?.();
     
     if (!stripeInstance || !elements) {
-      console.log('Stripe not ready:', { stripe: !!stripeInstance, elements: !!elements });
+      logger.debug('Stripe not ready', { stripe: !!stripeInstance, elements: !!elements });
       if (Platform.OS === 'web') {
         alert('Payment form is not ready. Please wait a moment and try again.');
       }
@@ -278,12 +280,12 @@ function WebPaymentForm({
       if (paymentIntent && paymentIntent.status === 'succeeded') {
         // Confirm payment on backend using the payment intent ID from Stripe
         try {
-          console.log('Confirming payment on backend:', { bookingId, paymentIntentId: paymentIntent.id });
+          logger.info('Confirming payment on backend', { bookingId, paymentIntentId: paymentIntent.id });
           const confirmedPayment = await paymentService.confirmPayment(bookingId, paymentIntent.id);
-          console.log('Payment confirmed on backend:', confirmedPayment);
+          logger.info('Payment confirmed on backend', { paymentId: confirmedPayment.id });
         } catch (confirmError: any) {
-          console.error('Error confirming payment on backend:', confirmError);
-          console.error('Error details:', {
+          logger.error('Error confirming payment on backend', confirmError);
+          logger.error('Error details', {
             message: confirmError.message,
             response: confirmError.response?.data,
             status: confirmError.response?.status,
@@ -299,7 +301,7 @@ function WebPaymentForm({
         onSuccess();
       }
     } catch (error: any) {
-      console.error('Error processing payment:', error);
+      logger.error('Error processing payment', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to process payment';
       if (Platform.OS === 'web') {
         alert(`Error: ${errorMessage}`);
@@ -396,8 +398,8 @@ export default function PaymentCheckoutScreen() {
   // Initialize Stripe for web - load modules dynamically
   useEffect(() => {
     if (Platform.OS === 'web') {
-      console.log('Web platform detected, loading Stripe modules...');
-      console.log('STRIPE_PUBLISHABLE_KEY check:', {
+      logger.debug('Web platform detected, loading Stripe modules...');
+      logger.debug('STRIPE_PUBLISHABLE_KEY check', {
         hasKey: !!STRIPE_PUBLISHABLE_KEY,
         keyLength: STRIPE_PUBLISHABLE_KEY?.length,
         keyPreview: STRIPE_PUBLISHABLE_KEY?.substring(0, 20) + '...',
@@ -409,10 +411,10 @@ export default function PaymentCheckoutScreen() {
       // Load Stripe.js from CDN (we'll use it directly, no React Stripe.js needed)
       loadStripeWeb()
         .then((loaded) => {
-          console.log('Stripe.js CDN loaded result:', loaded);
+          logger.debug('Stripe.js CDN loaded result', loaded);
           if (loaded && loadStripe && STRIPE_PUBLISHABLE_KEY) {
             // Initialize Stripe instance
-            console.log('Initializing Stripe instance...');
+            logger.debug('Initializing Stripe instance...');
             try {
               const promise = loadStripe(STRIPE_PUBLISHABLE_KEY);
               setStripePromise(promise);
@@ -521,28 +523,14 @@ export default function PaymentCheckoutScreen() {
 
       setLoading(false);
     } catch (error: any) {
-      console.error('Error initializing payment:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        bookingId: bookingId,
-      });
-      
-      // Extract more detailed error message
-      let errorMessage = 'Failed to initialize payment';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
+      logger.error('Error initializing payment', error);
+      const errorMessage = getUserFriendlyError(error);
+      const errorTitle = getErrorTitle(error);
       
       if (Platform.OS === 'web') {
-        alert(`Error: ${errorMessage}`);
+        alert(`${errorTitle}: ${errorMessage}`);
       } else {
-        Alert.alert('Error', errorMessage);
+        Alert.alert(errorTitle, errorMessage);
       }
       setLoading(false);
       router.back();

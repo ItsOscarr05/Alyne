@@ -1,6 +1,7 @@
 import { Router, type Express } from 'express';
 import { plaidController } from '../controllers/plaid.controller';
 import { authenticate } from '../middleware/auth';
+import { plaidRateLimiter } from '../middleware/rateLimiter';
 import { validateRequest } from '../middleware/validateRequest';
 import { z } from 'zod';
 
@@ -16,18 +17,31 @@ const exchangeTokenSchema = z.object({
   }),
 });
 
-// Routes
-router.get('/link-token', plaidController.createLinkToken);
+// Routes with rate limiting
+router.get(
+  '/link-token',
+  plaidRateLimiter,
+  plaidController.createLinkToken
+);
 
 router.post(
   '/exchange-token',
+  plaidRateLimiter,
   validateRequest(exchangeTokenSchema),
   plaidController.exchangeToken
 );
 
-router.get('/bank-account', plaidController.getBankAccount);
+router.get(
+  '/bank-account',
+  plaidRateLimiter,
+  plaidController.getBankAccount
+);
 
-router.get('/payment-link-token', plaidController.createPaymentLinkToken);
+router.get(
+  '/payment-link-token',
+  plaidRateLimiter,
+  plaidController.createPaymentLinkToken
+);
 
 export { router as plaidRoutes };
 

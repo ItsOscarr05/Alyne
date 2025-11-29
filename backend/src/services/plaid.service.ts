@@ -1,6 +1,7 @@
 import { Configuration, PlaidApi, PlaidEnvironments, ProcessorTokenCreateRequest } from 'plaid';
 import { PrismaClient } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -37,7 +38,7 @@ export const plaidService = {
       const response = await plaidClient.linkTokenCreate(request);
       return response.data.link_token;
     } catch (error: any) {
-      console.error('Error creating Plaid link token:', error);
+      logger.error('Error creating Plaid link token', error);
       throw createError('Failed to create Plaid link token', 500);
     }
   },
@@ -109,7 +110,7 @@ export const plaidService = {
         // const externalAccount = await stripe.accounts.createExternalAccount(...);
         // stripeBankAccountId = externalAccount.id;
       } catch (stripeError: any) {
-        console.warn('Stripe external account creation skipped. Using Plaid Transfer API instead.');
+        logger.warn('Stripe external account creation skipped. Using Plaid Transfer API instead.');
       }
       */
 
@@ -138,7 +139,7 @@ export const plaidService = {
         verified: true,
       };
     } catch (error: any) {
-      console.error('Error exchanging Plaid public token:', error);
+      logger.error('Error exchanging Plaid public token', error);
       if (error.statusCode) {
         throw createError(error.message || 'Failed to exchange Plaid token', error.statusCode);
       }
@@ -177,7 +178,7 @@ export const plaidService = {
         stripeBankAccountId: profile.stripeBankAccountId,
       };
     } catch (error: any) {
-      console.error('Error getting bank account info:', error);
+      logger.error('Error getting bank account info', error);
       throw createError('Failed to get bank account information', 500);
     }
   },
@@ -235,8 +236,7 @@ export const plaidService = {
 
       const transfer = transferResponse.data.transfer;
 
-      console.log(`[Plaid Transfer] Created transfer of $${amount} to provider ${userId}`);
-      console.log(`[Plaid Transfer] Transfer ID: ${transfer.id}, Status: ${transfer.status}`);
+      logger.info(`Plaid transfer created: $${amount} to provider ${userId}, Transfer ID: ${transfer.id}, Status: ${transfer.status}`);
 
       return {
         transferId: transfer.id,
@@ -245,9 +245,9 @@ export const plaidService = {
         amount: amount,
       };
     } catch (error: any) {
-      console.error('Error creating Plaid transfer:', error);
+      logger.error('Error creating Plaid transfer', error);
       if (error.response?.data) {
-        console.error('Plaid error details:', error.response.data);
+        logger.error('Plaid error details', error.response.data);
       }
       if (error.statusCode) {
         throw createError(error.message || 'Failed to create transfer', error.statusCode);
@@ -346,7 +346,7 @@ export const plaidService = {
       // We'll use the Transfer API approach instead where we initiate from our account
       throw createError('Payment Initiation requires additional setup. Using alternative approach.', 501);
     } catch (error: any) {
-      console.error('Error creating Plaid payment initiation:', error);
+      logger.error('Error creating Plaid payment initiation', error);
       if (error.statusCode) {
         throw createError(error.message || 'Failed to create payment initiation', error.statusCode);
       }
@@ -376,7 +376,7 @@ export const plaidService = {
       const response = await plaidClient.linkTokenCreate(request);
       return response.data.link_token;
     } catch (error: any) {
-      console.error('Error creating Plaid payment initiation link token:', error);
+      logger.error('Error creating Plaid payment initiation link token', error);
       throw createError('Failed to create Plaid link token for payment', 500);
     }
   },

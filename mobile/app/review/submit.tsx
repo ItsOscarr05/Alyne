@@ -13,6 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewService } from '../../services/review';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 
 export default function SubmitReviewScreen() {
   const router = useRouter();
@@ -108,16 +110,12 @@ export default function SubmitReviewScreen() {
         ]);
       }
     } catch (error: any) {
-      console.error('Error submitting review:', error);
-      console.error('Error response:', error.response);
-      console.error('Error response data:', error.response?.data);
-      const errorMessage = error.response?.data?.error?.message 
-        || error.response?.data?.message 
-        || error.message 
-        || 'Failed to submit review. Please try again.';
+      logger.error('Error submitting review', error);
+      const errorMessage = getUserFriendlyError(error);
+      const errorTitle = getErrorTitle(error);
       
       // Handle "review already exists" error gracefully
-      if (errorMessage.includes('already exists') || errorMessage.includes('already submitted')) {
+      if (errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('already submitted')) {
         if (Platform.OS === 'web') {
           alert('You have already submitted a review for this booking.');
         } else {
@@ -130,9 +128,9 @@ export default function SubmitReviewScreen() {
         }, 1000);
       } else {
         if (Platform.OS === 'web') {
-          alert(`Error: ${errorMessage}`);
+          alert(`${errorTitle}: ${errorMessage}`);
         } else {
-          Alert.alert('Error', errorMessage);
+          Alert.alert(errorTitle, errorMessage);
         }
       }
     } finally {

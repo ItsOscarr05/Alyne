@@ -13,6 +13,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewService } from '../../services/review';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 
 export default function EditReviewScreen() {
   const router = useRouter();
@@ -60,12 +62,12 @@ export default function EditReviewScreen() {
 
     setSubmitting(true);
     try {
-      console.log('Updating review with data:', { reviewId, rating, comment: comment.trim() || undefined });
+      logger.debug('Updating review', { reviewId, rating });
       const result = await reviewService.updateReview(reviewId, {
         rating,
         comment: comment.trim() || undefined,
       });
-      console.log('Review updated successfully:', result);
+      logger.info('Review updated successfully', { reviewId: result.id });
 
       if (Platform.OS === 'web') {
         alert('Review updated successfully!');
@@ -82,7 +84,7 @@ export default function EditReviewScreen() {
         ]);
       }
     } catch (error: any) {
-      console.error('Error updating review:', error);
+      logger.error('Error updating review', error);
       const errorMessage = error.response?.data?.error?.message 
         || error.response?.data?.message 
         || error.message 

@@ -11,6 +11,8 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { bookingService } from '../../services/booking';
 
 export default function ReceiptScreen() {
@@ -36,9 +38,11 @@ export default function ReceiptScreen() {
       setBooking(bookingData);
       setPayment(paymentData);
     } catch (error: any) {
-      console.error('Error loading receipt:', error);
+      logger.error('Error loading receipt', error);
+      const errorMessage = getUserFriendlyError(error);
+      const errorTitle = getErrorTitle(error);
       if (Platform.OS === 'web') {
-        alert(`Error: ${error.response?.data?.message || 'Failed to load receipt'}`);
+        alert(`${errorTitle}: ${errorMessage}`);
       }
     } finally {
       setLoading(false);

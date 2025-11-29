@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
+import { logger } from '../utils/logger';
 
 const prisma = new PrismaClient();
 
@@ -116,7 +117,7 @@ export const providerService = {
               );
             }
           } catch (error) {
-            console.error('Error calculating distance:', error);
+            logger.error('Error calculating distance', error);
             distance = 0;
           }
         }
@@ -195,7 +196,7 @@ export const providerService = {
 
     return providersWithDistance;
     } catch (error) {
-      console.error('Error in discoverProviders:', error);
+      logger.error('Error in discoverProviders', error);
       throw error;
     }
   },

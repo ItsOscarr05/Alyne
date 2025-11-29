@@ -3,6 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { bookingService, BookingDetail } from '../../services/booking';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function BookingDetailScreen() {
@@ -23,14 +25,15 @@ export default function BookingDetailScreen() {
 
     setIsLoading(true);
     try {
-      console.log('Loading booking with ID:', id);
+      logger.debug('Loading booking', { bookingId: id });
       const data = await bookingService.getById(id);
-      console.log('Booking data loaded:', data);
+      logger.debug('Booking data loaded', { bookingId: id, status: data?.status });
       setBooking(data);
     } catch (error: any) {
-      console.error('Error loading booking:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      Alert.alert('Error', error.response?.data?.error?.message || 'Failed to load booking details');
+      logger.error('Error loading booking', error);
+      const errorMessage = getUserFriendlyError(error);
+      const errorTitle = getErrorTitle(error);
+      Alert.alert(errorTitle, errorMessage);
     } finally {
       setIsLoading(false);
     }

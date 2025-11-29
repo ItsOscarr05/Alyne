@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import Constants from 'expo-constants';
 import { storage } from '../utils/storage';
+import { logger } from '../utils/logger';
 
 // Simple JWT decode (just the payload, no verification)
 const decodeJWT = (token: string): { userId?: string } | null => {
@@ -13,7 +14,7 @@ const decodeJWT = (token: string): { userId?: string } | null => {
     const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
     return JSON.parse(decoded);
   } catch (error) {
-    console.error('Failed to decode JWT:', error);
+    logger.error('Failed to decode JWT', error);
     return null;
   }
 };
@@ -37,7 +38,7 @@ export const useSocket = () => {
     const initializeSocket = async () => {
       const token = await storage.getItem('auth_token');
       if (!token) {
-        console.log('Socket: No auth token found, skipping connection');
+        logger.debug('No auth token found, skipping socket connection');
         if (socketRef.current) {
           socketRef.current.close();
           socketRef.current = null;
@@ -52,13 +53,13 @@ export const useSocket = () => {
       const decoded = decodeJWT(token);
       const userId = decoded?.userId || null;
       if (!userId) {
-        console.error('Socket: Failed to decode userId from token');
+        logger.error('Failed to decode userId from token');
         return;
       }
 
       // If token changed, disconnect old socket
       if (tokenRef.current && tokenRef.current !== token && socketRef.current) {
-        console.log('Socket: Token changed, disconnecting old socket');
+        logger.debug('Token changed, disconnecting old socket');
         socketRef.current.close();
         socketRef.current = null;
         setSocket(null);
@@ -68,13 +69,13 @@ export const useSocket = () => {
 
       // If socket already exists and token is the same, don't reconnect
       if (socketRef.current && tokenRef.current === token) {
-        console.log('Socket: Already connected with same token');
+        logger.debug('Already connected with same token');
         return;
       }
 
       tokenRef.current = token;
 
-      console.log('Socket: Attempting to connect with token:', token.substring(0, 20) + '...', 'userId:', userId);
+      logger.debug('Attempting to connect socket', { userId, tokenPreview: token.substring(0, 20) + '...' });
 
       // Create socket connection
       // IMPORTANT: Connect to server root, not /api
@@ -92,11 +93,11 @@ export const useSocket = () => {
         autoConnect: true,
       });
       
-      console.log('Socket connecting to:', SOCKET_URL);
+      logger.debug('Socket connecting', { url: SOCKET_URL, userId });
 
       newSocket.on('connect', () => {
         if (mounted) {
-          console.log('Socket connected for userId:', userId);
+          logger.info('Socket connected', { userId });
           setIsConnected(true);
           setAuthenticatedUserId(userId);
         }
@@ -104,16 +105,14 @@ export const useSocket = () => {
 
       newSocket.on('disconnect', () => {
         if (mounted) {
-          console.log('Socket disconnected');
+          logger.debug('Socket disconnected');
           setIsConnected(false);
           setAuthenticatedUserId(null);
         }
       });
 
       newSocket.on('connect_error', (error) => {
-        console.error('Socket connection error:', error);
-        console.error('Error message:', error.message);
-        console.error('Error type:', error.type);
+        logger.error('Socket connection error', error, { errorType: error.type });
         if (mounted) {
           setIsConnected(false);
           setAuthenticatedUserId(null);
@@ -124,7 +123,7 @@ export const useSocket = () => {
       checkInterval = setInterval(async () => {
         const currentToken = await storage.getItem('auth_token');
         if (currentToken !== token && socketRef.current) {
-          console.log('Socket: Token changed in storage, reconnecting...');
+          logger.debug('Token changed in storage, reconnecting socket');
           socketRef.current.close();
           socketRef.current = null;
           setSocket(null);

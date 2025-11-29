@@ -8,6 +8,7 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
+import { sanitizeInput } from './middleware/sanitizeInput';
 
 // Load environment variables
 dotenv.config();
@@ -30,7 +31,7 @@ const io = new Server(httpServer, {
 
 // Listen for connection errors at Engine.IO level
 io.engine.on('connection_error', (err: any) => {
-  console.error('Socket.io connection error:', err.message);
+  logger.error('Socket.io connection error', err);
 });
 
 
@@ -43,20 +44,50 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }));
 app.use(compression());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:8081',
+// CORS configuration for production
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? process.env.FRONTEND_URL?.split(',') || [] // Allow multiple origins in production
+    : process.env.FRONTEND_URL || 'http://localhost:8081',
   credentials: true,
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  maxAge: 86400, // 24 hours
+};
+
+app.use(cors(corsOptions));
 
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-encoded payload size
+
+// Sanitize input to prevent XSS attacks
+app.use(sanitizeInput);
 
 app.use(rateLimiter);
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Enhanced health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    // Check database connection
+    await prisma.$queryRaw`SELECT 1`;
+    
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      database: 'connected',
+      uptime: process.uptime(),
+    });
+  } catch (error) {
+    logger.error('Health check failed', error);
+    res.status(503).json({
+      status: 'error',
+      timestamp: new Date().toISOString(),
+      database: 'disconnected',
+    });
+  }
 });
 
 // API Routes
@@ -186,7 +217,7 @@ io.on('connection', (socket: any) => {
       // Confirm to sender with DELIVERED status (only to this socket, not broadcast)
       socket.emit('message-sent', deliveredMessage);
     } catch (error) {
-      console.error('Error sending message:', error);
+      logger.error('Error sending message', error);
       socket.emit('message-error', { error: 'Failed to send message' });
     }
   });
@@ -233,12 +264,12 @@ io.on('connection', (socket: any) => {
         readBy: userId,
       });
     } catch (error) {
-      console.error('Error marking messages as read:', error);
+      logger.error('Error marking messages as read', error);
     }
   });
 
   socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
+    logger.debug(`User disconnected: ${socket.id}`);
   });
 });
 
@@ -247,10 +278,10 @@ app.use(errorHandler);
 
 // Start server
 httpServer.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔌 Socket.io server ready at http://localhost:${PORT}/socket.io/`);
-  console.log(`📡 CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:8081'}`);
+  logger.info(`Server running on port ${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`Socket.io server ready at http://localhost:${PORT}/socket.io/`);
+  logger.info(`CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:8081'}`);
 });
 
 export { app, io };
