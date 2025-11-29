@@ -13,6 +13,8 @@ import { initRedis } from './utils/cache';
 import { monitoringMiddleware, monitoring } from './utils/monitoring';
 import { errorTracker } from './utils/errorTracking';
 import { logger } from './utils/logger';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 
 // Load environment variables
 dotenv.config();
@@ -138,6 +140,12 @@ app.get('/metrics', (req, res) => {
     data: metrics,
   });
 });
+
+// API Documentation (Swagger)
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'Alyne API Documentation',
+}));
 
 // API Routes
 import { authRoutes } from './routes/auth.routes';

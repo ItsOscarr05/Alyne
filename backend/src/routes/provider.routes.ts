@@ -27,13 +27,85 @@ const getProviderSchema = z.object({
   }),
 });
 
-// Routes
+/**
+ * @swagger
+ * /api/providers/discover:
+ *   get:
+ *     summary: Discover wellness providers
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: lat
+ *         schema:
+ *           type: number
+ *         description: Latitude for location-based search
+ *       - in: query
+ *         name: lng
+ *         schema:
+ *           type: number
+ *         description: Longitude for location-based search
+ *       - in: query
+ *         name: radius
+ *         schema:
+ *           type: number
+ *         description: Search radius in miles
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search query (name or specialty)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number for pagination
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Items per page
+ *     responses:
+ *       200:
+ *         description: List of providers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 pagination:
+ *                   type: object
+ */
 router.get(
   '/discover',
   validateRequest(discoverSchema),
   providerController.discover
 );
 
+/**
+ * @swagger
+ * /api/providers/{id}:
+ *   get:
+ *     summary: Get provider by ID
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Provider user ID
+ *     responses:
+ *       200:
+ *         description: Provider details
+ *       404:
+ *         description: Provider not found
+ */
 router.get(
   '/:id',
   validateRequest(getProviderSchema),
