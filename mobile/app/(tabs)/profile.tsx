@@ -178,9 +178,12 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="settings-outline" size={20} color="#1e293b" />
-            <Text style={styles.menuText}>Settings</Text>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => router.push('/payment/history')}
+          >
+            <Ionicons name="receipt-outline" size={20} color="#1e293b" />
+            <Text style={styles.menuText}>Payment History</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
           </TouchableOpacity>
 

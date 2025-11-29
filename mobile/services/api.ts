@@ -20,9 +20,12 @@ apiClient.interceptors.request.use(
       const token = await storage.getItem('auth_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
+        console.log('[API] Token found, adding to request');
+      } else {
+        console.warn('[API] No auth token found in storage');
       }
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      console.error('[API] Error getting auth token:', error);
     }
     return config;
   },

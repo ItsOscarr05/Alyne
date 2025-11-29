@@ -325,20 +325,24 @@ export default function BookingsScreen() {
                       <Text style={styles.completeButtonText}>Mark as Completed</Text>
                     </TouchableOpacity>
                   )}
-                  {user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' && !booking.payment?.status && (
-                    <TouchableOpacity
-                      style={styles.paymentButton}
-                      onPress={() => handlePayment(booking.id)}
-                    >
-                      <Ionicons name="card-outline" size={18} color="#ffffff" />
-                      <Text style={styles.paymentButtonText}>Pay Now</Text>
-                    </TouchableOpacity>
-                  )}
-                  {booking.payment?.status === 'completed' && (
+                  {/* Show Paid badge for completed payments */}
+                  {booking.payment?.status === 'completed' ? (
                     <View style={styles.paidBadge}>
                       <Ionicons name="checkmark-circle" size={16} color="#10b981" />
                       <Text style={styles.paidText}>Paid</Text>
                     </View>
+                  ) : (
+                    /* Show Pay Now button for clients with confirmed bookings that haven't been paid */
+                    user?.userType === 'CLIENT' && 
+                    booking.status === 'CONFIRMED' && (
+                      <TouchableOpacity
+                        style={styles.paymentButton}
+                        onPress={() => handlePayment(booking.id)}
+                      >
+                        <Ionicons name="card-outline" size={18} color="#ffffff" />
+                        <Text style={styles.paymentButtonText}>Pay Now</Text>
+                      </TouchableOpacity>
+                    )
                   )}
                 </View>
               );

@@ -36,6 +36,8 @@ export default function RootLayout() {
         <Stack.Screen name="messages/[userId]" />
         <Stack.Screen name="review/submit" />
         <Stack.Screen name="payment/checkout" />
+        <Stack.Screen name="payment/receipt" />
+        <Stack.Screen name="payment/history" />
       </Stack>
     </StripeProvider>
   );

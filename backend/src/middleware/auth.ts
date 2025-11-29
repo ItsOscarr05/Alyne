@@ -1,6 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
 import { createError } from './errorHandler';
+
+const prisma = new PrismaClient();
 
 export interface AuthRequest extends Request {
   user?: {
@@ -10,7 +13,7 @@ export interface AuthRequest extends Request {
   };
 }
 
-export const authenticate = (
+export const authenticate = async (
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -23,6 +26,19 @@ export const authenticate = (
     }
 
     const token = authHeader.substring(7);
+    
+    // Development mode: accept dev-token for testing
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    if (isDevelopment && token === 'dev-token') {
+      // Use a default dev user ID - you may want to fetch from a dev user in the database
+      req.user = {
+        id: 'dev-user-id',
+        email: 'dev@alyne.com',
+        userType: 'CLIENT',
+      };
+      return next();
+    }
+
     const secret = process.env.JWT_SECRET;
 
     if (!secret) {
@@ -31,10 +47,24 @@ export const authenticate = (
 
     const decoded = jwt.verify(token, secret) as { userId: string };
 
+    // Fetch user from database to get email and userType
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        email: true,
+        userType: true,
+      },
+    });
+
+    if (!user) {
+      return next(createError('User not found', 401));
+    }
+
     req.user = {
-      id: decoded.userId,
-      email: '', // Will be populated if needed
-      userType: '', // Will be populated if needed
+      id: user.id,
+      email: user.email,
+      userType: user.userType,
     };
 
     next();

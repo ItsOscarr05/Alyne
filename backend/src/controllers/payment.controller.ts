@@ -71,5 +71,25 @@ export const paymentController = {
       next(error);
     }
   },
+
+  async getPaymentHistory(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      const userType = req.user?.userType;
+      
+      if (!userId || !userType) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const payments = await paymentService.getPaymentHistory(userId, userType);
+
+      res.json({
+        success: true,
+        data: payments,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 
