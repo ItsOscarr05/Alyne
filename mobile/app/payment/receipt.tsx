@@ -215,13 +215,27 @@ export default function ReceiptScreen() {
         {/* Summary */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>${booking.price.toFixed(2)}</Text>
+            <Text style={styles.summaryLabel}>Service Price</Text>
+            <Text style={styles.summaryValue}>
+              ${payment.amount ? payment.amount.toFixed(2) : booking.price.toFixed(2)}
+            </Text>
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Tax</Text>
-            <Text style={styles.summaryValue}>$0.00</Text>
-          </View>
+          {payment.platformFee && payment.platformFee > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
+              <Text style={styles.summaryValue}>-${payment.platformFee.toFixed(2)}</Text>
+            </View>
+          )}
+          {payment.providerAmount && payment.platformFee && payment.platformFee > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={[styles.summaryLabel, { fontSize: 12, color: '#64748b' }]}>
+                Provider receives
+              </Text>
+              <Text style={[styles.summaryValue, { fontSize: 12, color: '#64748b' }]}>
+                ${payment.providerAmount.toFixed(2)}
+              </Text>
+            </View>
+          )}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Paid</Text>

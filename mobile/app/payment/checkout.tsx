@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
 import { bookingService } from '../../services/booking';
+import { plaidService } from '../../services/plaid';
 import Constants from 'expo-constants';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
@@ -121,13 +122,70 @@ const getStripePublishableKey = () => {
 const STRIPE_PUBLISHABLE_KEY = getStripePublishableKey();
 
 // Web payment component using Stripe.js directly (no React Stripe.js)
+// Plaid Link initialization - exposes handler via window for parent to access
+function initializePlaidLink(linkToken: string, onSuccess: () => void) {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    // Check if Plaid script is already loaded
+    if ((window as any).Plaid) {
+      createPlaidHandler(linkToken, onSuccess);
+    } else {
+      // Load Plaid Link from CDN
+      const script = document.createElement('script');
+      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+      script.async = true;
+      script.onload = () => {
+        if ((window as any).Plaid) {
+          createPlaidHandler(linkToken, onSuccess);
+        }
+      };
+      script.onerror = () => {
+        console.error('Failed to load Plaid Link script');
+        alert('Failed to load payment system. Please refresh the page.');
+      };
+      document.body.appendChild(script);
+    }
+  }
+}
+
+function createPlaidHandler(linkToken: string, onSuccess: () => void) {
+  if ((window as any).Plaid && linkToken) {
+    try {
+      const handler = (window as any).Plaid.create({
+        token: linkToken,
+        onSuccess: async (publicToken: string, metadata: any) => {
+          console.log('Plaid payment successful:', { publicToken, metadata });
+          // The payment is automatically processed by Plaid Payment Initiation
+          onSuccess();
+        },
+        onExit: (err: any, metadata: any) => {
+          console.log('Plaid exit:', { err, metadata });
+          if (err) {
+            const errorMsg = err.error_message || err.message || 'Unknown error';
+            alert(`Payment error: ${errorMsg}`);
+          }
+        },
+        onEvent: (eventName: string, metadata: any) => {
+          console.log('Plaid event:', eventName, metadata);
+        },
+      });
+      (window as any).plaidHandler = handler;
+    } catch (error: any) {
+      console.error('Error initializing Plaid:', error);
+      alert(`Failed to initialize payment: ${error.message || 'Unknown error'}`);
+    }
+  }
+}
+
 function WebPaymentForm({ 
   clientSecret, 
   booking, 
   bookingId, 
   onSuccess,
   stripeInstance,
-  publishableKey
+  publishableKey,
+  amount,
+  onSubmitRef,
+  hideButton = false
 }: { 
   clientSecret: string; 
   booking: any; 
@@ -135,6 +193,9 @@ function WebPaymentForm({
   onSuccess: () => void;
   stripeInstance: any;
   publishableKey: string;
+  amount: number;
+  onSubmitRef?: React.MutableRefObject<(() => Promise<void>) | null>;
+  hideButton?: boolean;
 }) {
   const [processing, setProcessing] = useState(false);
   const [elements, setElements] = useState<any>(null);
@@ -250,6 +311,15 @@ function WebPaymentForm({
     }
   };
 
+  // Expose submit function via ref
+  useEffect(() => {
+    if (onSubmitRef) {
+      onSubmitRef.current = async () => {
+        await handleSubmit(null);
+      };
+    }
+  }, [stripeInstance, elements, clientSecret, bookingId, onSuccess, onSubmitRef]);
+
   return (
     <View style={styles.paymentForm}>
       {Platform.OS === 'web' && (
@@ -274,20 +344,22 @@ function WebPaymentForm({
           }}
         />
       )}
-      <TouchableOpacity
-        style={[styles.payButton, (!stripeInstance || !elements || processing) && styles.payButtonDisabled]}
-        onPress={(e) => {
-          e?.preventDefault?.();
-          handleSubmit(e);
-        }}
-        disabled={!stripeInstance || !elements || processing}
-      >
-        {processing ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text style={styles.payButtonText}>Pay ${booking.price.toFixed(2)}</Text>
-        )}
-      </TouchableOpacity>
+      {!hideButton && (
+        <TouchableOpacity
+          style={[styles.payButton, (!stripeInstance || !elements || processing) && styles.payButtonDisabled]}
+          onPress={(e) => {
+            e?.preventDefault?.();
+            handleSubmit(e);
+          }}
+          disabled={!stripeInstance || !elements || processing}
+        >
+          {processing ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <Text style={styles.payButtonText}>Pay ${amount.toFixed(2)}</Text>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -302,6 +374,15 @@ export default function PaymentCheckoutScreen() {
   const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
   const [stripeInstance, setStripeInstance] = useState<any>(null);
   const [stripeModulesLoaded, setStripeModulesLoaded] = useState(false);
+  const [paymentAmounts, setPaymentAmounts] = useState<{
+    total: number;
+    providerAmount: number;
+    platformFee: number;
+  } | null>(null);
+  const [requiresPlaidPayment, setRequiresPlaidPayment] = useState(false);
+  const [stripePaymentComplete, setStripePaymentComplete] = useState(false);
+  const [plaidPaymentComplete, setPlaidPaymentComplete] = useState(false);
+  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
   
   // Native Stripe hooks
   const stripeNative = useStripeNative ? useStripeNative() : null;
@@ -385,12 +466,12 @@ export default function PaymentCheckoutScreen() {
         return;
       }
 
-      // Create payment intent
+      // Create payment intent (platform fee only)
       const paymentIntent = await paymentService.createPaymentIntent(bookingId!);
       console.log('Payment intent response:', paymentIntent);
       
       // Handle different response structures
-      const secret = paymentIntent?.data?.clientSecret || paymentIntent?.clientSecret;
+      const secret = paymentIntent?.clientSecret;
       
       if (!secret) {
         console.error('No client secret found in payment intent:', paymentIntent);
@@ -398,6 +479,26 @@ export default function PaymentCheckoutScreen() {
       }
       
       setClientSecret(secret);
+      
+      // Store payment amounts for fee breakdown display
+      setPaymentAmounts({
+        total: paymentIntent.amount || bookingData.price,
+        providerAmount: paymentIntent.providerAmount || bookingData.price,
+        platformFee: paymentIntent.platformFee || 0,
+      });
+      
+      // Check if Plaid payment is required
+      if (paymentIntent.requiresPlaidPayment) {
+        setRequiresPlaidPayment(true);
+        // Get Plaid link token for client payment
+        try {
+          const linkToken = await plaidService.getPaymentLinkToken(bookingId!);
+          setPlaidLinkToken(linkToken);
+        } catch (error: any) {
+          console.error('Failed to get Plaid link token:', error);
+          // Don't fail the whole flow - we can still process Stripe payment
+        }
+      }
 
       // For native: Initialize payment sheet
       if (Platform.OS !== 'web' && stripeNative) {
@@ -496,6 +597,64 @@ export default function PaymentCheckoutScreen() {
     // Web payment is handled by WebPaymentForm component
   };
 
+  const handleStripePaymentSuccess = async () => {
+    // Stripe payment (platform fee) completed
+    setStripePaymentComplete(true);
+    
+    // Automatically process Plaid transfer to provider (no user interaction needed)
+    if (requiresPlaidPayment && !plaidPaymentComplete) {
+      try {
+        console.log('Automatically processing Plaid transfer to provider...');
+        await paymentService.processProviderPayment(bookingId!);
+        setPlaidPaymentComplete(true);
+        console.log('Plaid transfer completed automatically');
+      } catch (error: any) {
+        console.error('Error processing Plaid transfer:', error);
+        // Don't block the flow - Stripe payment succeeded
+        // Show error but still allow completion
+        if (Platform.OS === 'web') {
+          alert(`Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+        } else {
+          Alert.alert('Provider Payment Error', `Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+        }
+      }
+    }
+    
+    // Both payments complete (or only Stripe needed)
+    if (!requiresPlaidPayment || plaidPaymentComplete) {
+      handlePaymentSuccess();
+    }
+  };
+
+  // Unified payment handler - initiates Stripe payment, then auto-processes Plaid
+  const handleUnifiedPayment = async () => {
+    if (Platform.OS === 'web') {
+      setProcessing(true);
+      
+      // Submit Stripe payment form
+      // After Stripe succeeds, handleStripePaymentSuccess will auto-process Plaid
+      if (stripeSubmitRef.current) {
+        stripeSubmitRef.current().catch((error) => {
+          console.error('Stripe payment error:', error);
+          setProcessing(false);
+          if (Platform.OS === 'web') {
+            alert(`Payment failed: ${error.message || 'Unknown error'}`);
+          } else {
+            Alert.alert('Payment Failed', error.message || 'Unknown error');
+          }
+        });
+      } else {
+        setProcessing(false);
+        alert('Payment form is not ready. Please wait a moment and try again.');
+      }
+    } else {
+      // For native, use existing flow
+      handlePayment();
+    }
+  };
+
+  const stripeSubmitRef = useRef<(() => Promise<void>) | null>(null);
+
   const handlePaymentSuccess = () => {
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined' && window.confirm('Payment completed successfully! View receipt?')) {
@@ -572,16 +731,53 @@ export default function PaymentCheckoutScreen() {
 
           <View style={styles.divider} />
 
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalAmount}>${booking.price.toFixed(2)}</Text>
+          {/* Payment Breakdown */}
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Service Price</Text>
+            <Text style={styles.summaryValue}>
+              ${paymentAmounts?.providerAmount.toFixed(2) || booking.price.toFixed(2)}
+            </Text>
           </View>
+
+          {paymentAmounts && paymentAmounts.platformFee > 0 && (
+            <View style={styles.summaryRow}>
+              <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
+              <Text style={styles.summaryValue}>+${paymentAmounts.platformFee.toFixed(2)}</Text>
+            </View>
+          )}
+
+          <View style={styles.divider} />
+
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Total You Pay</Text>
+            <Text style={styles.totalAmount}>
+              ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
+            </Text>
+          </View>
+
+          {requiresPlaidPayment && paymentAmounts && (
+            <View style={styles.paymentBreakdownCard}>
+              <Text style={styles.breakdownTitle}>Payment Breakdown</Text>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Platform Fee (Stripe)</Text>
+                <Text style={styles.breakdownValue}>
+                  ${paymentAmounts.platformFee.toFixed(2)}
+                </Text>
+              </View>
+              <View style={styles.breakdownRow}>
+                <Text style={styles.breakdownLabel}>Provider Payment (Plaid)</Text>
+                <Text style={styles.breakdownValue}>
+                  ${paymentAmounts.providerAmount.toFixed(2)}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
 
         <View style={styles.infoCard}>
           <Ionicons name="lock-closed" size={20} color="#2563eb" />
           <Text style={styles.infoText}>
-            Your payment is secured by Stripe. We never store your card details.
+            Your payments are secured by Stripe and Plaid. We never store your payment details.
           </Text>
         </View>
       </ScrollView>
@@ -593,14 +789,57 @@ export default function PaymentCheckoutScreen() {
           showsVerticalScrollIndicator={true}
         >
           {Platform.OS === 'web' && stripeModulesLoaded && stripeInstance && clientSecret ? (
-            <WebPaymentForm
-              clientSecret={clientSecret}
-              booking={booking}
-              bookingId={bookingId!}
-              onSuccess={handlePaymentSuccess}
-              stripeInstance={stripeInstance}
-              publishableKey={STRIPE_PUBLISHABLE_KEY}
-            />
+            <>
+              {/* Stripe Payment Form - visible for card entry (only if no saved payment method) */}
+              {!stripePaymentComplete && (
+                <WebPaymentForm
+                  clientSecret={clientSecret}
+                  booking={booking}
+                  bookingId={bookingId!}
+                  onSuccess={handleStripePaymentSuccess}
+                  stripeInstance={stripeInstance}
+                  publishableKey={STRIPE_PUBLISHABLE_KEY}
+                  amount={paymentAmounts?.platformFee || 0}
+                  onSubmitRef={stripeSubmitRef}
+                  hideButton={true}
+                />
+              )}
+              
+              {/* Unified Pay Now Button */}
+              {!stripePaymentComplete && !plaidPaymentComplete && (
+                <TouchableOpacity
+                  style={[styles.payButton, (processing || !stripeInstance) && styles.payButtonDisabled]}
+                  onPress={handleUnifiedPayment}
+                  disabled={processing || !stripeInstance}
+                >
+                  {processing ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <Text style={styles.payButtonText}>
+                      Pay ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              
+              {/* Show status while processing */}
+              {processing && (
+                <View style={styles.paymentStatus}>
+                  <Text style={styles.paymentStatusText}>
+                    {!stripePaymentComplete 
+                      ? 'Processing platform fee...' 
+                      : requiresPlaidPayment && !plaidPaymentComplete
+                      ? 'Processing provider payment...'
+                      : 'Payment completed!'}
+                  </Text>
+                  {requiresPlaidPayment && (
+                    <Text style={[styles.paymentStatusText, { fontSize: 12, marginTop: 4 }]}>
+                      Platform fee: {stripePaymentComplete ? '✓' : '...'} | Provider payment: {plaidPaymentComplete ? '✓' : '...'}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </>
           ) : Platform.OS === 'web' ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color="#2563eb" />
@@ -629,7 +868,9 @@ export default function PaymentCheckoutScreen() {
               {processing ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={styles.payButtonText}>Pay ${booking.price.toFixed(2)}</Text>
+                <Text style={styles.payButtonText}>
+                  Pay ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
+                </Text>
               )}
             </TouchableOpacity>
           )}
@@ -776,6 +1017,61 @@ const styles = StyleSheet.create({
     marginTop: 8,
     fontSize: 14,
     color: '#64748b',
+    textAlign: 'center',
+  },
+  paymentSection: {
+    marginBottom: 24,
+  },
+  paymentSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  paymentSectionSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 16,
+  },
+  paymentBreakdownCard: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+  },
+  breakdownTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  breakdownLabel: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  breakdownValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1e293b',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  paymentStatus: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  paymentStatusText: {
+    fontSize: 14,
+    color: '#1e40af',
     textAlign: 'center',
   },
 });

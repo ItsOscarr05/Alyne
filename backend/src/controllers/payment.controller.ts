@@ -91,5 +91,33 @@ export const paymentController = {
       next(error);
     }
   },
+
+  /**
+   * Automatically process Plaid transfer to provider
+   * POST /api/payments/process-provider-payment
+   */
+  async processProviderPayment(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const { bookingId } = req.body;
+
+      if (!bookingId) {
+        return next(createError('Booking ID is required', 400));
+      }
+
+      const result = await paymentService.processProviderPayment(bookingId, userId);
+
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 

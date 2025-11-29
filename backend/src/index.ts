@@ -73,6 +73,8 @@ import { reviewRoutes } from './routes/review.routes';
 app.use('/api/reviews', reviewRoutes);
 import { paymentRoutes } from './routes/payment.routes';
 app.use('/api/payments', paymentRoutes);
+import { plaidRoutes } from './routes/plaid.routes';
+app.use('/api/plaid', plaidRoutes);
 // app.use('/api/users', userRoutes);
 
 // Socket.io for real-time messaging

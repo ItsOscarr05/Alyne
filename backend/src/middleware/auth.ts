@@ -30,10 +30,11 @@ export const authenticate = async (
     // Development mode: accept dev-token for testing
     const isDevelopment = process.env.NODE_ENV === 'development';
     if (isDevelopment && token === 'dev-token') {
-      // Use a default dev user ID - you may want to fetch from a dev user in the database
+      // Use the test client ID from the database for testing
+      // This matches the client ID from the test booking
       req.user = {
-        id: 'dev-user-id',
-        email: 'dev@alyne.com',
+        id: 'cmigdcni10000fvbjkbrgpraa', // Test client ID
+        email: 'test@alyne.com',
         userType: 'CLIENT',
       };
       return next();

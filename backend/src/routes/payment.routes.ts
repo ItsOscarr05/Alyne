@@ -9,6 +9,7 @@ router.use(authenticate);
 
 router.post('/create-intent', paymentController.createPaymentIntent);
 router.post('/confirm', paymentController.confirmPayment);
+router.post('/process-provider-payment', paymentController.processProviderPayment);
 router.get('/booking/:bookingId', paymentController.getPaymentByBooking);
 router.get('/history', paymentController.getPaymentHistory);
 

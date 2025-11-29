@@ -9,6 +9,31 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-11-20.acacia',
 });
 
+// Platform fee percentage (default 10%, configurable via env)
+const PLATFORM_FEE_PERCENTAGE = parseFloat(process.env.PLATFORM_FEE_PERCENTAGE || '10');
+
+/**
+ * Calculate platform fee and amounts
+ * @param servicePrice - The base service price (what provider charges)
+ * @returns Object with providerAmount (base service price), platformFee (Alyne's fee), and totalAmount (what client pays)
+ * 
+ * Example: Service price = $120, Platform fee = 10%
+ * - providerAmount = $120 (goes to provider via Plaid)
+ * - platformFee = $12 (stays in Alyne's Stripe account)
+ * - totalAmount = $132 (what client pays via Stripe)
+ */
+function calculatePaymentAmounts(servicePrice: number) {
+  const providerAmount = servicePrice; // Provider receives the full service price
+  const platformFee = (servicePrice * PLATFORM_FEE_PERCENTAGE) / 100; // Platform fee calculated from service price
+  const totalAmount = providerAmount + platformFee; // Client pays service price + platform fee
+  
+  return {
+    providerAmount: Math.round(providerAmount * 100) / 100, // Round to 2 decimals
+    platformFee: Math.round(platformFee * 100) / 100,
+    totalAmount: Math.round(totalAmount * 100) / 100,
+  };
+}
+
 export const paymentService = {
   async createPaymentIntent(bookingId: string, userId: string) {
     // Verify booking exists and belongs to user
@@ -16,7 +41,11 @@ export const paymentService = {
       where: { id: bookingId },
       include: {
         client: true,
-        provider: true,
+        provider: {
+          include: {
+            providerProfile: true,
+          },
+        },
         service: true,
         payment: true,
       },
@@ -50,17 +79,37 @@ export const paymentService = {
       }
     }
 
-    // Create Stripe payment intent
+    // Note: Provider bank account verification is not required for creating the Stripe payment intent
+    // The Stripe payment (platform fee) can be created independently
+    // Bank account verification is only needed when initiating the Plaid payment to the provider
+    const providerProfile = booking.provider.providerProfile;
+    
+    // Warn if provider doesn't have bank account set up (but don't block payment intent creation)
+    if (!providerProfile?.plaidAccountId || !providerProfile?.bankAccountVerified) {
+      console.warn(`[Payment Intent] Provider ${booking.providerId} does not have verified bank account. Plaid payment will need to be set up separately.`);
+    }
+
+    // Calculate payment amounts
+    // - providerAmount: Full service price (goes to provider via Plaid RTP)
+    // - platformFee: Platform fee (goes to Alyne via Stripe)
+    // - totalAmount: What client pays in total (providerAmount + platformFee)
+    const { providerAmount, platformFee, totalAmount } = calculatePaymentAmounts(booking.price);
+
+    // Create Stripe payment intent ONLY for platform fee
+    // This is the only amount that will show in Alyne's Stripe dashboard
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(booking.price * 100), // Convert to cents
+      amount: Math.round(platformFee * 100), // Convert to cents - ONLY the platform fee
       currency: 'usd',
       metadata: {
         project: 'alyne',
         bookingId,
         clientId: booking.clientId,
         providerId: booking.providerId,
+        providerAmount: providerAmount.toString(),
+        platformFee: platformFee.toString(),
+        paymentType: 'platform_fee_only', // Indicates this is only the platform fee
       },
-      description: `Alyne - Payment for ${booking.service.name}`,
+      description: `Alyne - Platform fee for ${booking.service.name}`,
     });
 
     // Create or update payment record
@@ -68,12 +117,17 @@ export const paymentService = {
       where: { bookingId },
       create: {
         bookingId,
-        amount: booking.price,
+        amount: totalAmount, // Total amount client pays (providerAmount + platformFee)
+        providerAmount: providerAmount, // Amount going to provider via Plaid RTP
+        platformFee: platformFee, // Platform fee going to Alyne via Stripe
         currency: 'USD',
         stripePaymentId: paymentIntent.id,
         status: 'pending',
       },
       update: {
+        amount: totalAmount,
+        providerAmount: providerAmount,
+        platformFee: platformFee,
         stripePaymentId: paymentIntent.id,
         status: 'pending',
       },
@@ -82,6 +136,11 @@ export const paymentService = {
     return {
       clientSecret: paymentIntent.client_secret,
       paymentId: payment.id,
+      amount: totalAmount, // Total client pays
+      providerAmount: providerAmount, // Goes to provider via Plaid
+      platformFee: platformFee, // Goes to Alyne via Stripe
+      requiresPlaidPayment: true, // Flag to indicate client needs to pay provider via Plaid
+      stripeAmount: platformFee, // Amount in Stripe payment intent (for verification)
     };
   },
 
@@ -92,6 +151,11 @@ export const paymentService = {
       include: {
         payment: true,
         service: true,
+        provider: {
+          include: {
+            providerProfile: true,
+          },
+        },
       },
     });
 
@@ -126,18 +190,43 @@ export const paymentService = {
 
     console.log(`[Confirm Payment] Confirming payment for booking ${bookingId}, paymentIntent ${paymentIntentId}`);
 
+    // Get payment amounts from metadata or recalculate
+    const providerAmount = booking.payment?.providerAmount 
+      || parseFloat(paymentIntent.metadata?.providerAmount || booking.price.toString());
+    const platformFee = booking.payment?.platformFee 
+      || parseFloat(paymentIntent.metadata?.platformFee || '0');
+    const totalAmount = booking.payment?.amount 
+      || (providerAmount + platformFee); // Total = provider amount + platform fee
+
+    // Note: In the new dual payment flow:
+    // - Platform fee ($12) is paid via Stripe (this payment intent)
+    // - Provider amount ($120) is paid directly via Plaid Payment Initiation (handled separately)
+    // - We only confirm the Stripe payment here
+    // - The Plaid payment is initiated by the client and confirmed via webhook
+
+    console.log(`[Confirm Payment] Platform fee payment confirmed:`);
+    console.log(`  - Platform fee paid via Stripe: $${platformFee}`);
+    console.log(`  - Provider amount to be paid via Plaid RTP: $${providerAmount}`);
+    console.log(`  - Total client pays: $${totalAmount}`);
+
     // Upsert payment record (create if doesn't exist, update if it does)
     const payment = await prisma.payment.upsert({
       where: { bookingId },
       create: {
         bookingId,
-        amount: booking.price,
+        amount: totalAmount,
+        providerAmount: providerAmount,
+        platformFee: platformFee,
         currency: 'USD',
         stripePaymentId: paymentIntentId,
+        stripeTransferId: null, // Not used in dual payment flow
         status: 'completed',
         paidAt: new Date(),
       },
       update: {
+        amount: totalAmount,
+        providerAmount: providerAmount,
+        platformFee: platformFee,
         status: 'completed',
         paidAt: new Date(),
         stripePaymentId: paymentIntentId, // Ensure it's set
@@ -146,6 +235,72 @@ export const paymentService = {
 
     console.log(`[Confirm Payment] Payment record ${payment.id} updated/created with status: ${payment.status}`);
     return payment;
+  },
+
+  /**
+   * Automatically process Plaid transfer to provider after Stripe payment is confirmed
+   * This is called automatically - no user interaction needed
+   */
+  async processProviderPayment(bookingId: string, userId: string) {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        payment: true,
+        provider: {
+          include: {
+            providerProfile: true,
+          },
+        },
+      },
+    });
+
+    if (!booking) {
+      throw createError('Booking not found', 404);
+    }
+
+    // Only the booking owner (client) can trigger provider payment
+    if (booking.clientId !== userId) {
+      throw createError('Unauthorized: Only the booking owner can process provider payment', 403);
+    }
+
+    // Verify Stripe payment is completed first
+    if (!booking.payment || booking.payment.status !== 'completed') {
+      throw createError('Stripe payment must be completed before processing provider payment', 400);
+    }
+
+    const providerAmount = booking.payment.providerAmount || booking.price;
+    const providerProfile = booking.provider.providerProfile;
+
+    if (!providerProfile?.plaidAccessToken || !providerProfile?.plaidAccountId || !providerProfile?.bankAccountVerified) {
+      throw createError('Provider bank account not set up or verified', 400);
+    }
+
+    // Import plaidService dynamically to avoid circular dependency
+    const { plaidService } = await import('./plaid.service');
+    
+    // Process Plaid transfer to provider
+    const transferResult = await plaidService.createTransfer(
+      booking.providerId,
+      providerAmount,
+      `Payment for booking ${bookingId}`,
+      bookingId
+    );
+
+    // Update payment record with Plaid transfer ID
+    const updatedPayment = await prisma.payment.update({
+      where: { bookingId },
+      data: {
+        plaidTransferId: transferResult.transferId,
+      },
+    });
+
+    console.log(`[Provider Payment] Plaid transfer processed: ${transferResult.transferId} for $${providerAmount}`);
+    return {
+      transferId: transferResult.transferId,
+      status: transferResult.status,
+      network: transferResult.network,
+      payment: updatedPayment,
+    };
   },
 
   async getPaymentByBooking(bookingId: string, userId: string) {
