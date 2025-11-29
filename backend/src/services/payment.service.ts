@@ -1,9 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/db';
 import Stripe from 'stripe';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
-
-const prisma = new PrismaClient();
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {

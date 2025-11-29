@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert, Platform } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -158,7 +159,14 @@ export default function ProviderDetailScreen() {
         {/* Header Image */}
         <View style={styles.imageContainer}>
           {provider.profilePhoto ? (
-            <Image source={{ uri: provider.profilePhoto }} style={styles.headerImage} />
+            <Image 
+              source={{ uri: provider.profilePhoto }} 
+              style={styles.headerImage}
+              contentFit="cover"
+              transition={200}
+              placeholder={{ blurhash: 'LGF5]+Yk^6#M@-5c,1J5@[or[Q6.' }}
+              cachePolicy="memory-disk"
+            />
           ) : (
             <View style={styles.placeholderImage}>
               <Ionicons name="person" size={64} color="#94a3b8" />

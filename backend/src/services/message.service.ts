@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/db';
 import { createError } from '../middleware/errorHandler';
 
-const prisma = new PrismaClient();
 
 export const messageService = {
   async sendMessage(data: {

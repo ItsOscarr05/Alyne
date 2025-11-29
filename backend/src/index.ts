@@ -5,7 +5,7 @@ import compression from 'compression';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './utils/db';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { sanitizeInput } from './middleware/sanitizeInput';
@@ -21,7 +21,6 @@ import { swaggerSpec } from './config/swagger';
 // Load environment variables
 dotenv.config();
 
-const prisma = new PrismaClient();
 const app: Express = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -97,10 +96,8 @@ app.use(rateLimiter);
 // Health check endpoints
 app.get('/health', async (req, res) => {
   try {
-    // Check database connection
-    const dbStart = Date.now();
-    await prisma.$queryRaw`SELECT 1`;
-    const dbResponseTime = Date.now() - dbStart;
+    // Check database connection with connection pool info
+    const dbHealth = await checkDatabaseHealth();
 
     // Check Redis connection (if available)
     let redisStatus = 'not_configured';
@@ -121,8 +118,10 @@ app.get('/health', async (req, res) => {
       version: process.env.npm_package_version || '1.0.0',
       services: {
         database: {
-          status: 'connected',
-          responseTime: `${dbResponseTime}ms`,
+          status: dbHealth.status,
+          responseTime: `${dbHealth.responseTime}ms`,
+          connectionPool: dbHealth.connectionPool,
+          queryStats: getQueryStats(),
         },
         redis: {
           status: redisStatus,

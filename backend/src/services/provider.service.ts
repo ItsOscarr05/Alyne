@@ -1,9 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/db';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 import { getCache, setCache, cacheKeys } from '../utils/cache';
 
-const prisma = new PrismaClient();
 
 interface DiscoveryFilters {
   location?: { lat: number; lng: number };

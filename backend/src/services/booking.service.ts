@@ -1,8 +1,8 @@
-import { PrismaClient, BookingStatus } from '@prisma/client';
+import { prisma } from '../utils/db';
+import { BookingStatus } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 
 interface CreateBookingData {
   clientId: string;

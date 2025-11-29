@@ -1,9 +1,8 @@
 import { Configuration, PlaidApi, PlaidEnvironments, ProcessorTokenCreateRequest } from 'plaid';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../utils/db';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
-const prisma = new PrismaClient();
 
 // Initialize Plaid client
 const configuration = new Configuration({

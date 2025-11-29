@@ -57,7 +57,14 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.imageContainer}>
         {provider.profilePhoto ? (
-          <Image source={{ uri: provider.profilePhoto }} style={styles.image} />
+          <Image 
+            source={{ uri: provider.profilePhoto }} 
+            style={styles.image}
+            contentFit="cover"
+            transition={200}
+            placeholder={{ blurhash: 'LGF5]+Yk^6#M@-5c,1J5@[or[Q6.' }}
+            cachePolicy="memory-disk"
+          />
         ) : (
           <View style={styles.placeholderImage}>
             <Ionicons name="person" size={40} color="#94a3b8" />

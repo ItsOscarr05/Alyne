@@ -164,15 +164,15 @@ Routes in `mobile/app/` are automatically lazy-loaded by Expo Router. No additio
 - [x] Pagination on list endpoints
 - [x] Query optimization (selective fields)
 - [x] Response compression
-- [ ] Database connection pooling (review)
-- [ ] Query performance monitoring
+- [x] Database connection pooling (configured via centralized Prisma client)
+- [x] Query performance monitoring (slow query detection, query stats endpoint)
 
 ### Frontend
 - [x] Route lazy loading (automatic with Expo Router)
-- [ ] Bundle size analysis
-- [ ] Image lazy loading
-- [ ] Code splitting verification
-- [ ] Performance monitoring
+- [x] Bundle size analysis (script: `pnpm analyze-bundle`)
+- [x] Image lazy loading (implemented with expo-image)
+- [x] Code splitting verification (script: `backend/scripts/verify-code-splitting.ps1`)
+- [ ] Performance monitoring (recommended for production)
 
 ### Infrastructure
 - [ ] CDN setup
