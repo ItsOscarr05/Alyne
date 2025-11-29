@@ -1,36 +1,53 @@
 import rateLimit from 'express-rate-limit';
+import { Request, Response } from 'express';
+import { securityMonitor } from '../utils/securityMonitoring';
 
-export const rateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+const createRateLimiter = (max: number, windowMs: number, message: string, endpoint?: string) => {
+  return rateLimit({
+    windowMs,
+    max,
+    message,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (req: Request, res: Response) => {
+      // Log security event when rate limit is hit
+      securityMonitor.logRateLimit(req, endpoint || req.path);
+      res.status(429).json({
+        success: false,
+        error: {
+          message,
+        },
+      });
+    },
+  });
+};
 
-export const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5, // Limit auth endpoints to 5 requests per 15 minutes
-  message: 'Too many authentication attempts, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const rateLimiter = createRateLimiter(
+  100, // max
+  15 * 60 * 1000, // 15 minutes
+  'Too many requests from this IP, please try again later.'
+);
+
+export const authRateLimiter = createRateLimiter(
+  5, // max
+  15 * 60 * 1000, // 15 minutes
+  'Too many authentication attempts, please try again later.',
+  'auth'
+);
 
 // Stricter rate limiter for payment endpoints
-export const paymentRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // Limit payment endpoints to 20 requests per 15 minutes
-  message: 'Too many payment requests, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const paymentRateLimiter = createRateLimiter(
+  20, // max
+  15 * 60 * 1000, // 15 minutes
+  'Too many payment requests, please try again later.',
+  'payment'
+);
 
 // Rate limiter for Plaid endpoints (sensitive financial operations)
-export const plaidRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit Plaid endpoints to 10 requests per 15 minutes
-  message: 'Too many bank account requests, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+export const plaidRateLimiter = createRateLimiter(
+  10, // max
+  15 * 60 * 1000, // 15 minutes
+  'Too many bank account requests, please try again later.',
+  'plaid'
+);
 

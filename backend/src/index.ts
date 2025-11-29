@@ -13,6 +13,8 @@ import { initRedis } from './utils/cache';
 import { monitoringMiddleware, monitoring } from './utils/monitoring';
 import { errorTracker } from './utils/errorTracking';
 import { logger } from './utils/logger';
+import { keyRotationManager } from './utils/apiKeyRotation';
+import { securityMonitor } from './utils/securityMonitoring';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 
@@ -44,10 +46,27 @@ io.engine.on('connection_error', (err: any) => {
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-// Configure Helmet to allow Socket.io connections
+// Configure Helmet with CSP that allows Socket.io connections
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable CSP for Socket.io compatibility
-  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Socket.io
+      connectSrc: [
+        "'self'",
+        process.env.FRONTEND_URL || 'http://localhost:8081',
+        'ws://localhost:3000', // WebSocket for Socket.io
+        'wss://localhost:3000', // Secure WebSocket
+        ...(process.env.FRONTEND_URL?.split(',') || []).map(url => url.replace('http://', 'ws://').replace('https://', 'wss://')),
+      ],
+      styleSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
+      imgSrc: ["'self'", 'data:', 'https:'],
+      fontSrc: ["'self'", 'data:'],
+      objectSrc: ["'none'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+  crossOriginEmbedderPolicy: false, // Disabled for Socket.io compatibility
 }));
 app.use(compression());
 // CORS configuration for production
@@ -138,6 +157,15 @@ app.get('/metrics', (req, res) => {
   res.json({
     success: true,
     data: metrics,
+  });
+});
+
+// Security stats endpoint (protected, admin only in production)
+app.get('/security/stats', (req, res) => {
+  const stats = securityMonitor.getStats();
+  res.json({
+    success: true,
+    data: stats,
   });
 });
 
@@ -332,6 +360,16 @@ io.on('connection', (socket: any) => {
 
 // Error handling
 app.use(errorHandler);
+
+// Initialize Redis
+initRedis().catch((error) => {
+  logger.error('Failed to initialize Redis', error);
+});
+
+// Check API key rotation reminders on startup (production only)
+if (process.env.NODE_ENV === 'production') {
+  keyRotationManager.checkRotationReminders();
+}
 
 // Start server
 httpServer.listen(PORT, () => {

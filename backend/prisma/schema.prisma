@@ -133,7 +133,6 @@ model Credential {
   provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId])
-  @@index([providerId, isActive])
 }
 
 model AvailabilitySlot {
@@ -150,7 +149,6 @@ model AvailabilitySlot {
   provider ProviderProfile @relation(fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId])
-  @@index([providerId, isActive])
 }
 
 model Booking {
@@ -191,6 +189,7 @@ model Payment {
   currency         String    @default("USD")
   stripePaymentId  String?   @unique
   stripeTransferId String? // Stripe transfer ID to provider's account
+  plaidTransferId  String? // Plaid transfer ID for provider payment
   status           String // "pending", "completed", "refunded", "failed"
   paidAt           DateTime?
   createdAt        DateTime  @default(now())

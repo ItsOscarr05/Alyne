@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 import { createError } from './errorHandler';
+import { securityMonitor } from '../utils/securityMonitoring';
 
 const prisma = new PrismaClient();
 
@@ -22,6 +23,7 @@ export const authenticate = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      securityMonitor.logAuthFailure(req, 'Missing or invalid authorization header');
       return next(createError('Authentication required', 401));
     }
 
@@ -59,6 +61,7 @@ export const authenticate = async (
     });
 
     if (!user) {
+      securityMonitor.logAuthFailure(req, 'User not found', decoded.userId);
       return next(createError('User not found', 401));
     }
 
@@ -71,9 +74,11 @@ export const authenticate = async (
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
+      securityMonitor.logAuthFailure(req, 'Invalid token');
       return next(createError('Invalid token', 401));
     }
     if (error instanceof jwt.TokenExpiredError) {
+      securityMonitor.logAuthFailure(req, 'Token expired');
       return next(createError('Token expired', 401));
     }
     next(error);
