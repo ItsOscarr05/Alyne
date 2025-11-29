@@ -82,7 +82,13 @@ export const bookingService = {
     return booking;
   },
 
-  async getUserBookings(userId: string, status?: string, role?: 'client' | 'provider') {
+  async getUserBookings(
+    userId: string,
+    status?: string,
+    role?: 'client' | 'provider',
+    skip: number = 0,
+    take: number = 20
+  ) {
     const where: any = {};
 
     if (role === 'client') {
@@ -98,42 +104,47 @@ export const bookingService = {
       where.status = status as BookingStatus;
     }
 
-    logger.debug('getUserBookings query', { userId, role, status, where });
+    logger.debug('getUserBookings query', { userId, role, status, where, skip, take });
 
-    const bookings = await prisma.booking.findMany({
-      where,
-      include: {
-        client: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profilePhoto: true,
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({
+        where,
+        include: {
+          client: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
+          provider: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              profilePhoto: true,
+            },
+          },
+          service: {
+            select: {
+              id: true,
+              name: true,
+              price: true,
+              duration: true,
+            },
           },
         },
-        provider: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profilePhoto: true,
-          },
+        orderBy: {
+          scheduledDate: 'desc',
         },
-        service: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            duration: true,
-          },
-        },
-      },
-      orderBy: {
-        scheduledDate: 'desc',
-      },
-    });
+        skip,
+        take,
+      }),
+      prisma.booking.count({ where }),
+    ]);
 
-    return bookings;
+    return { bookings, total };
   },
 
   async getBookingById(bookingId: string, userId: string) {

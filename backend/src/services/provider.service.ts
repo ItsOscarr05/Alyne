@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { getCache, setCache, cacheKeys } from '../utils/cache';
 
 const prisma = new PrismaClient();
 
@@ -194,7 +195,14 @@ export const providerService = {
       providersWithDistance.sort((a, b) => b.rating - a.rating);
     }
 
-    return providersWithDistance;
+    // Apply pagination
+    const total = providersWithDistance.length;
+    const paginatedProviders = providersWithDistance.slice(skip, skip + take);
+
+    return {
+      providers: paginatedProviders,
+      total,
+    };
     } catch (error) {
       logger.error('Error in discoverProviders', error);
       throw error;
@@ -202,6 +210,14 @@ export const providerService = {
   },
 
   async getProviderById(providerId: string) {
+    // Try cache first
+    const cacheKey = cacheKeys.provider(providerId);
+    const cached = await getCache<any>(cacheKey);
+    if (cached) {
+      logger.debug('Provider cache hit', { providerId });
+      return cached;
+    }
+
     const provider = await prisma.user.findUnique({
       where: {
         id: providerId,
@@ -255,7 +271,7 @@ export const providerService = {
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
       : 0;
 
-    return {
+    const result = {
       id: provider.id,
       name: `${provider.firstName} ${provider.lastName}`,
       email: provider.email,
@@ -279,6 +295,10 @@ export const providerService = {
       reviewCount: reviews.length,
       isVerified: provider.isVerified,
     };
+
+    // Cache for 5 minutes
+    await setCache(cacheKey, result, 300);
+    return result;
   },
 
   async getProviderServices(providerId: string) {

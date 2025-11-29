@@ -3,6 +3,7 @@ import { bookingService } from '../services/booking.service';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
 import { io } from '../index';
+import { parsePagination, createPaginationResult } from '../utils/pagination';
 
 export const bookingController = {
   async create(req: AuthRequest, res: Response, next: NextFunction) {
@@ -41,16 +42,27 @@ export const bookingController = {
       }
 
       const { status, role } = req.query; // role: 'client' or 'provider'
+      const { skip, take, page, limit } = parsePagination(req.query);
 
-      const bookings = await bookingService.getUserBookings(
+      const result = await bookingService.getUserBookings(
         userId,
         status as string | undefined,
-        role as 'client' | 'provider' | undefined
+        role as 'client' | 'provider' | undefined,
+        skip,
+        take
+      );
+
+      const paginationResult = createPaginationResult(
+        result.bookings,
+        result.total,
+        page,
+        limit
       );
 
       res.json({
         success: true,
-        data: bookings,
+        data: paginationResult.data,
+        pagination: paginationResult.pagination,
       });
     } catch (error) {
       next(error);

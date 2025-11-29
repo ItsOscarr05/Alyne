@@ -9,6 +9,7 @@ import { PrismaClient } from '@prisma/client';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { sanitizeInput } from './middleware/sanitizeInput';
+import { initRedis } from './utils/cache';
 
 // Load environment variables
 dotenv.config();

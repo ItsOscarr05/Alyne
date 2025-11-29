@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { providerService } from '../services/provider.service';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { parsePagination, createPaginationResult } from '../utils/pagination';
 
 export const providerController = {
   async discover(req: Request, res: Response, next: NextFunction) {
@@ -29,11 +30,20 @@ export const providerController = {
         search: search as string | undefined,
       };
 
-      const providers = await providerService.discoverProviders(filters);
+      const { skip, take, page, limit } = parsePagination(req.query);
+      const result = await providerService.discoverProviders(filters, skip, take);
+
+      const paginationResult = createPaginationResult(
+        result.providers,
+        result.total,
+        page,
+        limit
+      );
 
       res.json({
         success: true,
-        data: providers,
+        data: paginationResult.data,
+        pagination: paginationResult.pagination,
       });
     } catch (error) {
       next(error);
