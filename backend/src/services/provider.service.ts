@@ -36,7 +36,7 @@ function calculateDistance(
 }
 
 export const providerService = {
-  async discoverProviders(filters: DiscoveryFilters) {
+  async discoverProviders(filters: DiscoveryFilters, skip: number = 0, take: number = 20) {
     try {
       const {
         location,
@@ -165,8 +165,21 @@ export const providerService = {
       }>;
 
     // Filter by distance
+    // If location is provided, filter by radius
+    // If no location provided, show all providers (no distance filtering)
     if (location) {
-      providersWithDistance = providersWithDistance.filter((p) => p.distance <= radius);
+      providersWithDistance = providersWithDistance.filter((p) => {
+        // If provider doesn't have serviceArea or distance couldn't be calculated, include them
+        // This handles cases where serviceArea is missing or malformed
+        if (p.distance === 0 && !p.serviceArea) {
+          return true; // Include providers without location data
+        }
+        // Only filter by distance if we successfully calculated it
+        if (p.distance > 0) {
+          return p.distance <= radius;
+        }
+        return true; // Include if distance is 0 (couldn't calculate)
+      });
     }
 
     // Filter by price range

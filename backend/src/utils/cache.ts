@@ -6,30 +6,64 @@ import { createClient } from 'redis';
 import { logger } from './logger';
 
 let redisClient: ReturnType<typeof createClient> | null = null;
+let connectionAttempted = false;
 
 /**
- * Initialize Redis connection
+ * Initialize Redis connection (optional)
+ * Returns null if Redis is not configured or unavailable
+ * Completely silent if REDIS_URL is not set
  */
 export const initRedis = async () => {
+  // Skip entirely if Redis URL is not set - no logs, no errors
+  if (!process.env.REDIS_URL) {
+    return null;
+  }
+
+  // Only attempt connection once
+  if (connectionAttempted) {
+    return redisClient;
+  }
+
+  connectionAttempted = true;
+
   try {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+    const redisUrl = process.env.REDIS_URL;
     redisClient = createClient({
       url: redisUrl,
+      socket: {
+        reconnectStrategy: (retries) => {
+          // Stop retrying after 3 attempts - fail silently
+          if (retries > 3) {
+            return false;
+          }
+          // Exponential backoff: 100ms, 200ms, 400ms
+          return Math.min(retries * 100, 400);
+        },
+        connectTimeout: 5000, // 5 second timeout
+      },
     });
 
-    redisClient.on('error', (err) => {
-      logger.error('Redis Client Error', err);
+    // Suppress all error events - Redis is optional
+    redisClient.on('error', () => {
+      redisClient = null;
     });
 
+    // Only log successful connection
     redisClient.on('connect', () => {
-      logger.info('Redis client connected');
+      logger.info('Redis connected (caching enabled)');
     });
 
-    await redisClient.connect();
+    // Attempt connection with timeout
+    const connectPromise = redisClient.connect();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection timeout')), 5000);
+    });
+
+    await Promise.race([connectPromise, timeoutPromise]);
     return redisClient;
   } catch (error) {
-    logger.error('Failed to connect to Redis', error);
-    // Return null if Redis is not available - app should still work
+    // Silently fail - Redis is optional, app works without it
+    redisClient = null;
     return null;
   }
 };

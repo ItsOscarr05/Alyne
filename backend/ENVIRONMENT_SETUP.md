@@ -266,13 +266,34 @@ GRANT ALL PRIVILEGES ON DATABASE alyne TO alyne_user;
 ### Redis
 
 #### Local Setup
+
+**Option 1: Docker (Recommended)**
 ```powershell
-# Windows: Download from https://github.com/microsoftarchive/redis/releases
-# Or use WSL2 with Redis
+# Pull and run Redis
+docker run -d --name redis-alyne -p 6379:6379 redis:7-alpine
+
+# Verify it's running
+docker ps
+```
+
+**Option 2: WSL2**
+```powershell
+# Open WSL
+wsl
+
+# Install Redis
+sudo apt update
+sudo apt install redis-server
 
 # Start Redis
-redis-server
+sudo service redis-server start
 ```
+
+**Option 3: Memurai (Windows Native)**
+- Download from [Memurai.com](https://www.memurai.com/get-memurai)
+- Install and run as Windows service
+
+**See `REDIS_SETUP.md` for detailed instructions.**
 
 #### Cloud Options
 - **Redis Cloud**: Free tier available

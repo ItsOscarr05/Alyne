@@ -360,9 +360,9 @@ io.on('connection', (socket: any) => {
 // Error handling
 app.use(errorHandler);
 
-// Initialize Redis
-initRedis().catch((error) => {
-  logger.error('Failed to initialize Redis', error);
+// Initialize Redis (optional - app works without it)
+initRedis().catch(() => {
+  // Silently fail - Redis is optional for development
 });
 
 // Check API key rotation reminders on startup (production only)
