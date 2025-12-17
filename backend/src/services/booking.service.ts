@@ -134,6 +134,7 @@ export const bookingService = {
               duration: true,
             },
           },
+          payment: true,
         },
         orderBy: {
           scheduledDate: 'desc',

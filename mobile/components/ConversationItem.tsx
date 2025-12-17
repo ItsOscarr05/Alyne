@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Conversation } from '../services/message';
+import { theme } from '../theme';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -39,9 +40,17 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>
-          {getInitials(conversation.otherUser.firstName, conversation.otherUser.lastName)}
-        </Text>
+        {conversation.otherUser.profilePhoto ? (
+          <Image
+            source={{ uri: conversation.otherUser.profilePhoto }}
+            style={styles.avatarImage}
+            contentFit="cover"
+          />
+        ) : (
+          <Text style={styles.avatarText}>
+            {getInitials(conversation.otherUser.firstName, conversation.otherUser.lastName)}
+          </Text>
+        )}
       </View>
 
       <View style={styles.content}>
@@ -66,7 +75,8 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 
       {isProvider && (
         <View style={styles.providerBadge}>
-          <Ionicons name="checkmark-circle" size={16} color="#10b981" />
+          <Ionicons name="checkmark-circle" size={14} color={theme.colors.semantic.success} />
+          <Text style={styles.providerBadgeText}>Provider</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -76,25 +86,31 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    padding: 16,
+    backgroundColor: theme.colors.white,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: theme.colors.neutral[50],
     alignItems: 'center',
-    gap: 12,
+    gap: theme.spacing.md,
   },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.white,
   },
   content: {
     flex: 1,
@@ -108,12 +124,12 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
+    color: theme.colors.neutral[900],
     flex: 1,
   },
   time: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: theme.colors.neutral[500],
     marginLeft: 8,
   },
   messageRow: {
@@ -123,11 +139,11 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 14,
-    color: '#64748b',
+    color: theme.colors.neutral[500],
     flex: 1,
   },
   unreadBadge: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.colors.primary[500],
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -138,10 +154,22 @@ const styles = StyleSheet.create({
   unreadText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.white,
   },
   providerBadge: {
-    marginLeft: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radii.full,
+    backgroundColor: '#f0fdf4',
+  },
+  providerBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: theme.colors.semantic.success,
   },
 });
 

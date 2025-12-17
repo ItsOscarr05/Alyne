@@ -242,6 +242,9 @@ export const providerService = {
               where: {
                 isActive: true,
               },
+              orderBy: {
+                createdAt: 'asc',
+              },
             },
             credentials: {
               where: {
@@ -287,13 +290,16 @@ export const providerService = {
       id: provider.id,
       name: `${provider.firstName} ${provider.lastName}`,
       email: provider.email,
+      phoneNumber: provider.phoneNumber,
       profilePhoto: provider.profilePhoto,
       bio: provider.providerProfile.bio,
       specialties: Array.isArray(provider.providerProfile.specialties) 
         ? provider.providerProfile.specialties 
         : [],
       serviceArea: provider.providerProfile.serviceArea,
-      services: provider.providerProfile.services,
+      services: Array.from(
+        new Map(provider.providerProfile.services.map((s) => [s.id, s])).values()
+      ),
       credentials: provider.providerProfile.credentials,
       availability: provider.providerProfile.availability,
       reviews: reviews.map((r) => ({

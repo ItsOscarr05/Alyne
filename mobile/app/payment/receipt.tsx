@@ -232,11 +232,11 @@ export default function ReceiptScreen() {
           )}
           {payment.providerAmount && payment.platformFee && payment.platformFee > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={[styles.summaryLabel, { fontSize: 12, color: '#64748b' }]}>
-                Provider receives
+              <Text style={styles.summaryLabel}>
+                Provider Fee
               </Text>
-              <Text style={[styles.summaryValue, { fontSize: 12, color: '#64748b' }]}>
-                ${payment.providerAmount.toFixed(2)}
+              <Text style={styles.summaryValue}>
+                -${payment.providerAmount.toFixed(2)}
               </Text>
             </View>
           )}
@@ -279,11 +279,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
+    paddingHorizontal: 24,
     paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingBottom: 16,
   },
   headerTitle: {
     fontSize: 18,
@@ -326,15 +324,21 @@ const styles = StyleSheet.create({
   },
   receiptHeader: {
     alignItems: 'center',
-    paddingVertical: 32,
-    marginBottom: 24,
+    paddingVertical: 40,
+    marginBottom: 32,
   },
   logoContainer: {
-    marginBottom: 16,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#f0fdf4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#1e293b',
     marginBottom: 8,
   },
@@ -342,26 +346,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     fontWeight: '500',
+    letterSpacing: 0.5,
   },
   section: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#f1f5f9',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f8fafc',
   },
   detailLabel: {
     fontSize: 14,
@@ -378,8 +391,8 @@ const styles = StyleSheet.create({
   statusBadge: {
     backgroundColor: '#10b981',
     paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   statusText: {
     fontSize: 12,
@@ -392,16 +405,21 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#f1f5f9',
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 14,
   },
   summaryLabel: {
     fontSize: 14,
@@ -421,15 +439,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 4,
   },
   totalLabel: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1e293b',
   },
   totalAmount: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 28,
+    fontWeight: '700',
     color: '#2563eb',
   },
   footerInfo: {
@@ -439,12 +458,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     gap: 12,
+    borderWidth: 1,
+    borderColor: '#dbeafe',
   },
   footerText: {
     flex: 1,
-    fontSize: 12,
+    fontSize: 13,
     color: '#1e40af',
-    lineHeight: 18,
+    lineHeight: 20,
+    fontWeight: '500',
   },
   footer: {
     padding: 24,

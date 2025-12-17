@@ -8,9 +8,7 @@ import { logger } from './logger';
 // Prisma connection pool configuration
 // These settings optimize connection pooling for production
 const prismaClientOptions = {
-  log: process.env.NODE_ENV === 'development' 
-    ? ['query', 'error', 'warn'] as const
-    : ['error'] as const,
+  log: ['error', 'warn'] as const,
   datasources: {
     db: {
       url: process.env.DATABASE_URL,
@@ -28,21 +26,23 @@ let queryCount = 0;
 let slowQueryCount = 0;
 const SLOW_QUERY_THRESHOLD_MS = 1000; // 1 second
 
-// Monitor query performance in development
+// Monitor query performance (only slow queries)
+// Query logging is disabled to reduce log noise
 if (process.env.NODE_ENV === 'development') {
   prisma.$on('query' as never, (e: any) => {
     queryCount++;
     const duration = e.duration || 0;
     
+    // Only log slow queries, not all queries
     if (duration > SLOW_QUERY_THRESHOLD_MS) {
       slowQueryCount++;
       logger.warn(`Slow query detected (${duration}ms): ${e.query.substring(0, 100)}...`);
     }
     
-    // Log all queries in development (can be verbose)
-    if (process.env.LOG_QUERIES === 'true') {
-      logger.debug(`Query: ${e.query.substring(0, 200)}... | Duration: ${duration}ms`);
-    }
+    // Query logging disabled - set LOG_QUERIES=true to enable if needed for debugging
+    // if (process.env.LOG_QUERIES === 'true') {
+    //   logger.debug(`Query: ${e.query.substring(0, 200)}... | Duration: ${duration}ms`);
+    // }
   });
 }
 

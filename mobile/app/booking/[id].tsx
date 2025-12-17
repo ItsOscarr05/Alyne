@@ -141,7 +141,7 @@ export default function BookingDetailScreen() {
               </View>
               <View style={styles.metaItem}>
                 <Ionicons name="cash-outline" size={16} color="#64748b" />
-                <Text style={styles.metaText}>${booking.price}</Text>
+                <Text style={styles.metaText}>${booking.price}/session</Text>
               </View>
             </View>
           </View>
@@ -258,11 +258,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   backButton: {
     width: 40,
@@ -293,9 +291,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#ecfeff',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
     marginBottom: 24,
   },
   statusDot: {
@@ -318,8 +318,15 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   serviceName: {
     fontSize: 18,

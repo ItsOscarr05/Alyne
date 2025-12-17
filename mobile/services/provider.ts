@@ -17,6 +17,7 @@ export interface ProviderDetail {
   id: string;
   name: string;
   email: string;
+  phoneNumber?: string;
   profilePhoto?: string;
   bio?: string;
   specialties: string[];

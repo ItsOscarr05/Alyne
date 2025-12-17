@@ -8,18 +8,18 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2023-10-16',
 });
 
-// Platform fee percentage (default 10%, configurable via env)
-const PLATFORM_FEE_PERCENTAGE = parseFloat(process.env.PLATFORM_FEE_PERCENTAGE || '10');
+// Platform fee percentage (default 7.5%, configurable via env)
+const PLATFORM_FEE_PERCENTAGE = parseFloat(process.env.PLATFORM_FEE_PERCENTAGE || '7.5');
 
 /**
  * Calculate platform fee and amounts
  * @param servicePrice - The base service price (what provider charges)
  * @returns Object with providerAmount (base service price), platformFee (Alyne's fee), and totalAmount (what client pays)
  * 
- * Example: Service price = $120, Platform fee = 10%
+ * Example: Service price = $120, Platform fee = 7.5%
  * - providerAmount = $120 (goes to provider via Plaid)
- * - platformFee = $12 (stays in Alyne's Stripe account)
- * - totalAmount = $132 (what client pays via Stripe)
+ * - platformFee = $9 (stays in Alyne's Stripe account)
+ * - totalAmount = $129 (what client pays via Stripe)
  */
 function calculatePaymentAmounts(servicePrice: number) {
   const providerAmount = servicePrice; // Provider receives the full service price

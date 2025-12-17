@@ -483,10 +483,15 @@ export default function PaymentCheckoutScreen() {
       setClientSecret(secret);
       
       // Store payment amounts for fee breakdown display
+      // Calculate platform fee if not provided (fallback to 7.5%)
+      const calculatedPlatformFee = paymentIntent.platformFee ?? (bookingData.price * 0.075);
+      const calculatedProviderAmount = paymentIntent.providerAmount ?? bookingData.price;
+      const calculatedTotal = paymentIntent.amount ?? (calculatedProviderAmount + calculatedPlatformFee);
+      
       setPaymentAmounts({
-        total: paymentIntent.amount || bookingData.price,
-        providerAmount: paymentIntent.providerAmount || bookingData.price,
-        platformFee: paymentIntent.platformFee || 0,
+        total: calculatedTotal,
+        providerAmount: calculatedProviderAmount,
+        platformFee: calculatedPlatformFee,
       });
       
       // Check if Plaid payment is required
@@ -727,7 +732,7 @@ export default function PaymentCheckoutScreen() {
             </Text>
           </View>
 
-          {paymentAmounts && paymentAmounts.platformFee > 0 && (
+          {paymentAmounts && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
               <Text style={styles.summaryValue}>+${paymentAmounts.platformFee.toFixed(2)}</Text>
@@ -737,7 +742,7 @@ export default function PaymentCheckoutScreen() {
           <View style={styles.divider} />
 
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total You Pay</Text>
+            <Text style={styles.totalLabel}>Total Amount Due</Text>
             <Text style={styles.totalAmount}>
               ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
             </Text>

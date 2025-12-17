@@ -1,14 +1,27 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  TextInput,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { providerService, ProviderDetail, Service } from '../../services/provider';
 import { bookingService, CreateBookingData } from '../../services/booking';
+import { logger } from '../../utils/logger';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { useModal } from '../../hooks/useModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function CreateBookingScreen() {
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
   const router = useRouter();
+  const modal = useModal();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -36,8 +49,12 @@ export default function CreateBookingScreen() {
       }
     } catch (error: any) {
       console.error('Error loading provider:', error);
-      Alert.alert('Error', 'Failed to load provider details');
-      router.back();
+      modal.showAlert({
+        title: 'Error',
+        message: 'Failed to load provider details',
+        type: 'error',
+        onButtonPress: () => router.back(),
+      });
     } finally {
       setIsLoading(false);
     }
@@ -53,7 +70,11 @@ export default function CreateBookingScreen() {
 
     if (!providerId || !selectedService || !selectedDate || !selectedTime) {
       logger.warn('Validation failed - missing required fields');
-      Alert.alert('Error', 'Please fill in all required fields');
+      modal.showAlert({
+        title: 'Error',
+        message: 'Please fill in all required fields',
+        type: 'error',
+      });
       return;
     }
 
@@ -78,28 +99,28 @@ export default function CreateBookingScreen() {
       logger.info('Booking created successfully', { bookingId: result.id });
       
       // Show success message
-      try {
-        Alert.alert('Success', 'Booking request sent!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              router.replace('/(tabs)/bookings');
-            },
-          },
-        ]);
-      } catch (alertError) {
-        logger.warn('Alert.alert failed (might be web)', alertError);
-      }
+      modal.showAlert({
+        title: 'Success',
+        message: 'Booking request sent!',
+        type: 'success',
+        onButtonPress: () => {
+          router.replace('/(tabs)/bookings');
+        },
+      });
       
       // Navigate directly after a short delay (works on both web and native)
       setTimeout(() => {
         router.replace('/(tabs)/bookings');
-      }, 1000);
+      }, 1500);
     } catch (error: any) {
       logger.error('Error creating booking', error);
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
-      Alert.alert(errorTitle, errorMessage);
+      modal.showAlert({
+        title: errorTitle,
+        message: errorMessage,
+        type: 'error',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -138,15 +159,16 @@ export default function CreateBookingScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Session</Text>
-        <View style={styles.backButton} />
-      </View>
-
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        {/* Header (scrolls with content) */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Book Session</Text>
+          <View style={styles.backButton} />
+        </View>
+
         {/* Provider Info */}
         <View style={styles.providerCard}>
           <Text style={styles.providerName}>{provider.name}</Text>
@@ -158,26 +180,42 @@ export default function CreateBookingScreen() {
         {/* Service Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Service</Text>
-          {provider.services.map((service) => (
-            <TouchableOpacity
-              key={service.id}
-              style={[
-                styles.serviceOption,
-                selectedService?.id === service.id && styles.serviceOptionSelected,
-              ]}
-              onPress={() => setSelectedService(service)}
-            >
-              <View style={styles.serviceOptionContent}>
-                <Text style={styles.serviceOptionName}>{service.name}</Text>
-                <Text style={styles.serviceOptionDetails}>
-                  {service.duration} min • ${service.price}
-                </Text>
-              </View>
-              {selectedService?.id === service.id && (
-                <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
-              )}
-            </TouchableOpacity>
-          ))}
+          {(() => {
+            // Remove potential duplicates (e.g., from seeding or syncing)
+            const seenIds = new Set<string>();
+            const seenKeys = new Set<string>();
+            const uniqueServices = provider.services.filter((service) => {
+              if (seenIds.has(service.id)) return false;
+              seenIds.add(service.id);
+
+              const key = `${service.name}|${service.price}|${service.duration}`;
+              if (seenKeys.has(key)) return false;
+              seenKeys.add(key);
+
+              return true;
+            });
+
+            return uniqueServices.map((service) => (
+              <TouchableOpacity
+                key={service.id}
+                style={[
+                  styles.serviceOption,
+                  selectedService?.id === service.id && styles.serviceOptionSelected,
+                ]}
+                onPress={() => setSelectedService(service)}
+              >
+                <View style={styles.serviceOptionContent}>
+                  <Text style={styles.serviceOptionName}>{service.name}</Text>
+                  <Text style={styles.serviceOptionDetails}>
+                    {service.duration} min • ${service.price}/session
+                  </Text>
+                </View>
+                {selectedService?.id === service.id && (
+                  <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
+                )}
+              </TouchableOpacity>
+            ));
+          })()}
         </View>
 
         {/* Date Selection */}
@@ -277,7 +315,9 @@ export default function CreateBookingScreen() {
             </View>
             <View style={[styles.summaryRow, styles.summaryTotal]}>
               <Text style={styles.summaryLabel}>Total:</Text>
-              <Text style={styles.summaryTotalValue}>${selectedService.price}</Text>
+              <Text style={styles.summaryTotalValue}>
+                ${selectedService.price}/session
+              </Text>
             </View>
           </View>
         )}
@@ -302,12 +342,25 @@ export default function CreateBookingScreen() {
           ) : (
             <Text style={styles.submitButtonText}>
               {!selectedService || !selectedDate || !selectedTime
-                ? 'Fill all fields'
+                ? 'Book Session'
                 : 'Request Booking'}
             </Text>
           )}
         </TouchableOpacity>
       </View>
+      
+      {/* Modal */}
+      {modal.alertOptions && (
+        <AlertModal
+          visible={modal.alertVisible}
+          onClose={modal.hideAlert}
+          title={modal.alertOptions.title}
+          message={modal.alertOptions.message}
+          type={modal.alertOptions.type}
+          buttonText={modal.alertOptions.buttonText}
+          onButtonPress={modal.alertOptions.onButtonPress}
+        />
+      )}
     </View>
   );
 }
@@ -321,11 +374,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   backButton: {
     width: 40,
@@ -350,9 +401,16 @@ const styles = StyleSheet.create({
   },
   providerCard: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#000000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   providerName: {
     fontSize: 20,
@@ -378,8 +436,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 18,
     marginBottom: 12,
     borderWidth: 2,
     borderColor: '#e2e8f0',

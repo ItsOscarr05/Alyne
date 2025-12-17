@@ -1,13 +1,17 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
-import Constants from 'expo-constants';
-
-const isDevelopment = __DEV__ || Constants.expoConfig?.extra?.NODE_ENV === 'development';
+import { theme } from '../../theme';
+import { Button } from '../../components/ui/Button';
+import { FormField } from '../../components/ui/FormField';
+import { useModal } from '../../hooks/useModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const modal = useModal();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,7 +19,11 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      modal.showAlert({
+        title: 'Required',
+        message: 'Please enter your email and password',
+        type: 'warning',
+      });
       return;
     }
 
@@ -24,95 +32,90 @@ export default function LoginScreen() {
       await login(email, password);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.error?.message || error.message || 'An error occurred');
+      modal.showAlert({
+        title: 'Login Failed',
+        message: error.response?.data?.error?.message || error.message || 'An error occurred',
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDevLogin = async () => {
-    // Dev login - bypasses authentication
-    const devUser = {
-      id: 'dev-user-id',
-      email: 'dev@alyne.com',
-      firstName: 'Dev',
-      lastName: 'User',
-      userType: 'CLIENT' as const,
-      isVerified: true,
-    };
-
-    // Store dev credentials
-    const { storage } = await import('../../utils/storage');
-    await Promise.all([
-      storage.setItem('auth_token', 'dev-token'),
-      storage.setItem('user_data', JSON.stringify(devUser)),
-    ]);
-
-    // Navigate directly - the app will detect auth on next render
-    router.replace('/(tabs)');
-  };
-
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Sign In</Text>
-        <Text style={styles.subtitle}>Welcome back to Alyne</Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/welcome')}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+          </TouchableOpacity>
+          
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="lock-closed" size={32} color={theme.colors.white} />
+            </View>
+          </View>
+          
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>Sign in to continue to Alyne</Text>
+          </View>
+        </View>
 
-      <View style={styles.form}>
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
+        <View style={styles.form}>
+          <FormField
+            label="Email"
             placeholder="Enter your email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
           />
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label="Password"
             placeholder="Enter your password"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
+
+          <Button
+            title="Sign In"
+            onPress={handleLogin}
+            loading={isLoading}
+            style={styles.primaryButton}
+          />
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text style={styles.footerLink}>Sign Up</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </ScrollView>
 
-        <TouchableOpacity 
-          style={[styles.button, isLoading && styles.buttonDisabled]} 
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.buttonText}>Sign In</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => router.push('/(auth)/register')}
-        >
-          <Text style={styles.linkText}>
-            Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
-          </Text>
-        </TouchableOpacity>
-
-        {isDevelopment && (
-          <TouchableOpacity
-            style={styles.devButton}
-            onPress={handleDevLogin}
-          >
-            <Text style={styles.devButtonText}>🚀 Dev Login (Skip Auth)</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Modal */}
+      {modal.alertOptions && (
+        <AlertModal
+          visible={modal.alertVisible}
+          onClose={modal.hideAlert}
+          title={modal.alertOptions.title}
+          message={modal.alertOptions.message}
+          type={modal.alertOptions.type}
+          buttonText={modal.alertOptions.buttonText}
+          onButtonPress={modal.alertOptions.onButtonPress}
+        />
+      )}
     </View>
   );
 }
@@ -120,84 +123,74 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    padding: 24,
+    backgroundColor: theme.colors.white,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing['2xl'],
   },
   header: {
-    marginTop: 60,
-    marginBottom: 40,
+    alignItems: 'center',
+    marginTop: theme.spacing['2xl'],
+    marginBottom: theme.spacing['2xl'],
+  },
+  backButton: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    padding: theme.spacing.xs,
+    zIndex: 1,
+  },
+  logoContainer: {
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.card,
+  },
+  headerContent: {
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 8,
+    ...theme.typography.display,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#64748b',
+    ...theme.typography.body,
+    color: theme.colors.neutral[500],
+    textAlign: 'center',
   },
   form: {
     flex: 1,
+    marginTop: theme.spacing.xl,
   },
-  inputContainer: {
-    marginBottom: 24,
+  primaryButton: {
+    marginTop: theme.spacing.xl,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    backgroundColor: '#ffffff',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 16,
-    borderRadius: 12,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: theme.spacing.xl,
   },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
+  footerText: {
+    ...theme.typography.body,
+    color: theme.colors.neutral[500],
+  },
+  footerLink: {
+    ...theme.typography.body,
+    color: theme.colors.primary[500],
     fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  linkTextBold: {
-    color: '#2563eb',
-    fontWeight: '600',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  devButton: {
-    marginTop: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    alignItems: 'center',
-  },
-  devButtonText: {
-    color: '#64748b',
-    fontSize: 14,
-    fontWeight: '500',
   },
 });
 

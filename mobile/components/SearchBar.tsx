@@ -1,5 +1,6 @@
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 interface SearchBarProps {
   value: string;
@@ -38,36 +39,36 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search providers
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8fafc',
-    borderRadius: 12,
+    backgroundColor: theme.colors.neutral[50],
+    borderRadius: theme.radii.md,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: theme.colors.neutral[200],
   },
   searchIcon: {
-    marginLeft: 12,
+    marginLeft: theme.spacing.md,
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.sm,
     fontSize: 16,
-    color: '#1e293b',
+    color: theme.colors.neutral[900],
   },
   clearButton: {
-    padding: 8,
+    padding: theme.spacing.sm,
   },
   filterButton: {
     width: 48,
     height: 48,
-    borderRadius: 12,
-    backgroundColor: '#eff6ff',
+    borderRadius: theme.radii.md,
+    backgroundColor: theme.colors.primary[50],
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,

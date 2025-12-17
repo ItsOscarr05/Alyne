@@ -8,6 +8,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useCallback } from 'react';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
+import { theme } from '../../theme';
 
 export default function MessagesScreen() {
   const router = useRouter();
@@ -106,7 +107,10 @@ export default function MessagesScreen() {
           <Text style={styles.title}>Messages</Text>
         </View>
         <View style={styles.emptyState}>
-          <Text style={styles.emptyText}>Loading conversations...</Text>
+          <Text style={styles.emptyTitle}>Loading conversations...</Text>
+          <Text style={styles.emptyText}>
+            We&apos;re fetching your recent chats with providers.
+          </Text>
         </View>
       </View>
     );
@@ -156,40 +160,40 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: theme.colors.neutral[50],
   },
   header: {
-    padding: 24,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing['2xl'],
+    paddingBottom: theme.spacing.xl,
+    backgroundColor: theme.colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: theme.colors.neutral[200],
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    ...theme.typography.display,
+    color: theme.colors.neutral[900],
   },
   listContent: {
-    backgroundColor: '#ffffff',
+    backgroundColor: theme.colors.white,
   },
   emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
-    paddingHorizontal: 24,
+    paddingVertical: theme.spacing['2xl'],
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
-    marginTop: 24,
-    marginBottom: 8,
+    color: theme.colors.neutral[900],
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.sm,
   },
   emptyText: {
     fontSize: 14,
-    color: '#64748b',
+    color: theme.colors.neutral[500],
     textAlign: 'center',
     lineHeight: 20,
   },

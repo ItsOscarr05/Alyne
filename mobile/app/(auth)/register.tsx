@@ -1,10 +1,17 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { theme } from '../../theme';
+import { Button } from '../../components/ui/Button';
+import { FormField } from '../../components/ui/FormField';
+import { useModal } from '../../hooks/useModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const modal = useModal();
   const { register } = useAuth();
   const [userType, setUserType] = useState<'provider' | 'client' | null>(null);
   const [email, setEmail] = useState('');
@@ -15,12 +22,20 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!userType || !email || !password || !firstName || !lastName) {
-      Alert.alert('Error', 'Please fill in all fields');
+      modal.showAlert({
+        title: 'Required',
+        message: 'Please fill in all fields',
+        type: 'warning',
+      });
       return;
     }
 
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      modal.showAlert({
+        title: 'Invalid Password',
+        message: 'Password must be at least 8 characters',
+        type: 'warning',
+      });
       return;
     }
 
@@ -29,221 +44,269 @@ export default function RegisterScreen() {
       await register(email, password, firstName, lastName, userType);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.error?.message || error.message || 'An error occurred');
+      modal.showAlert({
+        title: 'Registration Failed',
+        message: error.response?.data?.error?.message || error.message || 'An error occurred',
+        type: 'error',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Create Account</Text>
-        <Text style={styles.subtitle}>Join the Alyne community</Text>
-      </View>
-
-      <View style={styles.form}>
-        <View style={styles.userTypeContainer}>
-          <Text style={styles.label}>I am a...</Text>
-          <View style={styles.userTypeButtons}>
-            <TouchableOpacity
-              style={[
-                styles.userTypeButton,
-                userType === 'provider' && styles.userTypeButtonActive,
-              ]}
-              onPress={() => setUserType('provider')}
-            >
-              <Text
-                style={[
-                  styles.userTypeButtonText,
-                  userType === 'provider' && styles.userTypeButtonTextActive,
-                ]}
-              >
-                Provider
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.userTypeButton,
-                userType === 'client' && styles.userTypeButtonActive,
-              ]}
-              onPress={() => setUserType('client')}
-            >
-              <Text
-                style={[
-                  styles.userTypeButtonText,
-                  userType === 'client' && styles.userTypeButtonTextActive,
-                ]}
-              >
-                Client
-              </Text>
-            </TouchableOpacity>
+    <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/welcome')}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+          </TouchableOpacity>
+          
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="person-add" size={32} color={theme.colors.white} />
+            </View>
+          </View>
+          
+          <View style={styles.headerContent}>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join the Alyne community</Text>
           </View>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>First Name</Text>
-          <TextInput
-            style={styles.input}
+        <View style={styles.form}>
+          <View style={styles.userTypeContainer}>
+            <Text style={styles.userTypeLabel}>I am a...</Text>
+            <View style={styles.userTypeButtons}>
+              <TouchableOpacity
+                style={[
+                  styles.userTypeButton,
+                  userType === 'provider' && styles.userTypeButtonActive,
+                ]}
+                onPress={() => setUserType('provider')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="business-outline"
+                  size={20}
+                  color={userType === 'provider' ? theme.colors.primary[500] : theme.colors.neutral[500]}
+                />
+                <Text
+                  style={[
+                    styles.userTypeButtonText,
+                    userType === 'provider' && styles.userTypeButtonTextActive,
+                  ]}
+                >
+                  Provider
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.userTypeButton,
+                  userType === 'client' && styles.userTypeButtonActive,
+                ]}
+                onPress={() => setUserType('client')}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={userType === 'client' ? theme.colors.primary[500] : theme.colors.neutral[500]}
+                />
+                <Text
+                  style={[
+                    styles.userTypeButtonText,
+                    userType === 'client' && styles.userTypeButtonTextActive,
+                  ]}
+                >
+                  Client
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <FormField
+            label="First Name"
             placeholder="Enter your first name"
             value={firstName}
             onChangeText={setFirstName}
+            autoCapitalize="words"
           />
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Last Name</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label="Last Name"
             placeholder="Enter your last name"
             value={lastName}
             onChangeText={setLastName}
+            autoCapitalize="words"
           />
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={styles.input}
+          <FormField
+            label="Email"
             placeholder="Enter your email"
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
             autoCapitalize="none"
           />
-        </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Create a password"
+          <FormField
+            label="Password"
+            placeholder="Create a password (min. 8 characters)"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
+
+          <Button
+            title="Create Account"
+            onPress={handleRegister}
+            loading={isLoading}
+            disabled={!userType || isLoading}
+            style={styles.primaryButton}
+          />
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+              <Text style={styles.footerLink}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </ScrollView>
 
-        <TouchableOpacity
-          style={[styles.button, (!userType || isLoading) && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={!userType || isLoading}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#ffffff" />
-          ) : (
-            <Text style={styles.buttonText}>Create Account</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => router.push('/(auth)/login')}
-        >
-          <Text style={styles.linkText}>
-            Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+      {/* Modal */}
+      {modal.alertOptions && (
+        <AlertModal
+          visible={modal.alertVisible}
+          onClose={modal.hideAlert}
+          title={modal.alertOptions.title}
+          message={modal.alertOptions.message}
+          type={modal.alertOptions.type}
+          buttonText={modal.alertOptions.buttonText}
+          onButtonPress={modal.alertOptions.onButtonPress}
+        />
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    padding: 24,
+    backgroundColor: theme.colors.white,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing['2xl'],
   },
   header: {
-    marginTop: 60,
-    marginBottom: 40,
+    alignItems: 'center',
+    marginTop: theme.spacing['2xl'],
+    marginBottom: theme.spacing['2xl'],
+  },
+  backButton: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    padding: theme.spacing.xs,
+    zIndex: 1,
+  },
+  logoContainer: {
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+  },
+  logoCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.card,
+  },
+  headerContent: {
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 8,
+    ...theme.typography.display,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.sm,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#64748b',
+    ...theme.typography.body,
+    color: theme.colors.neutral[500],
+    textAlign: 'center',
   },
   form: {
     flex: 1,
+    marginTop: theme.spacing.xl,
   },
   userTypeContainer: {
-    marginBottom: 24,
+    marginBottom: theme.spacing.xl,
+  },
+  userTypeLabel: {
+    ...theme.typography.body,
+    fontWeight: '600',
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.md,
   },
   userTypeButtons: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
+    gap: theme.spacing.md,
   },
   userTypeButton: {
     flex: 1,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: theme.spacing.lg,
+    borderRadius: theme.radii.md,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: theme.colors.neutral[200],
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.white,
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
   },
   userTypeButtonActive: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
+    borderColor: theme.colors.primary[500],
+    backgroundColor: theme.colors.primary[50],
   },
   userTypeButtonText: {
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
-    color: '#64748b',
+    color: theme.colors.neutral[500],
   },
   userTypeButtonTextActive: {
-    color: '#2563eb',
+    color: theme.colors.primary[500],
   },
-  inputContainer: {
-    marginBottom: 24,
+  primaryButton: {
+    marginTop: theme.spacing.xl,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    backgroundColor: '#ffffff',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 16,
-    borderRadius: 12,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.xl,
   },
-  buttonDisabled: {
-    backgroundColor: '#cbd5e1',
+  footerText: {
+    ...theme.typography.body,
+    color: theme.colors.neutral[500],
   },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  linkButton: {
-    marginTop: 24,
-    marginBottom: 40,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: '#64748b',
-    fontSize: 14,
-  },
-  linkTextBold: {
-    color: '#2563eb',
+  footerLink: {
+    ...theme.typography.body,
+    color: theme.colors.primary[500],
     fontWeight: '600',
   },
 });

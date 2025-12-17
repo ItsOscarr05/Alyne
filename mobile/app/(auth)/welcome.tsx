@@ -1,29 +1,81 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../../theme';
 
 export default function WelcomeScreen() {
   const router = useRouter();
 
+  const features = [
+    {
+      icon: 'search-outline',
+      title: 'Discover Providers',
+      description: 'Find trusted wellness professionals near you',
+    },
+    {
+      icon: 'calendar-outline',
+      title: 'Book Sessions',
+      description: 'Schedule appointments that work for you',
+    },
+    {
+      icon: 'chatbubbles-outline',
+      title: 'Stay Connected',
+      description: 'Message providers directly and securely',
+    },
+  ];
+
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Welcome to Alyne</Text>
-        <Text style={styles.subtitle}>
-          Connect with wellness professionals in your area
-        </Text>
-      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero Section */}
+        <View style={styles.heroSection}>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="heart" size={48} color={theme.colors.white} />
+            </View>
+          </View>
+          <Text style={styles.title}>Welcome to Alyne</Text>
+          <Text style={styles.subtitle}>
+            Connect with wellness professionals in your area
+          </Text>
+        </View>
 
+        {/* Features Section */}
+        <View style={styles.featuresSection}>
+          {features.map((feature, index) => (
+            <View key={index} style={styles.featureCard}>
+              <View style={styles.featureIconContainer}>
+                <Ionicons
+                  name={feature.icon as any}
+                  size={28}
+                  color={theme.colors.primary[500]}
+                />
+              </View>
+              <Text style={styles.featureTitle}>{feature.title}</Text>
+              <Text style={styles.featureDescription}>{feature.description}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      {/* Action Buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
-          style={[styles.button, styles.primaryButton]}
+          style={styles.primaryButton}
           onPress={() => router.push('/(auth)/register')}
+          activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Get Started</Text>
+          <Ionicons name="arrow-forward" size={20} color={theme.colors.white} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.button, styles.secondaryButton]}
+          style={styles.secondaryButton}
           onPress={() => router.push('/(auth)/login')}
+          activeOpacity={0.8}
         >
           <Text style={styles.secondaryButtonText}>Sign In</Text>
         </TouchableOpacity>
@@ -35,52 +87,118 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
-    padding: 24,
-    justifyContent: 'space-between',
+    backgroundColor: theme.colors.white,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: theme.spacing['2xl'],
+  },
+  heroSection: {
+    alignItems: 'center',
+    paddingTop: theme.spacing['2xl'] * 2,
+    paddingBottom: theme.spacing['2xl'],
+    paddingHorizontal: theme.spacing.xl,
+  },
+  logoContainer: {
+    marginBottom: theme.spacing.xl,
+  },
+  logoCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
+    ...theme.shadows.card,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 16,
+    ...theme.typography.display,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.md,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
-    color: '#64748b',
+    ...theme.typography.body,
+    color: theme.colors.neutral[500],
     textAlign: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: theme.spacing.xl,
+    lineHeight: 24,
   },
-  buttonContainer: {
-    gap: 12,
+  featuresSection: {
+    paddingHorizontal: theme.spacing.xl,
+    marginTop: theme.spacing['2xl'],
+    flexDirection: 'row',
+    gap: theme.spacing.md,
   },
-  button: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 12,
+  featureCard: {
+    flex: 1,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    ...theme.shadows.card,
     alignItems: 'center',
   },
+  featureIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: theme.radii.md,
+    backgroundColor: theme.colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  featureTitle: {
+    ...theme.typography.h2,
+    fontSize: 16,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  featureDescription: {
+    ...theme.typography.caption,
+    color: theme.colors.neutral[500],
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.lg,
+    backgroundColor: theme.colors.white,
+    gap: theme.spacing.md,
+  },
   primaryButton: {
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.colors.primary[500],
+    borderRadius: theme.radii.md,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    ...theme.shadows.card,
   },
   primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
+    color: theme.colors.white,
   },
   secondaryButton: {
-    backgroundColor: '#f1f5f9',
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.md,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
   },
   secondaryButtonText: {
-    color: '#2563eb',
-    fontSize: 16,
+    ...theme.typography.body,
     fontWeight: '600',
+    color: theme.colors.primary[500],
   },
 });
 

@@ -6,18 +6,19 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewService } from '../../services/review';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { useModal } from '../../hooks/useModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function SubmitReviewScreen() {
   const router = useRouter();
+  const modal = useModal();
   const { bookingId, providerId, providerName } = useLocalSearchParams<{
     bookingId: string;
     providerId: string;
@@ -42,17 +43,16 @@ export default function SubmitReviewScreen() {
         const result = await reviewService.getReviewByBooking(bookingId);
         if (result.data) {
           setHasExistingReview(true);
-          if (Platform.OS === 'web') {
-            alert('You have already submitted a review for this booking.');
-          } else {
-            Alert.alert('Already Reviewed', 'You have already submitted a review for this booking.', [
-              { text: 'OK', onPress: () => router.back() },
-            ]);
-          }
+          modal.showAlert({
+            title: 'Already Reviewed',
+            message: 'You have already submitted a review for this booking.',
+            type: 'info',
+            onButtonPress: () => router.back(),
+          });
           // Navigate back after a short delay
           setTimeout(() => {
             router.back();
-          }, 1000);
+          }, 1500);
         }
       } catch (error: any) {
         // Review doesn't exist, which is fine
@@ -67,20 +67,20 @@ export default function SubmitReviewScreen() {
 
   const handleSubmit = async () => {
     if (!rating) {
-      if (Platform.OS === 'web') {
-        alert('Please select a rating');
-      } else {
-        Alert.alert('Required', 'Please select a rating');
-      }
+      modal.showAlert({
+        title: 'Required',
+        message: 'Please select a rating',
+        type: 'warning',
+      });
       return;
     }
 
     if (!bookingId || !providerId) {
-      if (Platform.OS === 'web') {
-        alert('Error: Missing booking or provider information');
-      } else {
-        Alert.alert('Error', 'Missing booking or provider information');
-      }
+      modal.showAlert({
+        title: 'Error',
+        message: 'Missing booking or provider information',
+        type: 'error',
+      });
       return;
     }
 
@@ -95,20 +95,17 @@ export default function SubmitReviewScreen() {
       });
       console.log('Review submitted successfully:', result);
 
-      if (Platform.OS === 'web') {
-        alert('Thank you for your review!');
-        // Navigate back after a short delay
-        setTimeout(() => {
-          router.back();
-        }, 500);
-      } else {
-        Alert.alert('Success', 'Thank you for your review!', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]);
-      }
+      modal.showAlert({
+        title: 'Success',
+        message: 'Thank you for your review!',
+        type: 'success',
+        onButtonPress: () => router.back(),
+      });
+      
+      // Navigate back after a short delay
+      setTimeout(() => {
+        router.back();
+      }, 1500);
     } catch (error: any) {
       logger.error('Error submitting review', error);
       const errorMessage = getUserFriendlyError(error);
@@ -116,22 +113,21 @@ export default function SubmitReviewScreen() {
       
       // Handle "review already exists" error gracefully
       if (errorMessage.toLowerCase().includes('already exists') || errorMessage.toLowerCase().includes('already submitted')) {
-        if (Platform.OS === 'web') {
-          alert('You have already submitted a review for this booking.');
-        } else {
-          Alert.alert('Already Reviewed', 'You have already submitted a review for this booking.', [
-            { text: 'OK', onPress: () => router.back() },
-          ]);
-        }
+        modal.showAlert({
+          title: 'Already Reviewed',
+          message: 'You have already submitted a review for this booking.',
+          type: 'info',
+          onButtonPress: () => router.back(),
+        });
         setTimeout(() => {
           router.back();
-        }, 1000);
+        }, 1500);
       } else {
-        if (Platform.OS === 'web') {
-          alert(`${errorTitle}: ${errorMessage}`);
-        } else {
-          Alert.alert(errorTitle, errorMessage);
-        }
+        modal.showAlert({
+          title: errorTitle,
+          message: errorMessage,
+          type: 'error',
+        });
       }
     } finally {
       setSubmitting(false);
@@ -252,6 +248,19 @@ export default function SubmitReviewScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      
+      {/* Modal */}
+      {modal.alertOptions && (
+        <AlertModal
+          visible={modal.alertVisible}
+          onClose={modal.hideAlert}
+          title={modal.alertOptions.title}
+          message={modal.alertOptions.message}
+          type={modal.alertOptions.type}
+          buttonText={modal.alertOptions.buttonText}
+          onButtonPress={modal.alertOptions.onButtonPress}
+        />
+      )}
     </View>
   );
 }

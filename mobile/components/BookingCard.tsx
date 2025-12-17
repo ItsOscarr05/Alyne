@@ -1,5 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme';
 
 export interface BookingCardData {
   id: string;
@@ -18,9 +20,10 @@ export interface BookingCardData {
 interface BookingCardProps {
   booking: BookingCardData;
   onPress: () => void;
+  actionButton?: React.ReactNode;
 }
 
-export function BookingCard({ booking, onPress }: BookingCardProps) {
+export function BookingCard({ booking, onPress, actionButton }: BookingCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
@@ -83,32 +86,44 @@ export function BookingCard({ booking, onPress }: BookingCardProps) {
       <View style={styles.header}>
         <View style={styles.providerInfo}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {booking.providerName
-                .split(' ')
-                .map((n) => n[0])
-                .join('')}
-            </Text>
+            {booking.providerPhoto ? (
+              <Image
+                source={{ uri: booking.providerPhoto }}
+                style={styles.avatarImage}
+                contentFit="cover"
+              />
+            ) : (
+              <Text style={styles.avatarText}>
+                {booking.providerName
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')}
+              </Text>
+            )}
           </View>
           <View style={styles.providerDetails}>
             <Text style={styles.providerName}>{booking.providerName}</Text>
             <Text style={styles.serviceName}>{booking.serviceName}</Text>
           </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
-            {getStatusText(booking.status)}
-          </Text>
+        <View style={styles.headerRight}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
+            <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
+              {getStatusText(booking.status)}
+            </Text>
+          </View>
         </View>
       </View>
 
       <View style={styles.details}>
-        <View style={styles.detailRow}>
-          <Ionicons name="calendar-outline" size={16} color="#64748b" />
-          <Text style={styles.detailText}>
-            {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
-          </Text>
-        </View>
+        {!actionButton && (
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={16} color="#64748b" />
+            <Text style={styles.detailText}>
+              {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
+            </Text>
+          </View>
+        )}
 
         {booking.location && (
           <View style={styles.detailRow}>
@@ -117,11 +132,33 @@ export function BookingCard({ booking, onPress }: BookingCardProps) {
           </View>
         )}
 
-        <View style={styles.detailRow}>
-          <Ionicons name="cash-outline" size={16} color="#64748b" />
-          <Text style={styles.detailText}>${booking.price}</Text>
-        </View>
+        {!actionButton && (
+          <View style={styles.detailRow}>
+            <Ionicons name="cash-outline" size={16} color="#64748b" />
+            <Text style={styles.detailText}>${booking.price}</Text>
+          </View>
+        )}
       </View>
+
+      {actionButton && (
+        <View style={styles.bottomRow}>
+          <View style={styles.bottomRowLeft}>
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar-outline" size={16} color="#64748b" />
+              <Text style={styles.detailText}>
+                {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
+              </Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="cash-outline" size={16} color="#64748b" />
+              <Text style={styles.detailText}>${booking.price}</Text>
+            </View>
+          </View>
+          <View style={styles.actionContainer}>
+            {actionButton}
+          </View>
+        </View>
+      )}
 
       {booking.notes && (
         <View style={styles.notesContainer}>
@@ -151,6 +188,10 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
+  headerRight: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   providerInfo: {
     flexDirection: 'row',
     flex: 1,
@@ -160,14 +201,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#2563eb',
+    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
+    color: theme.colors.white,
   },
   providerDetails: {
     flex: 1,
@@ -220,6 +266,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e293b',
     lineHeight: 20,
+  },
+  bottomRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  bottomRowLeft: {
+    flex: 1,
+    gap: 8,
+  },
+  actionContainer: {
+    alignItems: 'flex-end',
   },
 });
 
