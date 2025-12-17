@@ -27,11 +27,11 @@ export function BookingCard({ booking, onPress, actionButton }: BookingCardProps
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
-        return '#10b981';
+        return '#9333EA';
       case 'PENDING':
         return '#f59e0b';
       case 'COMPLETED':
-        return '#6366f1';
+        return '#16A34A';
       case 'CANCELLED':
         return '#ef4444';
       case 'DECLINED':
@@ -82,7 +82,11 @@ export function BookingCard({ booking, onPress, actionButton }: BookingCardProps
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity 
+      style={[styles.card, { borderColor: getStatusColor(booking.status), borderWidth: 2 }]} 
+      onPress={onPress} 
+      activeOpacity={0.7}
+    >
       <View style={styles.header}>
         <View style={styles.providerInfo}>
           <View style={styles.avatar}>
@@ -176,6 +180,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
+    borderWidth: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,

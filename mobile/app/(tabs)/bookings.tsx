@@ -1,6 +1,15 @@
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, RefreshControl, TouchableOpacity } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  Animated,
+} from 'react-native';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BookingCard, BookingCardData } from '../../components/BookingCard';
 import { bookingService, BookingDetail } from '../../services/booking';
@@ -14,6 +23,7 @@ import { theme } from '../../theme';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { mockBookings } from '../../data/mockBookings';
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -24,7 +34,44 @@ export default function BookingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming');
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'past'>('pending');
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const prevTabRef = useRef<'pending' | 'upcoming' | 'past'>('pending');
+
+  // Animate tab switch
+  const handleTabChange = (tab: 'pending' | 'upcoming' | 'past') => {
+    setActiveTab(tab);
+  };
+
+  // Animate when activeTab changes
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab) {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab, fadeAnim]);
+
+  // Check for initial tab from route params
+  useEffect(() => {
+    if (params.tab && ['pending', 'upcoming', 'past'].includes(params.tab)) {
+      const tab = params.tab as 'pending' | 'upcoming' | 'past';
+      if (tab !== activeTab) {
+        setActiveTab(tab);
+      }
+    }
+  }, [params.tab]);
 
   const loadBookings = useCallback(async () => {
     try {
@@ -37,7 +84,6 @@ export default function BookingsScreen() {
       logger.error('Error loading bookings', error);
       // Fallback to mock data if API fails
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-        const { mockBookings } = await import('../../data/mockBookings');
         setBookings(mockBookings as any);
       } else {
         modal.showAlert({
@@ -78,7 +124,7 @@ export default function BookingsScreen() {
 
     const completedBookings = bookings.filter((b) => b.status === 'COMPLETED');
     const reviewed = new Set<string>();
-    
+
     for (const booking of completedBookings) {
       try {
         const review = await reviewService.getReviewByBooking(booking.id);
@@ -89,7 +135,7 @@ export default function BookingsScreen() {
         // Review doesn't exist, that's fine
       }
     }
-    
+
     setReviewedBookings(reviewed);
   }, [bookings, user]);
 
@@ -109,7 +155,10 @@ export default function BookingsScreen() {
   // Listen for real-time booking updates
   useEffect(() => {
     const unsubscribe = onBookingUpdate((data) => {
-      logger.debug('Booking updated via Socket.io', { bookingId: data.id, status: data.status });
+      logger.debug('Booking updated via Socket.io', {
+        bookingId: data.bookingId,
+        status: data.status,
+      });
       // Refresh bookings when a booking status changes
       if (user && !authLoading) {
         loadBookings();
@@ -119,12 +168,12 @@ export default function BookingsScreen() {
     return unsubscribe;
   }, [onBookingUpdate, user, authLoading, loadBookings]);
 
-  const upcomingBookings = bookings.filter(
-    (b) => b.status === 'PENDING' || b.status === 'CONFIRMED'
-  );
-  const pastBookings = bookings.filter(
-    (b) => b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'DECLINED'
-  );
+  const pendingBookings = bookings.filter((b) => b.status === 'PENDING');
+  const upcomingBookings = bookings.filter((b) => b.status === 'CONFIRMED');
+  const pastBookings = bookings.filter((b) => {
+    const status: string = b.status;
+    return status === 'COMPLETED' || status === 'CANCELLED' || status === 'DECLINED';
+  });
 
   const handleBookingPress = (bookingId: string) => {
     router.push({
@@ -177,7 +226,8 @@ export default function BookingsScreen() {
   const handleComplete = async (bookingId: string) => {
     modal.showConfirm({
       title: 'Mark as Completed',
-      message: 'Are you sure you want to mark this booking as completed? The client will be able to leave a review.',
+      message:
+        'Are you sure you want to mark this booking as completed? The client will be able to leave a review.',
       type: 'info',
       confirmText: 'Complete',
       onConfirm: async () => {
@@ -259,9 +309,12 @@ export default function BookingsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.emptyState}>
+            <Ionicons name="calendar-outline" size={160} color="#93C5FD" />
             <Text style={styles.emptyTitle}>No bookings yet</Text>
             <Text style={styles.emptyText}>
-              When you book a session with a provider, it will appear here
+              {user?.userType === 'PROVIDER'
+                ? 'When clients request sessions, they will appear here'
+                : 'When you book a session with a provider, it will appear here'}
             </Text>
           </View>
         </ScrollView>
@@ -272,11 +325,22 @@ export default function BookingsScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>My Bookings</Text>
+        <Text style={styles.title}>
+          {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
+        </Text>
         <View style={styles.tabContainer}>
           <TouchableOpacity
+            style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
+            onPress={() => handleTabChange('pending')}
+            activeOpacity={0.8}
+          >
+            <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
+              Pending
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
-            onPress={() => setActiveTab('upcoming')}
+            onPress={() => handleTabChange('upcoming')}
             activeOpacity={0.8}
           >
             <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
@@ -285,7 +349,7 @@ export default function BookingsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, activeTab === 'past' && styles.tabActive]}
-            onPress={() => setActiveTab('past')}
+            onPress={() => handleTabChange('past')}
             activeOpacity={0.8}
           >
             <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
@@ -300,159 +364,211 @@ export default function BookingsScreen() {
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {activeTab === 'upcoming' ? (
-          <View style={styles.section}>
-            {upcomingBookings.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No upcoming bookings</Text>
-                <Text style={styles.emptyText}>
-                  When you schedule a session, it will appear here.
-                </Text>
-              </View>
-            ) : (
-              upcomingBookings.map((booking) => {
-              const bookingCardData: BookingCardData = {
-                id: booking.id,
-                providerId: booking.providerId,
-                providerName: booking.provider
-                  ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                  : 'Unknown Provider',
-                providerPhoto: booking.provider?.profilePhoto || undefined,
-                serviceName: booking.service?.name || 'Service',
-                status: booking.status,
-                scheduledDate: booking.scheduledDate,
-                scheduledTime: booking.scheduledTime,
-                price: booking.price,
-                location: booking.location
-                  ? typeof booking.location === 'string'
-                    ? booking.location
-                    : booking.location.address
-                  : undefined,
-                notes: booking.notes || undefined,
-              };
-
-              const showCompleteButton = user?.userType === 'PROVIDER' && booking.status === 'CONFIRMED';
-              
-              // Determine action button for client confirmed bookings
-              const actionButton = user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' ? (
-                booking.payment?.status === 'completed' ? (
-                  <View style={styles.paidButton}>
-                    <Ionicons name="checkmark-circle" size={18} color="#64748b" />
-                    <Text style={styles.paidButtonText}>Paid</Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.paymentButton}
-                    onPress={() => handlePayment(booking.id)}
-                  >
-                    <Ionicons name="card-outline" size={18} color="#ffffff" />
-                    <Text style={styles.paymentButtonText}>Pay Now</Text>
-                  </TouchableOpacity>
-                )
-              ) : undefined;
-              
-                return (
-                  <View key={booking.id}>
-                    <BookingCard
-                      booking={bookingCardData}
-                      onPress={() => handleBookingPress(booking.id)}
-                      actionButton={actionButton}
-                    />
-                    {user?.userType === 'PROVIDER' && booking.status === 'PENDING' && (
-                      <View style={styles.actionButtons}>
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.acceptButton]}
-                          onPress={() => handleAccept(booking.id)}
-                        >
-                          <Text style={styles.acceptButtonText}>Accept</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[styles.actionButton, styles.declineButton]}
-                          onPress={() => handleDecline(booking.id)}
-                        >
-                          <Text style={styles.declineButtonText}>Decline</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                    {showCompleteButton && (
-                      <TouchableOpacity
-                        style={styles.completeButton}
-                        onPress={() => handleComplete(booking.id)}
-                      >
-                        <Ionicons name="checkmark-circle-outline" size={18} color="#ffffff" />
-                        <Text style={styles.completeButtonText}>Mark as Completed</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                );
-              })
-            )}
-          </View>
-        ) : (
-          <View style={styles.section}>
-            {pastBookings.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>No completed bookings yet</Text>
-                <Text style={styles.emptyText}>
-                  Completed and cancelled sessions will appear here.
-                </Text>
-              </View>
-            ) : (
-              pastBookings.map((booking) => {
-              const bookingCardData: BookingCardData = {
-                id: booking.id,
-                providerId: booking.providerId,
-                providerName: booking.provider
-                  ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                  : 'Unknown Provider',
-                providerPhoto: booking.provider?.profilePhoto || undefined,
-                serviceName: booking.service?.name || 'Service',
-                status: booking.status,
-                scheduledDate: booking.scheduledDate,
-                scheduledTime: booking.scheduledTime,
-                price: booking.price,
-                location: booking.location
-                  ? typeof booking.location === 'string'
-                    ? booking.location
-                    : booking.location.address
-                  : undefined,
-                notes: booking.notes || undefined,
-              };
-
-              const hasReview = reviewedBookings.has(booking.id);
-              const canReview = booking.status === 'COMPLETED' && user?.userType === 'CLIENT' && !hasReview;
-
-              // Determine action button for past bookings
-              const actionButton = canReview ? (
-                <TouchableOpacity
-                  style={styles.reviewButton}
-                  onPress={() => handleReview(booking)}
-                >
-                  <Ionicons name="star-outline" size={18} color="#2563eb" />
-                  <Text style={styles.reviewButtonText}>Write a Review</Text>
-                </TouchableOpacity>
-              ) : hasReview ? (
-                <View style={styles.reviewedButton}>
-                  <Ionicons name="checkmark-circle" size={18} color="#64748b" />
-                  <Text style={styles.reviewedButtonText}>Reviewed</Text>
+        <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+          {activeTab === 'pending' ? (
+            <View style={styles.section}>
+              {pendingBookings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="time-outline" size={160} color="#93C5FD" />
+                  <Text style={styles.emptyTitle}>No pending bookings</Text>
+                  <Text style={styles.emptyText}>
+                    {user?.userType === 'PROVIDER'
+                      ? 'When clients request sessions, they will appear here'
+                      : 'When you request a session, it will appear here'}
+                  </Text>
                 </View>
-              ) : undefined;
+              ) : (
+                pendingBookings.map((booking) => {
+                  const bookingCardData: BookingCardData = {
+                    id: booking.id,
+                    providerId: booking.providerId,
+                    providerName: booking.provider
+                      ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                      : 'Unknown Provider',
+                    providerPhoto: booking.provider?.profilePhoto || undefined,
+                    serviceName: booking.service?.name || 'Service',
+                    status: booking.status,
+                    scheduledDate: booking.scheduledDate,
+                    scheduledTime: booking.scheduledTime,
+                    price: booking.price,
+                    location: booking.location
+                      ? typeof booking.location === 'string'
+                        ? booking.location
+                        : booking.location.address
+                      : undefined,
+                    notes: booking.notes || undefined,
+                  };
 
-                return (
-                  <View key={booking.id}>
-                    <BookingCard
-                      booking={bookingCardData}
-                      onPress={() => handleBookingPress(booking.id)}
-                      actionButton={actionButton}
-                    />
-                  </View>
-                );
-              })
-            )}
-          </View>
-        )}
+                  return (
+                    <View key={booking.id}>
+                      <BookingCard
+                        booking={bookingCardData}
+                        onPress={() => handleBookingPress(booking.id)}
+                      />
+                      {user?.userType === 'PROVIDER' && booking.status === 'PENDING' && (
+                        <View style={styles.actionButtons}>
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.acceptButton]}
+                            onPress={() => handleAccept(booking.id)}
+                          >
+                            <Text style={styles.acceptButtonText}>Accept</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.actionButton, styles.declineButton]}
+                            onPress={() => handleDecline(booking.id)}
+                          >
+                            <Text style={styles.declineButtonText}>Decline</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          ) : activeTab === 'upcoming' ? (
+            <View style={styles.section}>
+              {upcomingBookings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="calendar-outline" size={160} color="#93C5FD" />
+                  <Text style={styles.emptyTitle}>No upcoming bookings</Text>
+                  <Text style={styles.emptyText}>
+                    When you schedule a session, it will appear here.
+                  </Text>
+                </View>
+              ) : (
+                upcomingBookings.map((booking) => {
+                  const bookingCardData: BookingCardData = {
+                    id: booking.id,
+                    providerId: booking.providerId,
+                    providerName: booking.provider
+                      ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                      : 'Unknown Provider',
+                    providerPhoto: booking.provider?.profilePhoto || undefined,
+                    serviceName: booking.service?.name || 'Service',
+                    status: booking.status,
+                    scheduledDate: booking.scheduledDate,
+                    scheduledTime: booking.scheduledTime,
+                    price: booking.price,
+                    location: booking.location
+                      ? typeof booking.location === 'string'
+                        ? booking.location
+                        : booking.location.address
+                      : undefined,
+                    notes: booking.notes || undefined,
+                  };
+
+                  const showCompleteButton =
+                    user?.userType === 'PROVIDER' && booking.status === 'CONFIRMED';
+
+                  // Determine action button for client confirmed bookings
+                  const actionButton =
+                    user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' ? (
+                      booking.payment?.status === 'completed' ? (
+                        <View style={styles.paidButton}>
+                          <Ionicons name="checkmark-circle" size={18} color="#64748b" />
+                          <Text style={styles.paidButtonText}>Paid</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.paymentButton}
+                          onPress={() => handlePayment(booking.id)}
+                        >
+                          <Ionicons name="card-outline" size={18} color="#ffffff" />
+                          <Text style={styles.paymentButtonText}>Pay Now</Text>
+                        </TouchableOpacity>
+                      )
+                    ) : undefined;
+
+                  return (
+                    <View key={booking.id}>
+                      <BookingCard
+                        booking={bookingCardData}
+                        onPress={() => handleBookingPress(booking.id)}
+                        actionButton={actionButton}
+                      />
+                      {showCompleteButton && (
+                        <TouchableOpacity
+                          style={styles.completeButton}
+                          onPress={() => handleComplete(booking.id)}
+                        >
+                          <Ionicons name="checkmark-circle-outline" size={18} color="#ffffff" />
+                          <Text style={styles.completeButtonText}>Mark as Completed</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          ) : (
+            <View style={styles.section}>
+              {pastBookings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="checkmark-circle-outline" size={160} color="#93C5FD" />
+                  <Text style={styles.emptyTitle}>No completed bookings yet</Text>
+                  <Text style={styles.emptyText}>
+                    Completed and cancelled sessions will appear here.
+                  </Text>
+                </View>
+              ) : (
+                pastBookings.map((booking) => {
+                  const bookingCardData: BookingCardData = {
+                    id: booking.id,
+                    providerId: booking.providerId,
+                    providerName: booking.provider
+                      ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                      : 'Unknown Provider',
+                    providerPhoto: booking.provider?.profilePhoto || undefined,
+                    serviceName: booking.service?.name || 'Service',
+                    status: booking.status,
+                    scheduledDate: booking.scheduledDate,
+                    scheduledTime: booking.scheduledTime,
+                    price: booking.price,
+                    location: booking.location
+                      ? typeof booking.location === 'string'
+                        ? booking.location
+                        : booking.location.address
+                      : undefined,
+                    notes: booking.notes || undefined,
+                  };
+
+                  const hasReview = reviewedBookings.has(booking.id);
+                  const canReview =
+                    booking.status === 'COMPLETED' && user?.userType === 'CLIENT' && !hasReview;
+
+                  // Determine action button for past bookings
+                  const actionButton = canReview ? (
+                    <TouchableOpacity
+                      style={styles.reviewButton}
+                      onPress={() => handleReview(booking)}
+                    >
+                      <Ionicons name="star-outline" size={18} color="#2563eb" />
+                      <Text style={styles.reviewButtonText}>Write a Review</Text>
+                    </TouchableOpacity>
+                  ) : hasReview ? (
+                    <View style={styles.reviewedButton}>
+                      <Ionicons name="checkmark-circle" size={18} color="#64748b" />
+                      <Text style={styles.reviewedButtonText}>Reviewed</Text>
+                    </View>
+                  ) : undefined;
+
+                  return (
+                    <View key={booking.id}>
+                      <BookingCard
+                        booking={bookingCardData}
+                        onPress={() => handleBookingPress(booking.id)}
+                        actionButton={actionButton}
+                      />
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </Animated.View>
       </ScrollView>
-      
+
       {/* Modals */}
       {modal.alertOptions && (
         <AlertModal
@@ -547,6 +663,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing['2xl'],
     paddingHorizontal: theme.spacing.xl,
+    minHeight: 400,
   },
   emptyTitle: {
     fontSize: 20,
@@ -560,6 +677,7 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[500],
     textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 280,
   },
   loadingContainer: {
     flex: 1,
@@ -678,4 +796,3 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 });
-

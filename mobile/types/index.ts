@@ -1,5 +1,5 @@
 // User Types
-export type UserType = 'provider' | 'client';
+export type UserType = 'PROVIDER' | 'CLIENT';
 
 export interface User {
   id: string;

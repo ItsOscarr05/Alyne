@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { ConversationItem } from '../../components/ConversationItem';
 import { messageService, Conversation } from '../../services/message';
 import { useSocket } from '../../hooks/useSocket';
@@ -107,6 +108,7 @@ export default function MessagesScreen() {
           <Text style={styles.title}>Messages</Text>
         </View>
         <View style={styles.emptyState}>
+          <Ionicons name="chatbubbles-outline" size={160} color={theme.colors.neutral[200]} />
           <Text style={styles.emptyTitle}>Loading conversations...</Text>
           <Text style={styles.emptyText}>
             We&apos;re fetching your recent chats with providers.
@@ -123,6 +125,7 @@ export default function MessagesScreen() {
           <Text style={styles.title}>Messages</Text>
         </View>
         <View style={styles.emptyState}>
+          <Ionicons name="chatbubbles-outline" size={160} color={theme.colors.neutral[200]} />
           <Text style={styles.emptyTitle}>No messages yet</Text>
           <Text style={styles.emptyText}>
             Start a conversation with a provider to discuss bookings and services
@@ -183,6 +186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing['2xl'],
     paddingHorizontal: theme.spacing.xl,
+    minHeight: 400,
   },
   emptyTitle: {
     fontSize: 20,
@@ -196,6 +200,7 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[500],
     textAlign: 'center',
     lineHeight: 20,
+    maxWidth: 280,
   },
 });
 

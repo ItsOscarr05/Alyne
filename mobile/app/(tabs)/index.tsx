@@ -1,55 +1,66 @@
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity, Modal as RNModal } from 'react-native';
-import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  Modal as RNModal,
+} from 'react-native';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { SearchBar } from '../../components/SearchBar';
 import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
 import { providerService, DiscoveryFilters } from '../../services/provider';
+import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
+import { mockProviders } from '../../data/mockProviders';
 
 export default function DiscoverScreen() {
   const router = useRouter();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'rating' | 'price' | 'distance' | 'reviews'>('all');
+  const [activeFilter, setActiveFilter] = useState<
+    'all' | 'rating' | 'price' | 'distance' | 'reviews'
+  >('all');
   const [showDropdown, setShowDropdown] = useState(false);
-  const [dropdownFilter, setDropdownFilter] = useState<'rating' | 'price' | 'distance' | 'reviews' | null>(null);
-  
+  const [dropdownFilter, setDropdownFilter] = useState<
+    'rating' | 'price' | 'distance' | 'reviews' | null
+  >(null);
+
   // Filter option states
   const [ratingOption, setRatingOption] = useState<number | null>(null); // 1-5 stars
   const [priceOption, setPriceOption] = useState<'asc' | 'desc' | null>(null);
   const [distanceOption, setDistanceOption] = useState<number | null>(null); // miles: 1, 5, 10, 15, 20+
   const [reviewsOption, setReviewsOption] = useState<'highest' | 'lowest' | null>(null);
 
+  // Redirect providers to dashboard
   useEffect(() => {
-    requestLocationPermission();
-  }, []);
-
-  useEffect(() => {
-    loadProviders();
-  }, [searchQuery, userLocation, activeFilter, ratingOption, priceOption, distanceOption, reviewsOption]);
-
-  const requestLocationPermission = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        });
+    // Wait a tick to ensure router is mounted
+    const timer = setTimeout(() => {
+      if (user?.userType === 'PROVIDER') {
+        router.replace('/(tabs)/dashboard');
       }
-    } catch (error) {
-      logger.error('Error getting location', error);
-    }
-  };
+    }, 0);
 
-  const loadProviders = async () => {
+    return () => clearTimeout(timer);
+  }, [user, router]);
+
+  useEffect(() => {
+    if (user?.userType !== 'PROVIDER') {
+      requestLocationPermission();
+    }
+  }, [user]);
+
+  const loadProviders = useCallback(async () => {
     setIsLoading(true);
     try {
       const filters: DiscoveryFilters = {
@@ -75,7 +86,7 @@ export default function DiscoverScreen() {
       }
 
       let results = await providerService.discover(filters);
-      
+
       // Apply client-side sorting based on active filter and options
       if (activeFilter === 'rating' && ratingOption !== null) {
         results = results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
@@ -102,25 +113,51 @@ export default function DiscoverScreen() {
         }
       }
       // 'all' filter doesn't need sorting
-      
+
       setProviders(results);
     } catch (error: any) {
       logger.error('Error loading providers', error);
       // Fallback to mock data if API fails
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-        Alert.alert(
-          'Connection Error',
-          'Unable to connect to server. Using demo data.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Connection Error', 'Unable to connect to server. Using demo data.', [
+          { text: 'OK' },
+        ]);
         // Use mock data as fallback
-        const { mockProviders } = await import('../../data/mockProviders');
         setProviders(mockProviders);
       } else {
         Alert.alert('Error', 'Failed to load providers');
       }
     } finally {
       setIsLoading(false);
+    }
+  }, [
+    searchQuery,
+    userLocation,
+    activeFilter,
+    ratingOption,
+    priceOption,
+    distanceOption,
+    reviewsOption,
+  ]);
+
+  useEffect(() => {
+    if (user?.userType !== 'PROVIDER') {
+      loadProviders();
+    }
+  }, [loadProviders, user]);
+
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      logger.error('Error getting location', error);
     }
   };
 
@@ -172,6 +209,11 @@ export default function DiscoverScreen() {
     setDropdownFilter(null);
   };
 
+  // Don't render discover screen for providers (but all hooks must still be called)
+  if (user?.userType === 'PROVIDER') {
+    return null;
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -202,67 +244,127 @@ export default function DiscoverScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterPill, (activeFilter === 'rating' || ratingOption !== null) && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  (activeFilter === 'rating' || ratingOption !== null) && styles.filterPillActive,
+                ]}
                 onPress={() => handleFilterPress('rating')}
                 activeOpacity={0.8}
               >
                 <Text
                   style={
-                    (activeFilter === 'rating' || ratingOption !== null) ? styles.filterPillTextActive : styles.filterPillText
+                    activeFilter === 'rating' || ratingOption !== null
+                      ? styles.filterPillTextActive
+                      : styles.filterPillText
                   }
                   numberOfLines={1}
                 >
                   {ratingOption !== null ? `${ratingOption}★+` : 'Rating'}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color={(activeFilter === 'rating' || ratingOption !== null) ? theme.colors.neutral[900] : theme.colors.neutral[500]} />
+                <Ionicons
+                  name="chevron-down"
+                  size={14}
+                  color={
+                    activeFilter === 'rating' || ratingOption !== null
+                      ? theme.colors.neutral[900]
+                      : theme.colors.neutral[500]
+                  }
+                />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterPill, (activeFilter === 'price' || priceOption !== null) && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  (activeFilter === 'price' || priceOption !== null) && styles.filterPillActive,
+                ]}
                 onPress={() => handleFilterPress('price')}
                 activeOpacity={0.8}
               >
                 <Text
                   style={
-                    (activeFilter === 'price' || priceOption !== null) ? styles.filterPillTextActive : styles.filterPillText
+                    activeFilter === 'price' || priceOption !== null
+                      ? styles.filterPillTextActive
+                      : styles.filterPillText
                   }
                   numberOfLines={1}
                 >
                   {priceOption !== null ? `Price (${priceOption === 'asc' ? '↑' : '↓'})` : 'Price'}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color={(activeFilter === 'price' || priceOption !== null) ? theme.colors.neutral[900] : theme.colors.neutral[500]} />
+                <Ionicons
+                  name="chevron-down"
+                  size={14}
+                  color={
+                    activeFilter === 'price' || priceOption !== null
+                      ? theme.colors.neutral[900]
+                      : theme.colors.neutral[500]
+                  }
+                />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterPill, (activeFilter === 'distance' || distanceOption !== null) && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  (activeFilter === 'distance' || distanceOption !== null) &&
+                    styles.filterPillActive,
+                ]}
                 onPress={() => handleFilterPress('distance')}
                 activeOpacity={0.8}
               >
                 <Text
                   style={
-                    (activeFilter === 'distance' || distanceOption !== null) ? styles.filterPillTextActive : styles.filterPillText
+                    activeFilter === 'distance' || distanceOption !== null
+                      ? styles.filterPillTextActive
+                      : styles.filterPillText
                   }
                   numberOfLines={1}
                 >
-                  {distanceOption !== null ? `${distanceOption === 20 ? '20+' : distanceOption}mi` : 'Distance'}
+                  {distanceOption !== null
+                    ? `${distanceOption === 20 ? '20+' : distanceOption}mi`
+                    : 'Distance'}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color={(activeFilter === 'distance' || distanceOption !== null) ? theme.colors.neutral[900] : theme.colors.neutral[500]} />
+                <Ionicons
+                  name="chevron-down"
+                  size={14}
+                  color={
+                    activeFilter === 'distance' || distanceOption !== null
+                      ? theme.colors.neutral[900]
+                      : theme.colors.neutral[500]
+                  }
+                />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.filterPill, (activeFilter === 'reviews' || reviewsOption !== null) && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  (activeFilter === 'reviews' || reviewsOption !== null) && styles.filterPillActive,
+                ]}
                 onPress={() => handleFilterPress('reviews')}
                 activeOpacity={0.8}
               >
                 <Text
                   style={
-                    (activeFilter === 'reviews' || reviewsOption !== null) ? styles.filterPillTextActive : styles.filterPillText
+                    activeFilter === 'reviews' || reviewsOption !== null
+                      ? styles.filterPillTextActive
+                      : styles.filterPillText
                   }
                   numberOfLines={1}
                 >
-                  {reviewsOption !== null ? `Reviews (${reviewsOption === 'highest' ? '↑' : '↓'})` : 'Reviews'}
+                  {reviewsOption !== null
+                    ? `Reviews (${reviewsOption === 'highest' ? '↑' : '↓'})`
+                    : 'Reviews'}
                 </Text>
-                <Ionicons name="chevron-down" size={14} color={(activeFilter === 'reviews' || reviewsOption !== null) ? theme.colors.neutral[900] : theme.colors.neutral[500]} />
+                <Ionicons
+                  name="chevron-down"
+                  size={14}
+                  color={
+                    activeFilter === 'reviews' || reviewsOption !== null
+                      ? theme.colors.neutral[900]
+                      : theme.colors.neutral[500]
+                  }
+                />
               </TouchableOpacity>
             </View>
-            {(ratingOption !== null || priceOption !== null || distanceOption !== null || reviewsOption !== null) && (
+            {(ratingOption !== null ||
+              priceOption !== null ||
+              distanceOption !== null ||
+              reviewsOption !== null) && (
               <TouchableOpacity
                 style={styles.clearFiltersButton}
                 onPress={handleClearFilters}
@@ -290,10 +392,7 @@ export default function DiscoverScreen() {
             data={providers}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <ProviderCard
-                provider={item}
-                onPress={() => handleProviderPress(item.id)}
-              />
+              <ProviderCard provider={item} onPress={() => handleProviderPress(item.id)} />
             )}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
@@ -600,4 +699,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

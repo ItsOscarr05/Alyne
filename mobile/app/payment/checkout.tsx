@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
 import { bookingService } from '../../services/booking';
 import { plaidService } from '../../services/plaid';
+import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import Constants from 'expo-constants';
@@ -369,6 +370,18 @@ function WebPaymentForm({
 export default function PaymentCheckoutScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const { user } = useAuth();
+  
+  // Redirect providers - they don't make payments
+  useEffect(() => {
+    if (user?.userType === 'PROVIDER') {
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [user, router]);
+  
+  if (user?.userType === 'PROVIDER') {
+    return null;
+  }
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [booking, setBooking] = useState<any>(null);

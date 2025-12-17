@@ -13,6 +13,7 @@ import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { providerService, ProviderDetail, Service } from '../../services/provider';
 import { bookingService, CreateBookingData } from '../../services/booking';
+import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useModal } from '../../hooks/useModal';
@@ -21,7 +22,19 @@ import { AlertModal } from '../../components/ui/AlertModal';
 export default function CreateBookingScreen() {
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
   const router = useRouter();
+  const { user } = useAuth();
   const modal = useModal();
+  
+  // Redirect providers - they can't create bookings
+  useEffect(() => {
+    if (user?.userType === 'PROVIDER') {
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [user, router]);
+  
+  if (user?.userType === 'PROVIDER') {
+    return null;
+  }
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');

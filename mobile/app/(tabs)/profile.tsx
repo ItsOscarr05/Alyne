@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -15,6 +16,8 @@ interface ProviderProfile {
   services: Array<{ id: string; name: string; price: number; duration: number }>;
   credentials: Array<{ id: string; name: string; issuer: string | null }>;
   availability: Array<{ id: string; dayOfWeek: number; startTime: string; endTime: string }>;
+  rating?: number;
+  reviewCount?: number;
 }
 
 export default function ProfileScreen() {
@@ -51,6 +54,8 @@ export default function ProfileScreen() {
           services: Array.isArray(profile.services) ? profile.services : [],
           credentials: Array.isArray(profile.credentials) ? profile.credentials : [],
           availability: Array.isArray(profile.availability) ? profile.availability : [],
+          rating: profile.rating || 0,
+          reviewCount: profile.reviewCount || 0,
         });
         logger.debug('Provider profile state set', {
           bio: profile.bio,
@@ -76,56 +81,145 @@ export default function ProfileScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Profile</Text>
+        <Text style={styles.title}>
+          {user?.userType === 'PROVIDER' ? 'Provider Profile' : 'Profile'}
+        </Text>
       </View>
 
       <ScrollView style={styles.content}>
         {user && (
-          <View style={styles.profileSection}>
-            <View style={styles.profileCard}>
-              <View style={styles.profileHeader}>
-                <TouchableOpacity
-                  style={styles.editButton}
-                  onPress={() =>
-                    user.userType === 'PROVIDER'
-                      ? router.push('/provider/onboarding')
-                      : router.push('/settings/edit-profile')
-                  }
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="create-outline" size={20} color={theme.colors.primary[500]} />
-                </TouchableOpacity>
-                <View style={styles.avatarWrapper}>
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {user.firstName[0]}
-                      {user.lastName[0]}
-                    </Text>
+          <>
+            {/* Hero Section - Provider Only */}
+            {user.userType === 'PROVIDER' ? (
+              <View style={styles.heroSection}>
+                <View style={styles.heroContent}>
+                  <TouchableOpacity
+                    style={styles.heroEditButton}
+                    onPress={() => router.push('/provider/onboarding')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="create-outline" size={20} color={theme.colors.primary[500]} />
+                  </TouchableOpacity>
+                  <View style={styles.heroAvatarContainer}>
+                    <View style={styles.heroAvatar}>
+                      {user.profilePhoto ? (
+                        <Image
+                          source={{ uri: user.profilePhoto }}
+                          style={styles.heroAvatarImage}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <Text style={styles.heroAvatarText}>
+                          {user.firstName[0]}
+                          {user.lastName[0]}
+                        </Text>
+                      )}
+                    </View>
+                    {providerProfile && providerProfile.rating > 0 && (
+                      <View style={styles.heroRatingBadge}>
+                        <Ionicons name="star" size={14} color="#fbbf24" />
+                        <Text style={styles.heroRatingText}>
+                          {providerProfile.rating.toFixed(1)}
+                        </Text>
+                        {providerProfile.reviewCount > 0 && (
+                          <Text style={styles.heroReviewCount}>
+                            ({providerProfile.reviewCount})
+                          </Text>
+                        )}
+                      </View>
+                    )}
                   </View>
-                  <View style={styles.userTypeBadge}>
-                    <Ionicons
-                      name={user.userType === 'PROVIDER' ? 'business' : 'person'}
-                      size={12}
-                      color={theme.colors.white}
-                    />
-                    <Text style={styles.userTypeText}>
-                      {user.userType === 'PROVIDER' ? 'Provider' : 'Client'}
-                    </Text>
+                  <Text style={styles.heroName}>
+                    {user.firstName} {user.lastName}
+                  </Text>
+                  <View style={styles.heroEmailContainer}>
+                    <Ionicons name="mail-outline" size={14} color={theme.colors.neutral[500]} />
+                    <Text style={styles.heroEmail}>{user.email}</Text>
                   </View>
                 </View>
-                <View style={styles.editButtonPlaceholder} />
               </View>
-              <View style={styles.profileInfo}>
-                <Text style={styles.name}>
-                  {user.firstName} {user.lastName}
-                </Text>
-                <View style={styles.emailContainer}>
-                  <Ionicons name="mail-outline" size={16} color={theme.colors.neutral[500]} />
-                  <Text style={styles.email}>{user.email}</Text>
+            ) : (
+              <View style={styles.profileSection}>
+                <View style={styles.profileCard}>
+                  <View style={styles.profileHeader}>
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={() => router.push('/settings/edit-profile')}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="create-outline" size={20} color={theme.colors.primary[500]} />
+                    </TouchableOpacity>
+                    <View style={styles.avatarWrapper}>
+                      <View style={styles.avatar}>
+                        {user.profilePhoto ? (
+                          <Image
+                            source={{ uri: user.profilePhoto }}
+                            style={styles.avatarImage}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <Text style={styles.avatarText}>
+                            {user.firstName[0]}
+                            {user.lastName[0]}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.userTypeBadge}>
+                        <Ionicons name="person" size={12} color={theme.colors.white} />
+                        <Text style={styles.userTypeText}>Client</Text>
+                      </View>
+                    </View>
+                    <View style={styles.editButtonPlaceholder} />
+                  </View>
+                  <View style={styles.profileInfo}>
+                    <Text style={styles.name}>
+                      {user.firstName} {user.lastName}
+                    </Text>
+                    <View style={styles.emailContainer}>
+                      <Ionicons name="mail-outline" size={16} color={theme.colors.neutral[500]} />
+                      <Text style={styles.email}>{user.email}</Text>
+                    </View>
+                  </View>
                 </View>
               </View>
-            </View>
-          </View>
+            )}
+
+            {/* Quick Stats - Provider Only */}
+            {user.userType === 'PROVIDER' && providerProfile && (
+              <View style={styles.quickStatsSection}>
+                <View style={styles.quickStatsGrid}>
+                  <View style={[styles.quickStatCard, styles.quickStatCardServices]}>
+                    <Ionicons name="briefcase-outline" size={24} color={theme.colors.primary[500]} />
+                    <Text style={styles.quickStatNumber}>
+                      {providerProfile.services?.length || 0}
+                    </Text>
+                    <Text style={styles.quickStatLabel}>Services</Text>
+                  </View>
+                  <View style={[styles.quickStatCard, styles.quickStatCardCredentials]}>
+                    <Ionicons name="ribbon-outline" size={24} color="#9333EA" />
+                    <Text style={styles.quickStatNumber}>
+                      {providerProfile.credentials?.length || 0}
+                    </Text>
+                    <Text style={styles.quickStatLabel}>Credentials</Text>
+                  </View>
+                  <View style={[styles.quickStatCard, styles.quickStatCardAvailability]}>
+                    <Ionicons name="calendar-outline" size={24} color="#16A34A" />
+                    <Text style={styles.quickStatNumber}>
+                      {providerProfile.availability?.length || 0}
+                    </Text>
+                    <Text style={styles.quickStatLabel}>Days Available</Text>
+                  </View>
+                  <View style={[styles.quickStatCard, styles.quickStatCardRating]}>
+                    <Ionicons name="star-outline" size={24} color="#fbbf24" />
+                    <Text style={styles.quickStatNumber}>
+                      {providerProfile.rating > 0 ? providerProfile.rating.toFixed(1) : 'N/A'}
+                    </Text>
+                    <Text style={styles.quickStatLabel}>Rating</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </>
         )}
 
         {/* Provider Profile Info */}
@@ -160,31 +254,6 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                 )}
-                
-                {/* Stats Section */}
-                <View style={styles.infoCard}>
-                  <Text style={styles.infoLabel}>Profile Statistics</Text>
-                  <View style={styles.statsRow}>
-                    <View style={styles.statCard}>
-                      <Text style={styles.statNumber}>
-                        {providerProfile.services ? providerProfile.services.length : 0}
-                      </Text>
-                      <Text style={styles.statLabel}>Services</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                      <Text style={styles.statNumber}>
-                        {providerProfile.credentials ? providerProfile.credentials.length : 0}
-                      </Text>
-                      <Text style={styles.statLabel}>Credentials</Text>
-                    </View>
-                    <View style={styles.statCard}>
-                      <Text style={styles.statNumber}>
-                        {providerProfile.availability ? providerProfile.availability.length : 0}
-                      </Text>
-                      <Text style={styles.statLabel}>Availability Days</Text>
-                    </View>
-                  </View>
-                </View>
               </>
             ) : (
               <View style={styles.infoCard}>
@@ -201,7 +270,7 @@ export default function ProfileScreen() {
               style={styles.menuItem}
               onPress={() => router.push('/provider/onboarding')}
             >
-              <Ionicons name="person-outline" size={20} color={theme.colors.neutral[900]} />
+              <Ionicons name="person-outline" size={20} color={theme.colors.primary[500]} />
               <Text style={styles.menuText}>
                 {providerProfile ? 'Edit Provider Profile' : 'Complete Provider Profile'}
               </Text>
@@ -212,7 +281,7 @@ export default function ProfileScreen() {
             style={styles.menuItem}
             onPress={() => router.push('/payment/history')}
           >
-            <Ionicons name="receipt-outline" size={20} color={theme.colors.neutral[900]} />
+            <Ionicons name="receipt-outline" size={20} color={theme.colors.primary[500]} />
             <Text style={styles.menuText}>Payment History</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
           </TouchableOpacity>
@@ -222,7 +291,7 @@ export default function ProfileScreen() {
             style={styles.menuItem}
             onPress={() => router.push('/settings')}
           >
-            <Ionicons name="settings-outline" size={20} color={theme.colors.neutral[900]} />
+            <Ionicons name="settings-outline" size={20} color={theme.colors.primary[500]} />
             <Text style={styles.menuText}>Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
           </TouchableOpacity>
@@ -232,7 +301,7 @@ export default function ProfileScreen() {
             style={styles.menuItem}
             onPress={() => router.push('/help-support')}
           >
-            <Ionicons name="help-circle-outline" size={20} color={theme.colors.neutral[900]} />
+            <Ionicons name="help-circle-outline" size={20} color={theme.colors.primary[500]} />
             <Text style={styles.menuText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
           </TouchableOpacity>
@@ -257,8 +326,6 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing['2xl'],
     paddingBottom: theme.spacing.xl,
     backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
   },
   title: {
     ...theme.typography.display,
@@ -266,6 +333,135 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  // Hero Section (Provider)
+  heroSection: {
+    backgroundColor: theme.colors.white,
+    paddingTop: theme.spacing['2xl'],
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
+  },
+  heroContent: {
+    alignItems: 'center',
+    position: 'relative',
+  },
+  heroEditButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  heroAvatarContainer: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  heroAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 5,
+    borderColor: theme.colors.white,
+    ...theme.shadows.card,
+    marginBottom: theme.spacing.sm,
+    overflow: 'hidden',
+  },
+  heroAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  heroAvatarText: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: theme.colors.white,
+  },
+  heroRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.full,
+    ...theme.shadows.sm,
+  },
+  heroRatingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.neutral[900],
+  },
+  heroReviewCount: {
+    fontSize: 12,
+    color: theme.colors.neutral[500],
+  },
+  heroName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  heroEmailContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  heroEmail: {
+    fontSize: 14,
+    color: theme.colors.neutral[500],
+  },
+  // Quick Stats Section
+  quickStatsSection: {
+    backgroundColor: theme.colors.white,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.neutral[200],
+  },
+  quickStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: theme.spacing.md,
+  },
+  quickStatCard: {
+    flex: 1,
+    minWidth: '45%',
+    backgroundColor: theme.colors.neutral[50],
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.lg,
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    borderWidth: 2,
+  },
+  quickStatCardServices: {
+    borderColor: theme.colors.primary[500],
+  },
+  quickStatCardCredentials: {
+    borderColor: '#9333EA',
+  },
+  quickStatCardAvailability: {
+    borderColor: '#16A34A',
+  },
+  quickStatCardRating: {
+    borderColor: '#fbbf24',
+  },
+  quickStatNumber: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: theme.colors.neutral[900],
+  },
+  quickStatLabel: {
+    fontSize: 12,
+    color: theme.colors.neutral[500],
+    fontWeight: '500',
+    textAlign: 'center',
   },
   profileSection: {
     backgroundColor: theme.colors.neutral[50],
@@ -300,6 +496,11 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: theme.colors.white,
     ...theme.shadows.card,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   avatarText: {
     fontSize: 40,

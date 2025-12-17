@@ -1,4 +1,12 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -211,28 +219,37 @@ export default function BookingDetailScreen() {
         )}
 
         {/* Payment Info */}
-        {booking.payment && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment</Text>
-            <View style={styles.infoCard}>
-              <View style={styles.paymentRow}>
-                <Text style={styles.paymentLabel}>Status:</Text>
-                <Text
-                  style={[
-                    styles.paymentStatus,
-                    { color: booking.payment.status === 'completed' ? '#10b981' : '#f59e0b' },
-                  ]}
-                >
-                  {booking.payment.status === 'completed' ? 'Paid' : 'Pending'}
-                </Text>
+        {booking.payment &&
+          (() => {
+            // Calculate provider amount: use providerAmount if available, otherwise calculate from total - platform fee
+            const providerAmount = booking.payment.providerAmount
+              ? booking.payment.providerAmount
+              : booking.payment.amount -
+                (booking.payment.platformFee || booking.payment.amount * 0.075);
+
+            return (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Payment</Text>
+                <View style={styles.infoCard}>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Status:</Text>
+                    <Text
+                      style={[
+                        styles.paymentStatus,
+                        { color: booking.payment.status === 'completed' ? '#10b981' : '#f59e0b' },
+                      ]}
+                    >
+                      {booking.payment.status === 'completed' ? 'Paid' : 'Pending'}
+                    </Text>
+                  </View>
+                  <View style={styles.paymentRow}>
+                    <Text style={styles.paymentLabel}>Amount:</Text>
+                    <Text style={styles.paymentAmount}>${providerAmount.toFixed(2)}</Text>
+                  </View>
+                </View>
               </View>
-              <View style={styles.paymentRow}>
-                <Text style={styles.paymentLabel}>Amount:</Text>
-                <Text style={styles.paymentAmount}>${booking.payment.amount}</Text>
-              </View>
-            </View>
-          </View>
-        )}
+            );
+          })()}
 
         {/* Booking ID */}
         <View style={styles.section}>
@@ -241,7 +258,9 @@ export default function BookingDetailScreen() {
             <Text style={styles.infoLabel}>Booking ID</Text>
             <Text style={styles.infoValue}>{booking.id}</Text>
             <Text style={styles.infoLabel}>Created</Text>
-            <Text style={styles.infoValue}>{formatDate(booking.createdAt)}</Text>
+            <Text style={styles.infoValue}>
+              {booking.createdAt ? formatDate(booking.createdAt) : 'N/A'}
+            </Text>
           </View>
         </View>
       </ScrollView>
@@ -410,4 +429,3 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
 });
-

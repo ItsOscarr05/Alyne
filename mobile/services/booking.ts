@@ -19,24 +19,34 @@ export interface BookingDetail extends Booking {
     name: string;
     price: number;
     duration: number;
+    description?: string;
   };
   provider: {
     id: string;
     firstName: string;
     lastName: string;
+    email?: string;
     profilePhoto?: string;
   };
   client: {
     id: string;
     firstName: string;
     lastName: string;
+    email?: string;
     profilePhoto?: string;
+  };
+  location?: string | {
+    address?: string;
+    coordinates?: { lat: number; lng: number };
   };
   payment?: {
     id: string;
     status: string;
     amount: number;
+    providerAmount?: number;
+    platformFee?: number;
   };
+  createdAt?: string;
 }
 
 export const bookingService = {
