@@ -55,19 +55,19 @@ export default function HelpSupportScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Help & Support</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Help & Support</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.headerDivider} />
         {/* Contact Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Get in Touch</Text>
@@ -169,11 +169,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: theme.colors.neutral[200],
+    marginBottom: theme.spacing.lg,
+    width: '95%',
+    alignSelf: 'center',
   },
   backButton: {
     padding: theme.spacing.xs,
@@ -189,7 +193,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
   },
   section: {
     marginBottom: theme.spacing['2xl'],

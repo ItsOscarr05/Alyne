@@ -216,11 +216,6 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Discover Providers</Text>
-        <Text style={styles.subtitle}>Find wellness professionals near you</Text>
-      </View>
-
       <View style={styles.content}>
         <SearchBar
           value={searchQuery}
@@ -394,6 +389,15 @@ export default function DiscoverScreen() {
             renderItem={({ item }) => (
               <ProviderCard provider={item} onPress={() => handleProviderPress(item.id)} />
             )}
+            ListHeaderComponent={
+              <>
+                <View style={styles.header}>
+                  <Text style={styles.title}>Discover Providers</Text>
+                  <Text style={styles.subtitle}>Find wellness professionals near you</Text>
+                </View>
+                <View style={styles.headerDivider} />
+              </>
+            }
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
             refreshing={isLoading}
@@ -574,11 +578,15 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: theme.colors.neutral[200],
+    marginBottom: theme.spacing.lg,
+    width: '95%',
+    alignSelf: 'center',
   },
   title: {
     ...theme.typography.display,

@@ -181,6 +181,7 @@ export default function CreateBookingScreen() {
           <Text style={styles.headerTitle}>Book Session</Text>
           <View style={styles.backButton} />
         </View>
+        <View style={styles.headerDivider} />
 
         {/* Provider Info */}
         <View style={styles.providerCard}>
@@ -388,8 +389,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
   },
   backButton: {
     width: 40,

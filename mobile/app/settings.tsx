@@ -8,7 +8,7 @@ import { theme } from '../theme';
 export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  
+
   // Settings state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -17,23 +17,23 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Settings</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Settings</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.headerDivider} />
         {/* Notifications Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Notifications</Text>
-          
+
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Ionicons name="notifications-outline" size={22} color={theme.colors.neutral[900]} />
@@ -54,14 +54,13 @@ export default function SettingsScreen() {
 
           {notificationsEnabled && (
             <>
+              <View style={styles.itemDivider} />
               <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
                   <Ionicons name="mail-outline" size={22} color={theme.colors.neutral[900]} />
                   <View style={styles.settingTextContainer}>
                     <Text style={styles.settingLabel}>Email Notifications</Text>
-                    <Text style={styles.settingDescription}>
-                      Receive notifications via email
-                    </Text>
+                    <Text style={styles.settingDescription}>Receive notifications via email</Text>
                   </View>
                 </View>
                 <Switch
@@ -72,9 +71,14 @@ export default function SettingsScreen() {
                 />
               </View>
 
+              <View style={styles.itemDivider} />
               <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
-                  <Ionicons name="phone-portrait-outline" size={22} color={theme.colors.neutral[900]} />
+                  <Ionicons
+                    name="phone-portrait-outline"
+                    size={22}
+                    color={theme.colors.neutral[900]}
+                  />
                   <View style={styles.settingTextContainer}>
                     <Text style={styles.settingLabel}>Push Notifications</Text>
                     <Text style={styles.settingDescription}>
@@ -90,6 +94,7 @@ export default function SettingsScreen() {
                 />
               </View>
 
+              <View style={styles.itemDivider} />
               <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
                   <Ionicons name="calendar-outline" size={22} color={theme.colors.neutral[900]} />
@@ -114,7 +119,7 @@ export default function SettingsScreen() {
         {/* Privacy Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Privacy</Text>
-          
+
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/privacy-policy')}
@@ -123,20 +128,23 @@ export default function SettingsScreen() {
               <Ionicons name="lock-closed-outline" size={22} color={theme.colors.neutral[900]} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Privacy Policy</Text>
-                <Text style={styles.settingDescription}>
-                  View our privacy policy
-                </Text>
+                <Text style={styles.settingDescription}>View our privacy policy</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
           </TouchableOpacity>
 
+          <View style={styles.itemDivider} />
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/data-security')}
           >
             <View style={styles.settingInfo}>
-              <Ionicons name="shield-checkmark-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={22}
+                color={theme.colors.neutral[900]}
+              />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Data & Security</Text>
                 <Text style={styles.settingDescription}>
@@ -151,7 +159,7 @@ export default function SettingsScreen() {
         {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
-          
+
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/edit-profile')}
@@ -160,14 +168,13 @@ export default function SettingsScreen() {
               <Ionicons name="person-outline" size={22} color={theme.colors.neutral[900]} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Edit Profile</Text>
-                <Text style={styles.settingDescription}>
-                  Update your personal information
-                </Text>
+                <Text style={styles.settingDescription}>Update your personal information</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
           </TouchableOpacity>
 
+          <View style={styles.itemDivider} />
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/change-password')}
@@ -176,9 +183,7 @@ export default function SettingsScreen() {
               <Ionicons name="key-outline" size={22} color={theme.colors.neutral[900]} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Change Password</Text>
-                <Text style={styles.settingDescription}>
-                  Update your account password
-                </Text>
+                <Text style={styles.settingDescription}>Update your account password</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
@@ -188,19 +193,22 @@ export default function SettingsScreen() {
         {/* About Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About</Text>
-          
+
           <TouchableOpacity style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Ionicons name="information-circle-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons
+                name="information-circle-outline"
+                size={22}
+                color={theme.colors.neutral[900]}
+              />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>App Version</Text>
-                <Text style={styles.settingDescription}>
-                  Version 1.0.0
-                </Text>
+                <Text style={styles.settingDescription}>Version 1.0.0</Text>
               </View>
             </View>
           </TouchableOpacity>
 
+          <View style={styles.itemDivider} />
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/terms-of-service')}
@@ -209,9 +217,7 @@ export default function SettingsScreen() {
               <Ionicons name="document-text-outline" size={22} color={theme.colors.neutral[900]} />
               <View style={styles.settingTextContainer}>
                 <Text style={styles.settingLabel}>Terms of Service</Text>
-                <Text style={styles.settingDescription}>
-                  Read our terms and conditions
-                </Text>
+                <Text style={styles.settingDescription}>Read our terms and conditions</Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
@@ -232,11 +238,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: theme.colors.neutral[200],
+    marginBottom: theme.spacing.lg,
+    width: '95%',
+    alignSelf: 'center',
   },
   backButton: {
     padding: theme.spacing.xs,
@@ -252,12 +262,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing['2xl'],
   },
   section: {
     backgroundColor: theme.colors.white,
     marginTop: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+    borderRadius: theme.radii.lg,
+    paddingHorizontal: 0,
+    overflow: 'hidden',
   },
   sectionTitle: {
     fontSize: 12,
@@ -275,9 +292,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.xl,
     paddingVertical: theme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
     gap: theme.spacing.md,
+  },
+  itemDivider: {
+    height: 1,
+    backgroundColor: theme.colors.neutral[200],
+    width: '95%',
+    alignSelf: 'center',
   },
   settingInfo: {
     flexDirection: 'row',
@@ -300,4 +321,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

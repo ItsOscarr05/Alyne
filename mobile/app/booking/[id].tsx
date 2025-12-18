@@ -14,11 +14,13 @@ import { bookingService, BookingDetail } from '../../services/booking';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { onBookingUpdate } = useSocket();
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -27,6 +29,35 @@ export default function BookingDetailScreen() {
       loadBooking();
     }
   }, [id]);
+
+  // Listen for real-time booking updates
+  useEffect(() => {
+    if (!id) return;
+
+    const unsubscribe = onBookingUpdate((data) => {
+      // Only update if this is the booking we're viewing
+      if (data.bookingId === id) {
+        logger.debug('Booking updated via Socket.io in detail screen', {
+          bookingId: data.bookingId,
+          status: data.status,
+        });
+
+        // Update the booking with new status
+        if (booking) {
+          setBooking({
+            ...booking,
+            status: data.status as any,
+            ...(data.booking && { ...data.booking }),
+          });
+        } else {
+          // If booking not loaded yet, reload it
+          loadBooking();
+        }
+      }
+    });
+
+    return unsubscribe;
+  }, [id, booking, onBookingUpdate]);
 
   const loadBooking = async () => {
     if (!id) return;
@@ -84,16 +115,19 @@ export default function BookingDetailScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Booking Details</Text>
-          <View style={styles.backButton} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Booking Details</Text>
+            <View style={styles.backButton} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -101,6 +135,26 @@ export default function BookingDetailScreen() {
   if (!booking) {
     return (
       <View style={styles.container}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Booking Details</Text>
+            <View style={styles.backButton} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <Text style={styles.errorText}>Booking not found</Text>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
@@ -108,24 +162,7 @@ export default function BookingDetailScreen() {
           <Text style={styles.headerTitle}>Booking Details</Text>
           <View style={styles.backButton} />
         </View>
-        <View style={styles.loadingContainer}>
-          <Text style={styles.errorText}>Booking not found</Text>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Booking Details</Text>
-        <View style={styles.backButton} />
-      </View>
-
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+        <View style={styles.headerDivider} />
         {/* Status Badge */}
         <View style={styles.statusBadge}>
           <View style={[styles.statusDot, { backgroundColor: getStatusColor(booking.status) }]} />
@@ -278,8 +315,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingTop: 24,
+    paddingTop: 16,
     paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
   },
   backButton: {
     width: 40,

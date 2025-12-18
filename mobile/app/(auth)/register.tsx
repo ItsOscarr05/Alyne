@@ -83,7 +83,7 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.userTypeContainer}>
+          <View style={styles.userTypeCard}>
             <Text style={styles.userTypeLabel}>I am a...</Text>
             <View style={styles.userTypeButtons}>
               <TouchableOpacity
@@ -133,46 +133,56 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          <FormField
-            label="First Name"
-            placeholder="Enter your first name"
-            value={firstName}
-            onChangeText={setFirstName}
-            autoCapitalize="words"
-          />
+          <View style={styles.formCard}>
+            <Text style={styles.cardTitle}>Account Information</Text>
+            
+            <FormField
+              label="First Name"
+              placeholder="Enter your first name"
+              value={firstName}
+              onChangeText={setFirstName}
+              autoCapitalize="words"
+            />
 
-          <FormField
-            label="Last Name"
-            placeholder="Enter your last name"
-            value={lastName}
-            onChangeText={setLastName}
-            autoCapitalize="words"
-          />
+            <View style={styles.fieldSpacer} />
 
-          <FormField
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+            <FormField
+              label="Last Name"
+              placeholder="Enter your last name"
+              value={lastName}
+              onChangeText={setLastName}
+              autoCapitalize="words"
+            />
 
-          <FormField
-            label="Password"
-            placeholder="Create a password (min. 8 characters)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+            <View style={styles.fieldSpacer} />
 
-          <Button
-            title="Create Account"
-            onPress={handleRegister}
-            loading={isLoading}
-            disabled={!userType || isLoading}
-            style={styles.primaryButton}
-          />
+            <FormField
+              label="Email"
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+
+            <View style={styles.fieldSpacer} />
+
+            <FormField
+              label="Password"
+              placeholder="Create a password (min. 8 characters)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <Button
+              title="Create Account"
+              onPress={handleRegister}
+              loading={isLoading}
+              disabled={!userType || isLoading}
+              style={styles.primaryButton}
+            />
+          </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Already have an account? </Text>
@@ -253,14 +263,40 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: theme.spacing.xl,
   },
-  userTypeContainer: {
-    marginBottom: theme.spacing.xl,
+  userTypeCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+    ...theme.shadows.card,
   },
   userTypeLabel: {
     ...theme.typography.body,
     fontWeight: '600',
     color: theme.colors.neutral[900],
     marginBottom: theme.spacing.md,
+    fontSize: 16,
+  },
+  formCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+    ...theme.shadows.card,
+  },
+  cardTitle: {
+    ...theme.typography.h2,
+    fontSize: 20,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  fieldSpacer: {
+    height: theme.spacing.md,
   },
   userTypeButtons: {
     flexDirection: 'row',

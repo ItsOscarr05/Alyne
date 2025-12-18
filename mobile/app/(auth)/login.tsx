@@ -71,29 +71,35 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.form}>
-          <FormField
-            label="Email"
-            placeholder="Enter your email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <View style={styles.formCard}>
+            <Text style={styles.cardTitle}>Sign In</Text>
+            
+            <FormField
+              label="Email"
+              placeholder="Enter your email"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
 
-          <FormField
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+            <View style={styles.fieldSpacer} />
 
-          <Button
-            title="Sign In"
-            onPress={handleLogin}
-            loading={isLoading}
-            style={styles.primaryButton}
-          />
+            <FormField
+              label="Password"
+              placeholder="Enter your password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+
+            <Button
+              title="Sign In"
+              onPress={handleLogin}
+              loading={isLoading}
+              style={styles.primaryButton}
+            />
+          </View>
 
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account? </Text>
@@ -174,8 +180,27 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: theme.spacing.xl,
   },
+  formCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+    ...theme.shadows.card,
+  },
+  cardTitle: {
+    ...theme.typography.h2,
+    fontSize: 20,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.lg,
+    textAlign: 'center',
+  },
+  fieldSpacer: {
+    height: theme.spacing.md,
+  },
   primaryButton: {
-    marginTop: theme.spacing.xl,
+    marginTop: theme.spacing.lg,
   },
   footer: {
     flexDirection: 'row',

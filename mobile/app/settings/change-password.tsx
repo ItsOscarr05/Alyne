@@ -47,7 +47,7 @@ export default function ChangePasswordScreen() {
     setIsLoading(true);
     try {
       // TODO: Implement API call to change password
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
       modal.showAlert({
         title: 'Success',
         message: 'Password changed successfully',
@@ -67,42 +67,77 @@ export default function ChangePasswordScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={styles.backButton}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Change Password</Text>
-        <View style={styles.placeholder} />
-      </View>
-
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        <FormField
-          label="Current Password"
-          placeholder="Enter your current password"
-          value={currentPassword}
-          onChangeText={setCurrentPassword}
-          secureTextEntry
-        />
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Change Password</Text>
+          <View style={styles.placeholder} />
+        </View>
+        <View style={styles.headerDivider} />
 
-        <FormField
-          label="New Password"
-          placeholder="Enter your new password (min. 8 characters)"
-          value={newPassword}
-          onChangeText={setNewPassword}
-          secureTextEntry
-        />
+        <View style={styles.infoCard}>
+          <View style={styles.infoHeader}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.primary[500]} />
+            <Text style={styles.infoText}>
+              For your security, choose a strong password with at least 8 characters, including
+              letters, numbers, and special characters.
+            </Text>
+          </View>
+        </View>
 
-        <FormField
-          label="Confirm New Password"
-          placeholder="Confirm your new password"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-        />
+        <View style={styles.formCard}>
+          <Text style={styles.cardTitle}>Password Change</Text>
+
+          <FormField
+            label="Current Password"
+            placeholder="Enter your current password"
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            secureTextEntry
+          />
+
+          <View style={styles.fieldSpacer} />
+
+          <FormField
+            label="New Password"
+            placeholder="Enter your new password (min. 8 characters)"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry
+          />
+
+          <View style={styles.fieldSpacer} />
+
+          <FormField
+            label="Confirm New Password"
+            placeholder="Confirm your new password"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+          />
+        </View>
+
+        <View style={styles.requirementsCard}>
+          <Text style={styles.requirementsTitle}>Password Requirements</Text>
+          <View style={styles.requirementItem}>
+            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.neutral[500]} />
+            <Text style={styles.requirementText}>At least 8 characters long</Text>
+          </View>
+          <View style={styles.requirementItem}>
+            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.neutral[500]} />
+            <Text style={styles.requirementText}>Mix of letters and numbers recommended</Text>
+          </View>
+          <View style={styles.requirementItem}>
+            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.neutral[500]} />
+            <Text style={styles.requirementText}>Use a unique password not used elsewhere</Text>
+          </View>
+        </View>
 
         <Button
           title="Change Password"
@@ -138,11 +173,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: theme.colors.neutral[200],
+    marginBottom: theme.spacing.lg,
+    width: '95%',
+    alignSelf: 'center',
   },
   backButton: {
     padding: theme.spacing.xs,
@@ -158,10 +197,75 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
+  },
+  infoCard: {
+    backgroundColor: theme.colors.primary[50],
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  infoHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: theme.spacing.sm,
+  },
+  infoText: {
+    ...theme.typography.body,
+    fontSize: 13,
+    color: theme.colors.neutral[700],
+    flex: 1,
+    lineHeight: 18,
+  },
+  formCard: {
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.lg,
     padding: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+  },
+  cardTitle: {
+    ...theme.typography.h2,
+    fontSize: 18,
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.lg,
+  },
+  fieldSpacer: {
+    height: theme.spacing.md,
+  },
+  requirementsCard: {
+    backgroundColor: theme.colors.neutral[50],
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+  },
+  requirementsTitle: {
+    ...theme.typography.body,
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.md,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
+  },
+  requirementText: {
+    ...theme.typography.body,
+    fontSize: 13,
+    color: theme.colors.neutral[700],
+    flex: 1,
   },
   changeButton: {
-    marginTop: theme.spacing.xl,
+    marginTop: theme.spacing.md,
   },
 });
-

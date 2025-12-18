@@ -70,16 +70,19 @@ export default function ReceiptScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Receipt</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Receipt</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -87,40 +90,43 @@ export default function ReceiptScreen() {
   if (!booking || !payment) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Receipt</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-          <Text style={styles.errorText}>Receipt not found</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Receipt</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.errorContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
+            <Text style={styles.errorText}>Receipt not found</Text>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment Receipt</Text>
-        <TouchableOpacity onPress={() => router.replace('/(tabs)/bookings')}>
-          <Ionicons name="close" size={24} color="#1e293b" />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Payment Receipt</Text>
+          <TouchableOpacity onPress={() => router.replace('/(tabs)/bookings')}>
+            <Ionicons name="close" size={24} color="#1e293b" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerDivider} />
         {/* Receipt Header */}
         <View style={styles.receiptHeader}>
           <View style={styles.logoContainer}>
@@ -221,30 +227,25 @@ export default function ReceiptScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Service Price</Text>
             <Text style={styles.summaryValue}>
-              ${payment.amount ? payment.amount.toFixed(2) : booking.price.toFixed(2)}
+              ${payment.providerAmount ? payment.providerAmount.toFixed(2) : booking.price.toFixed(2)}
             </Text>
           </View>
           {payment.platformFee && payment.platformFee > 0 && (
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
-              <Text style={styles.summaryValue}>-${payment.platformFee.toFixed(2)}</Text>
-            </View>
-          )}
-          {payment.providerAmount && payment.platformFee && payment.platformFee > 0 && (
-            <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>
-                Provider Fee
-              </Text>
-              <Text style={styles.summaryValue}>
-                -${payment.providerAmount.toFixed(2)}
-              </Text>
+              <Text style={styles.summaryValue}>+${payment.platformFee.toFixed(2)}</Text>
             </View>
           )}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total Paid</Text>
             <Text style={styles.totalAmount}>
-              ${payment.amount ? payment.amount.toFixed(2) : '0.00'}
+              ${(() => {
+                // Calculate total: service price + platform fee
+                const servicePrice = payment.providerAmount || booking.price;
+                const platformFee = payment.platformFee || 0;
+                return (servicePrice + platformFee).toFixed(2);
+              })()}
             </Text>
           </View>
         </View>
@@ -280,8 +281,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -359,7 +367,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: '#2563eb',
   },
   sectionTitle: {
     fontSize: 20,
@@ -414,7 +422,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#f1f5f9',
+    borderColor: '#2563eb',
   },
   summaryRow: {
     flexDirection: 'row',

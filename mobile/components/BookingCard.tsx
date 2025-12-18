@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 
@@ -21,9 +22,19 @@ interface BookingCardProps {
   booking: BookingCardData;
   onPress: () => void;
   actionButton?: React.ReactNode;
+  onAccept?: () => void;
+  onDecline?: () => void;
+  onComplete?: () => void;
 }
 
-export function BookingCard({ booking, onPress, actionButton }: BookingCardProps) {
+export function BookingCard({
+  booking,
+  onPress,
+  actionButton,
+  onAccept,
+  onDecline,
+  onComplete,
+}: BookingCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
@@ -81,10 +92,28 @@ export function BookingCard({ booking, onPress, actionButton }: BookingCardProps
     return `${displayHour}:${minutes} ${ampm}`;
   };
 
+  const formatAddress = (location?: string) => {
+    if (!location) return '';
+
+    try {
+      // Try to parse as JSON first
+      const parsed = typeof location === 'string' ? JSON.parse(location) : location;
+      if (parsed.address) {
+        // Return the full address
+        return parsed.address;
+      }
+    } catch {
+      // If not JSON, treat as string and return as is
+      return location;
+    }
+
+    return location;
+  };
+
   return (
-    <TouchableOpacity 
-      style={[styles.card, { borderColor: getStatusColor(booking.status), borderWidth: 2 }]} 
-      onPress={onPress} 
+    <TouchableOpacity
+      style={[styles.card, { borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={styles.header}>
@@ -111,7 +140,9 @@ export function BookingCard({ booking, onPress, actionButton }: BookingCardProps
           </View>
         </View>
         <View style={styles.headerRight}>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
+          <View
+            style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}
+          >
             <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
               {getStatusText(booking.status)}
             </Text>
@@ -132,34 +163,82 @@ export function BookingCard({ booking, onPress, actionButton }: BookingCardProps
         {booking.location && (
           <View style={styles.detailRow}>
             <Ionicons name="location-outline" size={16} color="#64748b" />
-            <Text style={styles.detailText}>{booking.location}</Text>
+            <Text style={styles.detailText}>{formatAddress(booking.location)}</Text>
           </View>
         )}
 
         {!actionButton && (
-          <View style={styles.detailRow}>
-            <Ionicons name="cash-outline" size={16} color="#64748b" />
-            <Text style={styles.detailText}>${booking.price}</Text>
+          <View style={[styles.detailRow, styles.priceRow]}>
+            <View style={styles.detailRow}>
+              <Ionicons name="cash-outline" size={16} color="#64748b" />
+              <Text style={styles.detailText}>${booking.price}/session</Text>
+            </View>
+            {(onAccept || onDecline || onComplete) && (
+              <View style={styles.actionButtonsContainer}>
+                {onAccept && (
+                  <TouchableOpacity
+                    style={styles.acceptButton}
+                    onPress={onAccept}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="checkmark" size={20} color="#16A34A" />
+                  </TouchableOpacity>
+                )}
+                {onDecline && (
+                  <TouchableOpacity
+                    style={styles.declineButton}
+                    onPress={onDecline}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="close" size={20} color="#EF4444" />
+                  </TouchableOpacity>
+                )}
+                {onComplete && (
+                  <TouchableOpacity
+                    style={styles.completeButton}
+                    onPress={onComplete}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         )}
       </View>
 
       {actionButton && (
-        <View style={styles.bottomRow}>
-          <View style={styles.bottomRowLeft}>
+        <View style={styles.details}>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={16} color="#64748b" />
+            <Text style={styles.detailText}>
+              {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
+            </Text>
+          </View>
+          {booking.location && (
             <View style={styles.detailRow}>
-              <Ionicons name="calendar-outline" size={16} color="#64748b" />
-              <Text style={styles.detailText}>
-                {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
-              </Text>
+              <Ionicons name="location-outline" size={16} color="#64748b" />
+              <Text style={styles.detailText}>{formatAddress(booking.location)}</Text>
             </View>
+          )}
+          <View style={[styles.detailRow, styles.priceRow]}>
             <View style={styles.detailRow}>
               <Ionicons name="cash-outline" size={16} color="#64748b" />
-              <Text style={styles.detailText}>${booking.price}</Text>
+              <Text style={styles.detailText}>${booking.price}/session</Text>
             </View>
-          </View>
-          <View style={styles.actionContainer}>
-            {actionButton}
+            <View style={styles.actionButtonsContainer}>
+              {actionButton}
+              {onComplete && (
+                <TouchableOpacity
+                  style={styles.completeButton}
+                  onPress={onComplete}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       )}
@@ -251,6 +330,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  priceRow: {
+    justifyContent: 'space-between',
+  },
   detailText: {
     fontSize: 14,
     color: '#64748b',
@@ -285,5 +367,40 @@ const styles = StyleSheet.create({
   actionContainer: {
     alignItems: 'flex-end',
   },
+  actionButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 8,
+  },
+  acceptButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#16A34A20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#16A34A',
+  },
+  declineButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EF444420',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+  },
+  completeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#16A34A20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#16A34A',
+  },
 });
-

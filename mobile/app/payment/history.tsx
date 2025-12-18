@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
@@ -168,40 +169,57 @@ export default function PaymentHistoryScreen() {
   if (authLoading || loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Payment History</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Payment History</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        </ScrollView>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Payment History</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
       {payments.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="receipt-outline" size={64} color="#cbd5e1" />
-          <Text style={styles.emptyText}>No payments yet</Text>
-          <Text style={styles.emptySubtext}>
-            Your payment history will appear here once you make a payment.
-          </Text>
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Payment History</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.emptyContainer}>
+            <Ionicons name="receipt-outline" size={64} color="#cbd5e1" />
+            <Text style={styles.emptyText}>No payments yet</Text>
+            <Text style={styles.emptySubtext}>
+              Your payment history will appear here once you make a payment.
+            </Text>
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
+          ListHeaderComponent={
+            <>
+              <View style={styles.header}>
+                <TouchableOpacity onPress={() => router.back()}>
+                  <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Payment History</Text>
+                <View style={{ width: 24 }} />
+              </View>
+              <View style={styles.headerDivider} />
+            </>
+          }
           data={payments}
           renderItem={renderPaymentItem}
           keyExtractor={(item) => item.id}
@@ -224,11 +242,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   headerTitle: {
     fontSize: 18,

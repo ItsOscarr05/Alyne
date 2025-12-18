@@ -12,6 +12,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
 import { bookingService, BookingDetail } from '../../services/booking';
 import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
@@ -22,12 +23,21 @@ function AnimatedBar({
   height,
   color,
   monthName,
+  earnings,
+  isFocused,
+  onPressIn,
+  onPressOut,
 }: {
   height: number;
   color: string;
   monthName: string;
+  earnings: number;
+  isFocused: boolean;
+  onPressIn: () => void;
+  onPressOut: () => void;
 }) {
   const animatedHeight = useRef(new Animated.Value(height)).current;
+  const animatedScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     Animated.timing(animatedHeight, {
@@ -37,8 +47,21 @@ function AnimatedBar({
     }).start();
   }, [height, animatedHeight]);
 
+  useEffect(() => {
+    Animated.timing(animatedScale, {
+      toValue: isFocused ? 1.1 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isFocused, animatedScale]);
+
   return (
-    <View style={styles.chartBarContainer}>
+    <TouchableOpacity
+      style={styles.chartBarContainer}
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      activeOpacity={1}
+    >
       <View style={styles.chartBarWrapper}>
         <Animated.View
           style={[
@@ -49,18 +72,20 @@ function AnimatedBar({
                 outputRange: [0, 80], // 80 is the chartBarWrapper height
               }),
               backgroundColor: color,
+              transform: [{ scaleX: animatedScale }],
             },
           ]}
         />
       </View>
       <Text style={styles.chartLabel}>{monthName}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 export default function ProviderDashboardScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { onBookingUpdate } = useSocket();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
@@ -77,6 +102,13 @@ export default function ProviderDashboardScreen() {
   const [providerProfile, setProviderProfile] = useState<any>(null);
   const [monthlyEarnings, setMonthlyEarnings] = useState<number[]>([]);
   const [timeRange, setTimeRange] = useState<1 | 3 | 6 | 12>(6);
+  const [focusedBarIndex, setFocusedBarIndex] = useState<number | null>(null);
+  const [tooltipData, setTooltipData] = useState<{
+    monthName: string;
+    earnings: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   const loadDashboardData = useCallback(async () => {
     if (!user?.id) return;
@@ -186,6 +218,98 @@ export default function ProviderDashboardScreen() {
     }
   }, [user]); // Remove timeRange from dependencies - we calculate all 12 months always
 
+  // Listen for real-time booking updates
+  useEffect(() => {
+    const unsubscribe = onBookingUpdate((data) => {
+      logger.debug('Booking updated via Socket.io in dashboard', {
+        bookingId: data.bookingId,
+        status: data.status,
+        paymentStatus: data.booking?.payment?.status,
+      });
+
+      // Update recent bookings and get old status/payment status
+      let oldStatus: string | undefined;
+      let oldPaymentStatus: string | undefined;
+      let scheduledDate: string | undefined;
+      setRecentBookings((prev) => {
+        const booking = prev.find((b) => b.id === data.bookingId);
+        if (booking) {
+          oldStatus = booking.status;
+          oldPaymentStatus = booking.payment?.status;
+          scheduledDate = booking.scheduledDate;
+          if (booking.status !== data.status || booking.payment?.status !== data.booking?.payment?.status) {
+            // Status or payment status changed, update the booking
+            return prev.map((b) =>
+              b.id === data.bookingId
+                ? {
+                    ...b,
+                    status: data.status as any,
+                    ...(data.booking?.payment && { payment: { ...b.payment, ...data.booking.payment } }),
+                  }
+                : b
+            );
+          }
+        }
+        return prev;
+      });
+
+      // Check if payment status changed to completed (this affects earnings)
+      const newPaymentStatus = data.booking?.payment?.status;
+      const paymentJustCompleted =
+        oldPaymentStatus !== 'completed' && newPaymentStatus === 'completed';
+
+      // Update stats based on status change
+      if (oldStatus && oldStatus !== data.status) {
+        setStats((prev) => {
+          const newStats = { ...prev };
+
+          // Helper to check if booking is upcoming (CONFIRMED and future date)
+          const isUpcomingStatus = (status: string, date?: string) => {
+            if (status !== 'CONFIRMED') return false;
+            if (!date) return false;
+            return new Date(date) >= new Date();
+          };
+
+          // Use scheduledDate from recent bookings, or fallback to booking data
+          const bookingDate = scheduledDate || data.booking?.scheduledDate;
+
+          // Decrement old category
+          if (oldStatus === 'PENDING') {
+            newStats.pendingBookings = Math.max(0, newStats.pendingBookings - 1);
+          } else if (oldStatus && isUpcomingStatus(oldStatus, bookingDate)) {
+            newStats.upcomingBookings = Math.max(0, newStats.upcomingBookings - 1);
+          } else if (oldStatus === 'COMPLETED') {
+            newStats.completedBookings = Math.max(0, newStats.completedBookings - 1);
+          }
+
+          // Increment new category
+          if (data.status === 'PENDING') {
+            newStats.pendingBookings += 1;
+          } else if (isUpcomingStatus(data.status, bookingDate)) {
+            newStats.upcomingBookings += 1;
+          } else if (data.status === 'COMPLETED') {
+            newStats.completedBookings += 1;
+          }
+
+          return newStats;
+        });
+
+        // If booking was just completed or payment just completed, reload to update earnings
+        if (data.status === 'COMPLETED' || paymentJustCompleted) {
+          setTimeout(() => loadDashboardData(), 0);
+        }
+      } else if (paymentJustCompleted) {
+        // Payment status changed to completed, reload to update earnings
+        setTimeout(() => loadDashboardData(), 0);
+      } else if (!oldStatus) {
+        // Booking not in recent bookings, reload to get accurate stats
+        loadDashboardData();
+      }
+    });
+
+    return unsubscribe;
+  }, [onBookingUpdate, loadDashboardData]);
+
   // Redirect clients to discover
   useEffect(() => {
     // Wait a tick to ensure router is mounted
@@ -240,9 +364,6 @@ export default function ProviderDashboardScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Dashboard</Text>
-        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary[500]} />
         </View>
@@ -252,16 +373,27 @@ export default function ProviderDashboardScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Dashboard</Text>
-        <Text style={styles.subtitle}>Welcome back, {user?.firstName}</Text>
-      </View>
-
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View>
+              <Text style={styles.title}>Dashboard</Text>
+              <Text style={styles.subtitle}>Welcome back, {user?.firstName}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.headerSettingsButton}
+              onPress={() => router.push('/settings')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="settings-outline" size={22} color={theme.colors.primary[500]} />
+            </TouchableOpacity>
+          </View>
+        </View>
+        <View style={styles.headerDivider} />
         {/* Hero Section - Key Metrics */}
         <View style={styles.heroSection}>
           <View style={styles.heroCard}>
@@ -269,7 +401,11 @@ export default function ProviderDashboardScreen() {
               <View style={styles.heroMain}>
                 <Text style={styles.heroLabel}>Total Earnings</Text>
                 <Text style={styles.heroValue}>
-                  ${stats.totalEarnings.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  $
+                  {stats.totalEarnings.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
                 {stats.averageRating > 0 && (
                   <View style={styles.heroRatingInline}>
@@ -308,6 +444,26 @@ export default function ProviderDashboardScreen() {
                   </View>
                 </View>
                 <View style={styles.chartContainer}>
+                  {tooltipData && (
+                    <View
+                      style={[
+                        styles.tooltip,
+                        {
+                          left: tooltipData.x - 50,
+                          bottom: tooltipData.y + 10,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.tooltipMonth}>{tooltipData.monthName}</Text>
+                      <Text style={styles.tooltipAmount}>
+                        $
+                        {tooltipData.earnings.toLocaleString('en-US', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </Text>
+                    </View>
+                  )}
                   {(() => {
                     // Always render 12 bars, but only show data for the selected time range
                     const monthNames = [
@@ -361,6 +517,27 @@ export default function ProviderDashboardScreen() {
                           height={barHeight}
                           color={barColor}
                           monthName={month.monthName}
+                          earnings={month.earnings}
+                          isFocused={focusedBarIndex === index}
+                          onPressIn={() => {
+                            if (month.hasData && month.earnings > 0) {
+                              setFocusedBarIndex(index);
+                              // Calculate tooltip position (approximate)
+                              const barWidth = 24; // Approximate bar width
+                              const spacing = 4; // Gap between bars
+                              const x = index * (barWidth + spacing) + barWidth / 2;
+                              setTooltipData({
+                                monthName: month.monthName,
+                                earnings: month.earnings,
+                                x,
+                                y: barHeight, // Position above the bar
+                              });
+                            }
+                          }}
+                          onPressOut={() => {
+                            setFocusedBarIndex(null);
+                            setTooltipData(null);
+                          }}
                         />
                       );
                     });
@@ -373,14 +550,22 @@ export default function ProviderDashboardScreen() {
               <View style={styles.heroMetric}>
                 <Text style={styles.heroMetricLabel}>This Month</Text>
                 <Text style={styles.heroMetricValue}>
-                  ${stats.thisMonthEarnings.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  $
+                  {stats.thisMonthEarnings.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
               </View>
               <View style={styles.heroMetricDivider} />
               <View style={styles.heroMetric}>
                 <Text style={styles.heroMetricLabel}>Avg. Booking</Text>
                 <Text style={styles.heroMetricValue}>
-                  ${stats.averageBookingValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                  $
+                  {stats.averageBookingValue.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </Text>
               </View>
             </View>
@@ -440,39 +625,6 @@ export default function ProviderDashboardScreen() {
               </View>
               <Text style={styles.statValue}>{stats.completedBookings}</Text>
               <Text style={styles.statLabel}>Completed</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity
-              style={[styles.actionCard, styles.actionCardPrimary]}
-              onPress={() => router.push('/(tabs)/bookings')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="calendar-outline" size={28} color={theme.colors.primary[500]} />
-              <Text style={styles.actionText}>View Bookings</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCard, styles.actionCardPrimary]}
-              onPress={() => router.push('/(tabs)/profile')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="settings-outline" size={28} color={theme.colors.primary[500]} />
-              <Text style={styles.actionText}>Edit Profile</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionCard, styles.actionCardPrimary]}
-              onPress={() => router.push('/(tabs)/messages')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="chatbubbles-outline" size={28} color={theme.colors.primary[500]} />
-              <Text style={styles.actionText}>Messages</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -593,21 +745,40 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral[50],
   },
   header: {
-    paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: theme.colors.neutral[200],
+    marginBottom: theme.spacing.lg,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   title: {
-    ...theme.typography.display,
+    ...theme.typography.h1,
+    fontSize: 24,
+    fontWeight: '700',
     color: theme.colors.neutral[900],
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.xs / 2,
   },
   subtitle: {
     ...theme.typography.body,
+    fontSize: 14,
     color: theme.colors.neutral[500],
+  },
+  headerSettingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.neutral[50],
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingContainer: {
     flex: 1,
@@ -618,7 +789,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing['2xl'],
   },
   heroSection: {
@@ -718,6 +890,7 @@ const styles = StyleSheet.create({
     height: 100,
     gap: theme.spacing.sm,
     width: '100%',
+    position: 'relative',
   },
   chartBarContainer: {
     flex: 1,
@@ -744,6 +917,30 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: theme.colors.neutral[500],
     textAlign: 'center',
+  },
+  tooltip: {
+    position: 'absolute',
+    backgroundColor: theme.colors.neutral[900],
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radii.md,
+    minWidth: 80,
+    alignItems: 'center',
+    zIndex: 1000,
+    ...theme.shadows.card,
+  },
+  tooltipMonth: {
+    ...theme.typography.caption,
+    fontSize: 11,
+    color: theme.colors.white,
+    marginBottom: 2,
+    fontWeight: '600',
+  },
+  tooltipAmount: {
+    ...theme.typography.body,
+    fontSize: 13,
+    color: theme.colors.white,
+    fontWeight: '700',
   },
   chartEmpty: {
     width: '100%',
@@ -842,29 +1039,6 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     color: theme.colors.primary[500],
     fontWeight: '600',
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: theme.spacing.md,
-  },
-  actionCard: {
-    flex: 1,
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.lg,
-    padding: theme.spacing.lg,
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    borderWidth: 2,
-    ...theme.shadows.card,
-  },
-  actionCardPrimary: {
-    borderColor: theme.colors.primary[500],
-  },
-  actionText: {
-    ...theme.typography.body,
-    fontSize: 13,
-    color: theme.colors.neutral[700],
-    textAlign: 'center',
   },
   bookingItem: {
     flexDirection: 'row',

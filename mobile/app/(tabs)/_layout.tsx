@@ -11,14 +11,10 @@ export default function TabsLayout() {
   const indexOptions: any = {
     title: 'Discover',
     tabBarIcon: ({ color, size, focused }: any) => (
-      <Ionicons
-        name={focused ? 'search' : 'search-outline'}
-        size={size}
-        color={color}
-      />
+      <Ionicons name={focused ? 'search' : 'search-outline'} size={size} color={color} />
     ),
   };
-  
+
   // Hide Discover tab for providers
   if (!isLoading && isProvider) {
     indexOptions.href = null;
@@ -27,14 +23,10 @@ export default function TabsLayout() {
   const dashboardOptions: any = {
     title: 'Dashboard',
     tabBarIcon: ({ color, size, focused }: any) => (
-      <Ionicons
-        name={focused ? 'stats-chart' : 'stats-chart-outline'}
-        size={size}
-        color={color}
-      />
+      <Ionicons name={focused ? 'stats-chart' : 'stats-chart-outline'} size={size} color={color} />
     ),
   };
-  
+
   // Hide Dashboard tab for clients
   if (!isLoading && !isProvider) {
     dashboardOptions.href = null;
@@ -47,29 +39,20 @@ export default function TabsLayout() {
         tabBarActiveTintColor: theme.colors.primary[500],
         tabBarInactiveTintColor: theme.colors.neutral[500],
         tabBarStyle: {
-          borderTopColor: theme.colors.neutral[200],
+          borderTopColor: theme.colors.primary[500],
+          borderTopWidth: 2,
           backgroundColor: theme.colors.white,
         },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={indexOptions}
-      />
-      <Tabs.Screen
-        name="dashboard"
-        options={dashboardOptions}
-      />
+      <Tabs.Screen name="index" options={indexOptions} />
+      <Tabs.Screen name="dashboard" options={dashboardOptions} />
       <Tabs.Screen
         name="bookings"
         options={{
           title: 'Bookings',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'calendar' : 'calendar-outline'}
-              size={size}
-              color={color}
-            />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={size} color={color} />
           ),
         }}
       />
@@ -91,15 +74,10 @@ export default function TabsLayout() {
         options={{
           title: 'Profile',
           tabBarIcon: ({ color, size, focused }) => (
-            <Ionicons
-              name={focused ? 'person' : 'person-outline'}
-              size={size}
-              color={color}
-            />
+            <Ionicons name={focused ? 'person' : 'person-outline'} size={size} color={color} />
           ),
         }}
       />
     </Tabs>
   );
 }
-

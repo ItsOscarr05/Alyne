@@ -13,7 +13,6 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
 import { bookingService } from '../../services/booking';
-import { plaidService } from '../../services/plaid';
 import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
@@ -397,7 +396,6 @@ export default function PaymentCheckoutScreen() {
   const [requiresPlaidPayment, setRequiresPlaidPayment] = useState(false);
   const [stripePaymentComplete, setStripePaymentComplete] = useState(false);
   const [plaidPaymentComplete, setPlaidPaymentComplete] = useState(false);
-  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
   
   // Native Stripe hooks
   const stripeNative = useStripeNative ? useStripeNative() : null;
@@ -508,16 +506,10 @@ export default function PaymentCheckoutScreen() {
       });
       
       // Check if Plaid payment is required
+      // Note: Plaid Transfer API is used (not Payment Initiation), so no link token needed
+      // The transfer will be processed automatically after Stripe payment succeeds
       if (paymentIntent.requiresPlaidPayment) {
         setRequiresPlaidPayment(true);
-        // Get Plaid link token for client payment
-        try {
-          const linkToken = await plaidService.getPaymentLinkToken(bookingId!);
-          setPlaidLinkToken(linkToken);
-        } catch (error: any) {
-          console.error('Failed to get Plaid link token:', error);
-          // Don't fail the whole flow - we can still process Stripe payment
-        }
       }
 
       // For native: Initialize payment sheet
@@ -686,31 +678,34 @@ export default function PaymentCheckoutScreen() {
   if (loading || !booking) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Payment</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Payment</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        </ScrollView>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Complete Payment</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Complete Payment</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.headerDivider} />
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>Booking Summary</Text>
           
@@ -895,11 +890,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 18,

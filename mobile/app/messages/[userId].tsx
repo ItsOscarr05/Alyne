@@ -486,16 +486,19 @@ export default function ChatScreen() {
   if (authLoading || loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Loading...</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Loading...</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -509,31 +512,34 @@ export default function ChatScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Error</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <Text style={{ color: '#ef4444', marginBottom: 16 }}>
-            Unable to load user data
-          </Text>
-          <TouchableOpacity
-            style={{
-              backgroundColor: '#2563eb',
-              paddingHorizontal: 24,
-              paddingVertical: 12,
-              borderRadius: 8,
-            }}
-            onPress={() => router.replace('/(auth)/login')}
-          >
-            <Text style={{ color: '#ffffff', fontWeight: '600' }}>
-              Go to Login
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Error</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <Text style={{ color: '#ef4444', marginBottom: 16 }}>
+              Unable to load user data
             </Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#2563eb',
+                paddingHorizontal: 24,
+                paddingVertical: 12,
+                borderRadius: 8,
+              }}
+              onPress={() => router.replace('/(auth)/login')}
+            >
+              <Text style={{ color: '#ffffff', fontWeight: '600' }}>
+                Go to Login
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -544,30 +550,34 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <View style={styles.headerInfo}>
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>
-              {otherUser?.firstName[0] || 'U'}
-              {otherUser?.lastName[0] || ''}
-            </Text>
-          </View>
-          <View>
-            <Text style={styles.headerTitle}>
-              {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'User'}
-            </Text>
-            <Text style={styles.headerSubtitle}>
-              {isConnected ? 'Online' : 'Offline'}
-            </Text>
-          </View>
-        </View>
-        <View style={{ width: 24 }} />
-      </View>
-
       <FlatList
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <TouchableOpacity onPress={() => router.back()}>
+                <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              </TouchableOpacity>
+              <View style={styles.headerInfo}>
+                <View style={styles.headerAvatar}>
+                  <Text style={styles.headerAvatarText}>
+                    {otherUser?.firstName[0] || 'U'}
+                    {otherUser?.lastName[0] || ''}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.headerTitle}>
+                    {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'User'}
+                  </Text>
+                  <Text style={styles.headerSubtitle}>
+                    {isConnected ? 'Online' : 'Offline'}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ width: 24 }} />
+            </View>
+            <View style={styles.headerDivider} />
+          </>
+        }
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
@@ -627,11 +637,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   headerInfo: {
     flexDirection: 'row',

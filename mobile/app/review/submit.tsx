@@ -157,17 +157,20 @@ export default function SubmitReviewScreen() {
   if (checking) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Write a Review</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={styles.loadingText}>Checking...</Text>
-        </View>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Write a Review</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+            <Text style={styles.loadingText}>Checking...</Text>
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -175,6 +178,30 @@ export default function SubmitReviewScreen() {
   if (hasExistingReview) {
     return (
       <View style={styles.container}>
+        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.back()}>
+              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Write a Review</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          <View style={styles.headerDivider} />
+          <View style={styles.loadingContainer}>
+            <Ionicons name="checkmark-circle" size={64} color="#10b981" />
+            <Text style={styles.alreadyReviewedText}>You have already reviewed this booking</Text>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
@@ -182,28 +209,7 @@ export default function SubmitReviewScreen() {
           <Text style={styles.headerTitle}>Write a Review</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.loadingContainer}>
-          <Ionicons name="checkmark-circle" size={64} color="#10b981" />
-          <Text style={styles.alreadyReviewedText}>You have already reviewed this booking</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Write a Review</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.headerDivider} />
         <View style={styles.section}>
           <Text style={styles.label}>How was your experience?</Text>
           {providerName && (
@@ -274,11 +280,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
   },
   headerTitle: {
     fontSize: 18,
@@ -289,7 +300,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   section: {
     marginBottom: 32,

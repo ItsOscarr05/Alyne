@@ -88,11 +88,6 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
               <Text style={styles.distance}>{formatDistance(provider.distance)}</Text>
             </View>
           </View>
-
-          <View style={styles.priceBadge}>
-            <Text style={styles.price}>${provider.startingPrice}</Text>
-            <Text style={styles.priceLabel}>/session</Text>
-          </View>
         </View>
 
         {/* Specialties Row */}
@@ -184,20 +179,6 @@ const styles = StyleSheet.create({
   distance: {
     ...theme.typography.caption,
     color: theme.colors.neutral[500],
-  },
-  priceBadge: {
-    alignItems: 'flex-end',
-  },
-  price: {
-    ...theme.typography.h2,
-    fontSize: 20,
-    color: theme.colors.primary[500],
-    lineHeight: 24,
-  },
-  priceLabel: {
-    ...theme.typography.caption,
-    color: theme.colors.neutral[500],
-    fontSize: 11,
   },
   specialtiesRow: {
     flexDirection: 'row',

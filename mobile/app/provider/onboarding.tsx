@@ -539,30 +539,33 @@ export default function ProviderOnboardingScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Provider Setup</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Provider Setup</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.headerDivider} />
 
-      <View style={styles.progressBar}>
-        <View
-          style={[
-            styles.progressFill,
-            {
-              width: `${((['profile', 'services', 'credentials', 'availability'].indexOf(currentStep) + 1) / 4) * 100}%`,
-            },
-          ]}
-        />
-      </View>
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: `${((['profile', 'services', 'credentials', 'availability'].indexOf(currentStep) + 1) / 4) * 100}%`,
+              },
+            ]}
+          />
+        </View>
 
-      {currentStep === 'profile' && renderProfileStep()}
-      {currentStep === 'services' && renderServicesStep()}
-      {currentStep === 'credentials' && renderCredentialsStep()}
-      {currentStep === 'availability' && renderAvailabilityStep()}
-      {currentStep === 'complete' && renderCompleteStep()}
+        {currentStep === 'profile' && renderProfileStep()}
+        {currentStep === 'services' && renderServicesStep()}
+        {currentStep === 'credentials' && renderCredentialsStep()}
+        {currentStep === 'availability' && renderAvailabilityStep()}
+        {currentStep === 'complete' && renderCompleteStep()}
+      </ScrollView>
     </View>
   );
 }
@@ -576,11 +579,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 24,
-    paddingTop: 60,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#e2e8f0',
+    marginBottom: 16,
+    width: '95%',
+    alignSelf: 'center',
+  },
+  content: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 24,
   },
   headerTitle: {
     fontSize: 18,

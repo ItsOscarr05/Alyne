@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
+    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
     alignItems: 'center',
   },

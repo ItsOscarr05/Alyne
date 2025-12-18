@@ -1,4 +1,11 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,25 +41,31 @@ export default function ProfileScreen() {
 
   const loadProviderProfile = async () => {
     if (!user?.id) return;
-    
+
     setIsLoadingProfile(true);
     try {
       logger.debug('Loading provider profile for user', { userId: user.id });
       // Get provider profile using the user's own ID
       const profile = await providerService.getById(user.id);
-      logger.debug('Provider profile loaded', { 
+      logger.debug('Provider profile loaded', {
         hasProfile: !!profile,
         specialtiesCount: Array.isArray(profile?.specialties) ? profile.specialties.length : 0,
         servicesCount: profile?.services?.length || 0,
       });
-      
+
       if (profile) {
         setProviderProfile({
           id: profile.id,
           bio: profile.bio || null,
           specialties: Array.isArray(profile.specialties) ? profile.specialties : [],
           services: Array.isArray(profile.services) ? profile.services : [],
-          credentials: Array.isArray(profile.credentials) ? profile.credentials : [],
+          credentials: Array.isArray(profile.credentials)
+            ? profile.credentials.map((c) => ({
+                id: c.id,
+                name: c.name,
+                issuer: c.issuer ?? null,
+              }))
+            : [],
           availability: Array.isArray(profile.availability) ? profile.availability : [],
           rating: profile.rating || 0,
           reviewCount: profile.reviewCount || 0,
@@ -80,26 +93,51 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {user?.userType === 'PROVIDER' ? 'Provider Profile' : 'Profile'}
-        </Text>
-      </View>
-
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            {user?.userType === 'PROVIDER' ? 'Provider Profile' : 'Profile'}
+          </Text>
+          <TouchableOpacity
+            style={styles.headerEditButton}
+            onPress={() => {
+              if (user?.userType === 'PROVIDER') {
+                router.push('/provider/onboarding');
+              } else {
+                router.push('/settings/edit-profile');
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="pencil-outline" size={20} color={theme.colors.primary[500]} />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.headerDivider} />
         {user && (
           <>
             {/* Hero Section - Provider Only */}
             {user.userType === 'PROVIDER' ? (
               <View style={styles.heroSection}>
+                {/* Background Pattern */}
+                <View style={styles.heroPattern}>
+                  {/* Subtle grid pattern */}
+                  {Array.from({ length: 8 }).map((_, rowIndex) => (
+                    <View key={`row-${rowIndex}`} style={styles.heroPatternRow}>
+                      {Array.from({ length: 10 }).map((_, colIndex) => (
+                        <View
+                          key={`col-${colIndex}`}
+                          style={[
+                            styles.heroPatternCell,
+                            (rowIndex + colIndex) % 2 === 0 && styles.heroPatternCellAlt,
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  ))}
+                  {/* Radial gradient effect */}
+                  <View style={styles.heroPatternRadial} />
+                </View>
                 <View style={styles.heroContent}>
-                  <TouchableOpacity
-                    style={styles.heroEditButton}
-                    onPress={() => router.push('/provider/onboarding')}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons name="create-outline" size={20} color={theme.colors.primary[500]} />
-                  </TouchableOpacity>
                   <View style={styles.heroAvatarContainer}>
                     <View style={styles.heroAvatar}>
                       {user.profilePhoto ? (
@@ -115,13 +153,13 @@ export default function ProfileScreen() {
                         </Text>
                       )}
                     </View>
-                    {providerProfile && providerProfile.rating > 0 && (
+                    {providerProfile && providerProfile.rating && providerProfile.rating > 0 && (
                       <View style={styles.heroRatingBadge}>
                         <Ionicons name="star" size={14} color="#fbbf24" />
                         <Text style={styles.heroRatingText}>
                           {providerProfile.rating.toFixed(1)}
                         </Text>
-                        {providerProfile.reviewCount > 0 && (
+                        {providerProfile.reviewCount && providerProfile.reviewCount > 0 && (
                           <Text style={styles.heroReviewCount}>
                             ({providerProfile.reviewCount})
                           </Text>
@@ -142,13 +180,6 @@ export default function ProfileScreen() {
               <View style={styles.profileSection}>
                 <View style={styles.profileCard}>
                   <View style={styles.profileHeader}>
-                    <TouchableOpacity
-                      style={styles.editButton}
-                      onPress={() => router.push('/settings/edit-profile')}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="create-outline" size={20} color={theme.colors.primary[500]} />
-                    </TouchableOpacity>
                     <View style={styles.avatarWrapper}>
                       <View style={styles.avatar}>
                         {user.profilePhoto ? (
@@ -169,7 +200,6 @@ export default function ProfileScreen() {
                         <Text style={styles.userTypeText}>Client</Text>
                       </View>
                     </View>
-                    <View style={styles.editButtonPlaceholder} />
                   </View>
                   <View style={styles.profileInfo}>
                     <Text style={styles.name}>
@@ -189,7 +219,11 @@ export default function ProfileScreen() {
               <View style={styles.quickStatsSection}>
                 <View style={styles.quickStatsGrid}>
                   <View style={[styles.quickStatCard, styles.quickStatCardServices]}>
-                    <Ionicons name="briefcase-outline" size={24} color={theme.colors.primary[500]} />
+                    <Ionicons
+                      name="briefcase-outline"
+                      size={24}
+                      color={theme.colors.primary[500]}
+                    />
                     <Text style={styles.quickStatNumber}>
                       {providerProfile.services?.length || 0}
                     </Text>
@@ -212,7 +246,9 @@ export default function ProfileScreen() {
                   <View style={[styles.quickStatCard, styles.quickStatCardRating]}>
                     <Ionicons name="star-outline" size={24} color="#fbbf24" />
                     <Text style={styles.quickStatNumber}>
-                      {providerProfile.rating > 0 ? providerProfile.rating.toFixed(1) : 'N/A'}
+                      {providerProfile.rating && providerProfile.rating > 0
+                        ? providerProfile.rating.toFixed(1)
+                        : 'N/A'}
                     </Text>
                     <Text style={styles.quickStatLabel}>Rating</Text>
                   </View>
@@ -277,30 +313,21 @@ export default function ProfileScreen() {
               <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/payment/history')}
-          >
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/payment/history')}>
             <Ionicons name="receipt-outline" size={20} color={theme.colors.primary[500]} />
             <Text style={styles.menuText}>Payment History</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
           </TouchableOpacity>
 
           <Text style={styles.menuSectionLabel}>Preferences</Text>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/settings')}
-          >
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/settings')}>
             <Ionicons name="settings-outline" size={20} color={theme.colors.primary[500]} />
             <Text style={styles.menuText}>Settings</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
           </TouchableOpacity>
 
           <Text style={styles.menuSectionLabel}>Support</Text>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/help-support')}
-          >
+          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/help-support')}>
             <Ionicons name="help-circle-outline" size={20} color={theme.colors.primary[500]} />
             <Text style={styles.menuText}>Help & Support</Text>
             <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
@@ -323,38 +350,85 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: theme.spacing.xl,
-    paddingTop: theme.spacing['2xl'],
-    paddingBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
+    paddingTop: theme.spacing.xl,
+    paddingBottom: theme.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: '#CBD5E1',
+    marginBottom: theme.spacing.lg,
+    width: '95%',
+    alignSelf: 'center',
   },
   title: {
-    ...theme.typography.display,
+    ...theme.typography.h1,
+    fontSize: 24,
+    fontWeight: '700',
     color: theme.colors.neutral[900],
+  },
+  headerEditButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: theme.colors.primary[500],
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     flex: 1,
   },
+  contentContainer: {
+    paddingBottom: theme.spacing['2xl'],
+  },
   // Hero Section (Provider)
   heroSection: {
-    backgroundColor: theme.colors.white,
     paddingTop: theme.spacing['2xl'],
     paddingBottom: theme.spacing.xl,
     paddingHorizontal: theme.spacing.xl,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  heroPatternRow: {
+    flexDirection: 'row',
+    flex: 1,
+  },
+  heroPatternCell: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  heroPatternCellAlt: {
+    backgroundColor: theme.colors.primary[50],
+    opacity: 0.9,
+  },
+  heroPatternRadial: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    width: '200%',
+    height: '200%',
+    marginTop: '-100%',
+    marginLeft: '-100%',
+    borderRadius: 1000,
+    backgroundColor: theme.colors.primary[50],
+    opacity: 0.2,
   },
   heroContent: {
     alignItems: 'center',
     position: 'relative',
-  },
-  heroEditButton: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
+    zIndex: 1,
   },
   heroAvatarContainer: {
     alignItems: 'center',
@@ -390,7 +464,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.full,
-    ...theme.shadows.sm,
+    ...theme.shadows.card,
   },
   heroRatingText: {
     fontSize: 14,
@@ -419,7 +493,6 @@ const styles = StyleSheet.create({
   },
   // Quick Stats Section
   quickStatsSection: {
-    backgroundColor: theme.colors.white,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
     borderTopWidth: 1,
@@ -433,7 +506,7 @@ const styles = StyleSheet.create({
   quickStatCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
@@ -521,21 +594,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.white,
   },
-  editButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: theme.colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    top: 0,
-    right: 0,
-  },
-  editButtonPlaceholder: {
-    width: 40,
-    height: 40,
-  },
   profileInfo: {
     alignItems: 'center',
   },
@@ -556,7 +614,6 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[500],
   },
   menuSection: {
-    backgroundColor: theme.colors.white,
     marginTop: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
     paddingHorizontal: theme.spacing.xl,
@@ -575,7 +632,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: '#CBD5E1',
     gap: 12,
   },
   menuText: {
@@ -587,7 +644,6 @@ const styles = StyleSheet.create({
     color: '#ef4444',
   },
   providerInfoSection: {
-    backgroundColor: theme.colors.white,
     marginTop: theme.spacing.lg,
     padding: theme.spacing.xl,
   },
@@ -647,4 +703,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-

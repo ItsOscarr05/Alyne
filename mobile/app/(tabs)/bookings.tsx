@@ -280,12 +280,17 @@ export default function BookingsScreen() {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Bookings</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.listContent}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>My Bookings</Text>
+          </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -293,9 +298,14 @@ export default function BookingsScreen() {
   if (bookings.length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>My Bookings</Text>
-          <View style={styles.tabContainer}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        >
+          <View style={styles.header}>
+            <Text style={styles.title}>My Bookings</Text>
+            <View style={styles.tabContainer}>
             <View style={[styles.tab, styles.tabActive]}>
               <Text style={styles.tabActiveText}>Upcoming</Text>
             </View>
@@ -304,12 +314,8 @@ export default function BookingsScreen() {
             </View>
           </View>
         </View>
-        <ScrollView
-          style={styles.content}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
           <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={160} color="#93C5FD" />
+            <Ionicons name="calendar-outline" size={160} color="#3B82F6" />
             <Text style={styles.emptyTitle}>No bookings yet</Text>
             <Text style={styles.emptyText}>
               {user?.userType === 'PROVIDER'
@@ -324,52 +330,63 @@ export default function BookingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>
-          {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
-        </Text>
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'pending' && styles.tabActive]}
-            onPress={() => handleTabChange('pending')}
-            activeOpacity={0.8}
-          >
-            <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
-              Pending
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'upcoming' && styles.tabActive]}
-            onPress={() => handleTabChange('upcoming')}
-            activeOpacity={0.8}
-          >
-            <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
-              Upcoming
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'past' && styles.tabActive]}
-            onPress={() => handleTabChange('past')}
-            activeOpacity={0.8}
-          >
-            <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
-              Completed
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
+        <View style={styles.header}>
+          <Text style={styles.title}>
+            {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
+          </Text>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'pending' && styles.tabActive,
+                activeTab === 'pending' && styles.tabActivePending,
+              ]}
+              onPress={() => handleTabChange('pending')}
+              activeOpacity={0.8}
+            >
+              <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
+                Pending
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'upcoming' && styles.tabActive,
+                activeTab === 'upcoming' && styles.tabActiveUpcoming,
+              ]}
+              onPress={() => handleTabChange('upcoming')}
+              activeOpacity={0.8}
+            >
+              <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
+                Upcoming
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'past' && styles.tabActive,
+                activeTab === 'past' && styles.tabActiveCompleted,
+              ]}
+              onPress={() => handleTabChange('past')}
+              activeOpacity={0.8}
+            >
+              <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
+                Completed
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
           {activeTab === 'pending' ? (
             <View style={styles.section}>
               {pendingBookings.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="time-outline" size={160} color="#93C5FD" />
+                  <Ionicons name="time-outline" size={160} color="#3B82F6" />
                   <Text style={styles.emptyTitle}>No pending bookings</Text>
                   <Text style={styles.emptyText}>
                     {user?.userType === 'PROVIDER'
@@ -404,23 +421,17 @@ export default function BookingsScreen() {
                       <BookingCard
                         booking={bookingCardData}
                         onPress={() => handleBookingPress(booking.id)}
+                        onAccept={
+                          user?.userType === 'PROVIDER' && booking.status === 'PENDING'
+                            ? () => handleAccept(booking.id)
+                            : undefined
+                        }
+                        onDecline={
+                          user?.userType === 'PROVIDER' && booking.status === 'PENDING'
+                            ? () => handleDecline(booking.id)
+                            : undefined
+                        }
                       />
-                      {user?.userType === 'PROVIDER' && booking.status === 'PENDING' && (
-                        <View style={styles.actionButtons}>
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.acceptButton]}
-                            onPress={() => handleAccept(booking.id)}
-                          >
-                            <Text style={styles.acceptButtonText}>Accept</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.actionButton, styles.declineButton]}
-                            onPress={() => handleDecline(booking.id)}
-                          >
-                            <Text style={styles.declineButtonText}>Decline</Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
                     </View>
                   );
                 })
@@ -430,7 +441,7 @@ export default function BookingsScreen() {
             <View style={styles.section}>
               {upcomingBookings.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="calendar-outline" size={160} color="#93C5FD" />
+                  <Ionicons name="calendar-outline" size={160} color="#3B82F6" />
                   <Text style={styles.emptyTitle}>No upcoming bookings</Text>
                   <Text style={styles.emptyText}>
                     When you schedule a session, it will appear here.
@@ -486,16 +497,10 @@ export default function BookingsScreen() {
                         booking={bookingCardData}
                         onPress={() => handleBookingPress(booking.id)}
                         actionButton={actionButton}
+                        onComplete={
+                          showCompleteButton ? () => handleComplete(booking.id) : undefined
+                        }
                       />
-                      {showCompleteButton && (
-                        <TouchableOpacity
-                          style={styles.completeButton}
-                          onPress={() => handleComplete(booking.id)}
-                        >
-                          <Ionicons name="checkmark-circle-outline" size={18} color="#ffffff" />
-                          <Text style={styles.completeButtonText}>Mark as Completed</Text>
-                        </TouchableOpacity>
-                      )}
                     </View>
                   );
                 })
@@ -505,7 +510,7 @@ export default function BookingsScreen() {
             <View style={styles.section}>
               {pastBookings.length === 0 ? (
                 <View style={styles.emptyState}>
-                  <Ionicons name="checkmark-circle-outline" size={160} color="#93C5FD" />
+                  <Ionicons name="checkmark-circle-outline" size={160} color="#3B82F6" />
                   <Text style={styles.emptyTitle}>No completed bookings yet</Text>
                   <Text style={styles.emptyText}>
                     Completed and cancelled sessions will appear here.
@@ -615,20 +620,39 @@ const styles = StyleSheet.create({
   tabContainer: {
     marginTop: theme.spacing.lg,
     flexDirection: 'row',
-    backgroundColor: theme.colors.neutral[50],
+    backgroundColor: theme.colors.neutral[100],
     borderRadius: theme.radii.full,
-    padding: 4,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    overflow: 'hidden',
   },
   tab: {
     flex: 1,
-    borderRadius: theme.radii.full,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: theme.spacing.sm,
+    backgroundColor: theme.colors.neutral[100],
   },
   tabActive: {
     backgroundColor: theme.colors.white,
-    ...theme.shadows.card,
+    borderWidth: 2,
+    borderRadius: theme.radii.full,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  tabActivePending: {
+    borderColor: '#FBBF24', // Yellow
+    shadowColor: '#FBBF24',
+  },
+  tabActiveUpcoming: {
+    borderColor: '#A855F7', // Purple
+    shadowColor: '#A855F7',
+  },
+  tabActiveCompleted: {
+    borderColor: theme.colors.semantic.success, // Green
+    shadowColor: theme.colors.semantic.success,
   },
   tabText: {
     fontSize: 14,
