@@ -456,27 +456,35 @@ export default function ProviderDetailScreen() {
                     return true;
                   });
 
-                  return uniqueServices.map((service) => (
-                    <View key={service.id} style={styles.serviceCard}>
-                      <View style={styles.serviceHeader}>
-                        <View style={styles.serviceTitleRow}>
-                          <Text style={styles.serviceName}>{service.name}</Text>
-                          <Text style={styles.serviceDurationChip}>
-                            <Ionicons name="time-outline" size={14} color="#64748b" />{' '}
-                            <Text style={styles.serviceDurationChipText}>
-                              {service.duration} min
-                            </Text>
-                          </Text>
+                  return (
+                    <View style={styles.gridContainer}>
+                      {uniqueServices.map((service) => (
+                        <View key={service.id} style={styles.serviceCardWrapper}>
+                          <View style={styles.serviceCard}>
+                            <View style={styles.serviceHeader}>
+                              <View style={styles.serviceTitleRow}>
+                                <Text style={styles.serviceName}>{service.name}</Text>
+                                <Text style={styles.serviceDurationChip}>
+                                  <Ionicons name="time-outline" size={14} color="#64748b" />{' '}
+                                  <Text style={styles.serviceDurationChipText}>
+                                    {service.duration} min
+                                  </Text>
+                                </Text>
+                              </View>
+                              <View style={styles.servicePriceTag}>
+                                <Text style={styles.servicePriceAmount}>${service.price}/session</Text>
+                              </View>
+                            </View>
+                            {service.description && (
+                              <Text style={styles.serviceDescription} numberOfLines={3} ellipsizeMode="tail">
+                                {service.description}
+                              </Text>
+                            )}
+                          </View>
                         </View>
-                        <View style={styles.servicePriceTag}>
-                          <Text style={styles.servicePriceAmount}>${service.price}/session</Text>
-                        </View>
-                      </View>
-                      {service.description && (
-                        <Text style={styles.serviceDescription}>{service.description}</Text>
-                      )}
+                      ))}
                     </View>
-                  ));
+                  );
                 })()
               ) : (
                 <Text style={styles.emptyText}>No services available</Text>
@@ -487,68 +495,76 @@ export default function ProviderDetailScreen() {
           {activeTab === 'reviews' && (
             <View>
               {provider.reviews && provider.reviews.length > 0 ? (
-                provider.reviews.map((review) => (
-                  <View key={review.id} style={styles.reviewCard}>
-                    <View style={styles.reviewHeader}>
-                      <View style={styles.reviewerInfo}>
-                        <View style={styles.reviewerAvatar}>
-                          <Text style={styles.reviewerInitials}>
-                            {review.client.firstName[0]}
-                            {review.client.lastName[0]}
-                          </Text>
-                        </View>
-                        <View style={styles.reviewerTextBlock}>
-                          <Text style={styles.reviewerName}>
-                            {review.client.firstName} {review.client.lastName}
-                          </Text>
-                          <View style={styles.reviewMetaRow}>
-                            <View style={styles.reviewRatingPill}>
-                              <Ionicons name="star" size={12} color="#fbbf24" />
-                              <Text style={styles.reviewRatingText}>
-                                {review.rating.toFixed(1)}
+                <View style={styles.gridContainer}>
+                  {provider.reviews.map((review) => (
+                    <View key={review.id} style={styles.reviewCardWrapper}>
+                      <View style={styles.reviewCard}>
+                        <View style={styles.reviewHeader}>
+                          <View style={styles.reviewerInfo}>
+                            <View style={styles.reviewerAvatar}>
+                              <Text style={styles.reviewerInitials}>
+                                {review.client.firstName[0]}
+                                {review.client.lastName[0]}
                               </Text>
                             </View>
-                            <View style={styles.reviewStars}>{renderStars(review.rating)}</View>
-                            <Text style={styles.reviewDate}>
-                              {new Date(review.createdAt).toLocaleDateString()}
-                            </Text>
+                            <View style={styles.reviewerTextBlock}>
+                              <Text style={styles.reviewerName} numberOfLines={1}>
+                                {review.client.firstName} {review.client.lastName}
+                              </Text>
+                              <View style={styles.reviewMetaRow}>
+                                <View style={styles.reviewRatingPill}>
+                                  <Ionicons name="star" size={12} color="#fbbf24" />
+                                  <Text style={styles.reviewRatingText}>
+                                    {review.rating.toFixed(1)}
+                                  </Text>
+                                </View>
+                                <View style={styles.reviewStars}>{renderStars(review.rating)}</View>
+                                <Text style={styles.reviewDate} numberOfLines={1}>
+                                  {new Date(review.createdAt).toLocaleDateString()}
+                                </Text>
+                              </View>
+                            </View>
+                          </View>
+
+                          <View style={styles.reviewActions}>
+                            {user && user.id === review.client.id && (
+                              <TouchableOpacity
+                                style={styles.editButton}
+                                onPress={() => {
+                                  router.push({
+                                    pathname: '/review/edit',
+                                    params: {
+                                      reviewId: review.id,
+                                      providerName: provider.name,
+                                      initialRating: review.rating.toString(),
+                                      initialComment: review.comment || '',
+                                    },
+                                  });
+                                }}
+                              >
+                                <Ionicons name="pencil-outline" size={16} color="#2563eb" />
+                              </TouchableOpacity>
+                            )}
+                            {user && user.id !== review.client.id && (
+                              <TouchableOpacity
+                                style={styles.flagButton}
+                                onPress={() => handleFlagReview(review.id)}
+                              >
+                                <Ionicons name="flag-outline" size={16} color="#ef4444" />
+                              </TouchableOpacity>
+                            )}
                           </View>
                         </View>
-                      </View>
 
-                      <View style={styles.reviewActions}>
-                        {user && user.id === review.client.id && (
-                          <TouchableOpacity
-                            style={styles.editButton}
-                            onPress={() => {
-                              router.push({
-                                pathname: '/review/edit',
-                                params: {
-                                  reviewId: review.id,
-                                  providerName: provider.name,
-                                  initialRating: review.rating.toString(),
-                                  initialComment: review.comment || '',
-                                },
-                              });
-                            }}
-                          >
-                            <Ionicons name="pencil-outline" size={16} color="#2563eb" />
-                          </TouchableOpacity>
-                        )}
-                        {user && user.id !== review.client.id && (
-                          <TouchableOpacity
-                            style={styles.flagButton}
-                            onPress={() => handleFlagReview(review.id)}
-                          >
-                            <Ionicons name="flag-outline" size={16} color="#ef4444" />
-                          </TouchableOpacity>
+                        {review.comment && (
+                          <Text style={styles.reviewComment} numberOfLines={4} ellipsizeMode="tail">
+                            {review.comment}
+                          </Text>
                         )}
                       </View>
                     </View>
-
-                    {review.comment && <Text style={styles.reviewComment}>{review.comment}</Text>}
-                  </View>
-                ))
+                  ))}
+                </View>
               ) : (
                 <Text style={styles.emptyText}>No reviews yet</Text>
               )}
@@ -767,6 +783,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#f1f5f9',
+    borderWidth: 2,
+    borderColor: '#2563eb',
   },
   availabilityDayPillDisabled: {
     opacity: 0.4,
@@ -784,24 +802,31 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#64748b',
   },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  serviceCardWrapper: {
+    width: '48%',
+  },
   serviceCard: {
     backgroundColor: '#f8fafc',
     borderRadius: 16,
     padding: 18,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 2,
+    borderColor: '#2563eb',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
+    minHeight: 180,
   },
   serviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
   },
   serviceTitleRow: {
     flex: 1,
@@ -833,16 +858,20 @@ const styles = StyleSheet.create({
   serviceDescription: {
     fontSize: 14,
     color: '#64748b',
-    marginTop: 8,
+    marginTop: 12,
     lineHeight: 20,
+    flex: 1,
+  },
+  reviewCardWrapper: {
+    width: '48%',
   },
   reviewCard: {
-    marginBottom: 16,
     padding: 16,
     borderRadius: 12,
     backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 2,
+    borderColor: '#2563eb',
+    minHeight: 200,
   },
   reviewHeader: {
     flexDirection: 'row',
@@ -919,7 +948,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     lineHeight: 20,
-    marginTop: 8,
+    marginTop: 12,
+    flex: 1,
   },
   emptyText: {
     fontSize: 14,

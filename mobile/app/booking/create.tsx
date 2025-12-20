@@ -235,21 +235,23 @@ export default function CreateBookingScreen() {
         {/* Date Selection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Select Date</Text>
-          <Calendar
-            onDayPress={(day) => setSelectedDate(day.dateString)}
-            markedDates={{
-              [selectedDate]: {
-                selected: true,
-                selectedColor: '#2563eb',
-              },
-            }}
-            minDate={new Date().toISOString().split('T')[0]}
-            theme={{
-              todayTextColor: '#2563eb',
-              arrowColor: '#2563eb',
-              selectedDayBackgroundColor: '#2563eb',
-            }}
-          />
+          <View style={styles.calendarContainer}>
+            <Calendar
+              onDayPress={(day) => setSelectedDate(day.dateString)}
+              markedDates={{
+                [selectedDate]: {
+                  selected: true,
+                  selectedColor: '#2563eb',
+                },
+              }}
+              minDate={new Date().toISOString().split('T')[0]}
+              theme={{
+                todayTextColor: '#2563eb',
+                arrowColor: '#2563eb',
+                selectedDayBackgroundColor: '#2563eb',
+              }}
+            />
+          </View>
         </View>
 
         {/* Time Selection */}
@@ -425,8 +427,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 18,
     marginBottom: 24,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 2,
+    borderColor: '#2563eb',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -452,6 +454,13 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     marginBottom: 16,
   },
+  calendarContainer: {
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#2563eb',
+    overflow: 'hidden',
+    backgroundColor: '#ffffff',
+  },
   serviceOption: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -462,7 +471,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
+    borderColor: '#000000',
   },
   serviceOptionSelected: {
     borderColor: '#2563eb',
@@ -491,8 +500,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 2,
+    borderColor: '#000000',
   },
   timeSlotSelected: {
     backgroundColor: '#2563eb',
@@ -522,6 +531,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     marginTop: 8,
+    borderWidth: 2,
+    borderColor: '#2563eb',
   },
   summaryTitle: {
     fontSize: 18,

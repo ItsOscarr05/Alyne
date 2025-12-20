@@ -12,6 +12,7 @@ export interface ProviderCardData {
   reviewCount: number;
   profilePhoto?: string;
   isAvailableNow?: boolean;
+  bio?: string;
 }
 
 interface ProviderCardProps {
@@ -102,6 +103,18 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
           )}
         </View>
 
+        {/* Bio Section */}
+        {provider.bio && (
+          <View style={styles.bioSection}>
+            <Text style={styles.bioText} numberOfLines={4} ellipsizeMode="tail">
+              {provider.bio}
+            </Text>
+          </View>
+        )}
+
+        {/* Spacer to fill remaining space */}
+        <View style={styles.spacer} />
+
         {/* Footer Row: Rating */}
         <View style={styles.footerRow}>
           <View style={styles.ratingRow}>
@@ -119,18 +132,19 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
-    marginBottom: theme.spacing.lg,
     ...theme.shadows.card,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
+    height: 280,
   },
   content: {
     padding: theme.spacing.lg,
+    flex: 1,
+    justifyContent: 'space-between',
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: theme.spacing.md,
     gap: theme.spacing.md,
   },
   avatarContainer: {
@@ -141,6 +155,8 @@ const styles = StyleSheet.create({
     height: 64,
     borderRadius: 32,
     backgroundColor: theme.colors.neutral[50],
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
   },
   avatarPlaceholder: {
     width: 64,
@@ -149,6 +165,8 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.neutral[50],
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
   },
   availableIndicator: {
     position: 'absolute',
@@ -184,8 +202,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
     alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  bioSection: {
+    marginTop: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
+  },
+  bioText: {
+    ...theme.typography.body,
+    fontSize: 13,
+    color: theme.colors.neutral[600],
+    lineHeight: 18,
+  },
+  spacer: {
+    flex: 1,
   },
   specialtyTag: {
     backgroundColor: theme.colors.primary[50],
@@ -207,9 +238,10 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: theme.spacing.sm,
+    paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.neutral[200],
+    marginTop: theme.spacing.xs,
   },
   ratingRow: {
     flexDirection: 'row',

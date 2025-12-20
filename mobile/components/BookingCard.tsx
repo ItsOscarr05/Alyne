@@ -25,6 +25,8 @@ interface BookingCardProps {
   onAccept?: () => void;
   onDecline?: () => void;
   onComplete?: () => void;
+  onOptionsPress?: () => void;
+  showOptions?: boolean;
 }
 
 export function BookingCard({
@@ -34,6 +36,8 @@ export function BookingCard({
   onAccept,
   onDecline,
   onComplete,
+  onOptionsPress,
+  showOptions = false,
 }: BookingCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -140,31 +144,47 @@ export function BookingCard({
           </View>
         </View>
         <View style={styles.headerRight}>
-          <View
-            style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}
-          >
-            <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
-              {getStatusText(booking.status)}
-            </Text>
+          <View style={styles.headerRightTop}>
+            <View
+              style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}
+            >
+              <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
+                {getStatusText(booking.status)}
+              </Text>
+            </View>
+            {showOptions && onOptionsPress && (
+              <TouchableOpacity
+                style={styles.optionsButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onOptionsPress();
+                }}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="ellipsis-vertical" size={20} color="#64748b" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
 
       <View style={styles.details}>
         {!actionButton && (
-          <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={16} color="#64748b" />
-            <Text style={styles.detailText}>
-              {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
-            </Text>
-          </View>
-        )}
+          <>
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar-outline" size={16} color="#64748b" />
+              <Text style={styles.detailText}>
+                {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
+              </Text>
+            </View>
 
-        {booking.location && (
-          <View style={styles.detailRow}>
-            <Ionicons name="location-outline" size={16} color="#64748b" />
-            <Text style={styles.detailText}>{formatAddress(booking.location)}</Text>
-          </View>
+            {booking.location && (
+              <View style={styles.detailRow}>
+                <Ionicons name="location-outline" size={16} color="#64748b" />
+                <Text style={styles.detailText}>{formatAddress(booking.location)}</Text>
+              </View>
+            )}
+          </>
         )}
 
         {!actionButton && (
@@ -275,6 +295,15 @@ const styles = StyleSheet.create({
   headerRight: {
     alignItems: 'flex-end',
     gap: 8,
+  },
+  headerRightTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  optionsButton: {
+    padding: 4,
+    borderRadius: 8,
   },
   providerInfo: {
     flexDirection: 'row',

@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { SearchBar } from '../../components/SearchBar';
 import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
+import { ProviderDetailModal } from '../../components/ProviderDetailModal';
 import { providerService, DiscoveryFilters } from '../../services/provider';
 import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
@@ -41,6 +42,8 @@ export default function DiscoverScreen() {
   const [priceOption, setPriceOption] = useState<'asc' | 'desc' | null>(null);
   const [distanceOption, setDistanceOption] = useState<number | null>(null); // miles: 1, 5, 10, 15, 20+
   const [reviewsOption, setReviewsOption] = useState<'highest' | 'lowest' | null>(null);
+  const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+  const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
 
   // Redirect providers to dashboard
   useEffect(() => {
@@ -162,7 +165,8 @@ export default function DiscoverScreen() {
   };
 
   const handleProviderPress = (providerId: string) => {
-    router.push(`/provider/${providerId}`);
+    setSelectedProviderId(providerId);
+    setIsProviderModalVisible(true);
   };
 
   const handleFilterPress = (filter: 'all' | 'rating' | 'price' | 'distance' | 'reviews') => {
@@ -386,8 +390,11 @@ export default function DiscoverScreen() {
           <FlatList
             data={providers}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <ProviderCard provider={item} onPress={() => handleProviderPress(item.id)} />
+            numColumns={2}
+            renderItem={({ item, index }) => (
+              <View style={styles.cardWrapper}>
+                <ProviderCard provider={item} onPress={() => handleProviderPress(item.id)} />
+              </View>
             )}
             ListHeaderComponent={
               <>
@@ -405,6 +412,16 @@ export default function DiscoverScreen() {
           />
         )}
       </View>
+
+      {/* Provider Detail Modal */}
+      <ProviderDetailModal
+        visible={isProviderModalVisible}
+        providerId={selectedProviderId}
+        onClose={() => {
+          setIsProviderModalVisible(false);
+          setSelectedProviderId(null);
+        }}
+      />
 
       {/* Filter Dropdown Modal */}
       <RNModal
@@ -642,6 +659,11 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingBottom: theme.spacing.xl,
+  },
+  cardWrapper: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
   },
   emptyState: {
     flex: 1,

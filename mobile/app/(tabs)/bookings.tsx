@@ -7,6 +7,9 @@ import {
   RefreshControl,
   TouchableOpacity,
   Animated,
+  Alert,
+  Modal as RNModal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -23,6 +26,8 @@ import { theme } from '../../theme';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { PaymentCheckoutModal } from '../../components/PaymentCheckoutModal';
+import { SubmitReviewModal } from '../../components/SubmitReviewModal';
 import { mockBookings } from '../../data/mockBookings';
 
 export default function BookingsScreen() {
@@ -34,14 +39,28 @@ export default function BookingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [reviewedBookings, setReviewedBookings] = useState<Set<string>>(new Set());
+  const [hiddenBookings, setHiddenBookings] = useState<Set<string>>(new Set());
+  const [optionsMenuVisible, setOptionsMenuVisible] = useState(false);
+  const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'past'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'past' | 'declined'>(
+    'pending'
+  );
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const prevTabRef = useRef<'pending' | 'upcoming' | 'past'>('pending');
+  const prevTabRef = useRef<'pending' | 'upcoming' | 'past' | 'declined'>('pending');
+  const [currentPage, setCurrentPage] = useState({
+    pending: 1,
+    upcoming: 1,
+    past: 1,
+    declined: 1,
+  });
+  const ITEMS_PER_PAGE = 10;
 
   // Animate tab switch
-  const handleTabChange = (tab: 'pending' | 'upcoming' | 'past') => {
+  const handleTabChange = (tab: 'pending' | 'upcoming' | 'past' | 'declined') => {
     setActiveTab(tab);
+    // Reset to page 1 when switching tabs
+    setCurrentPage((prev) => ({ ...prev, [tab]: 1 }));
   };
 
   // Animate when activeTab changes
@@ -65,8 +84,8 @@ export default function BookingsScreen() {
 
   // Check for initial tab from route params
   useEffect(() => {
-    if (params.tab && ['pending', 'upcoming', 'past'].includes(params.tab)) {
-      const tab = params.tab as 'pending' | 'upcoming' | 'past';
+    if (params.tab && ['pending', 'upcoming', 'past', 'declined'].includes(params.tab)) {
+      const tab = params.tab as 'pending' | 'upcoming' | 'past' | 'declined';
       if (tab !== activeTab) {
         setActiveTab(tab);
       }
@@ -168,12 +187,39 @@ export default function BookingsScreen() {
     return unsubscribe;
   }, [onBookingUpdate, user, authLoading, loadBookings]);
 
-  const pendingBookings = bookings.filter((b) => b.status === 'PENDING');
-  const upcomingBookings = bookings.filter((b) => b.status === 'CONFIRMED');
+  const pendingBookings = bookings.filter(
+    (b) => b.status === 'PENDING' && !hiddenBookings.has(b.id)
+  );
+  const upcomingBookings = bookings.filter(
+    (b) => b.status === 'CONFIRMED' && !hiddenBookings.has(b.id)
+  );
+  const declinedBookings = bookings.filter((b) => {
+    const status: string = b.status;
+    return status === 'DECLINED' && !hiddenBookings.has(b.id);
+  });
   const pastBookings = bookings.filter((b) => {
     const status: string = b.status;
-    return status === 'COMPLETED' || status === 'CANCELLED' || status === 'DECLINED';
+    return (status === 'COMPLETED' || status === 'CANCELLED') && !hiddenBookings.has(b.id);
   });
+
+  // Pagination logic
+  const getPaginatedBookings = (
+    bookingsList: BookingDetail[],
+    tab: 'pending' | 'upcoming' | 'past' | 'declined'
+  ) => {
+    const page = currentPage[tab];
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return bookingsList.slice(startIndex, endIndex);
+  };
+
+  const getTotalPages = (bookingsList: BookingDetail[]) => {
+    return Math.ceil(bookingsList.length / ITEMS_PER_PAGE);
+  };
+
+  const handlePageChange = (tab: 'pending' | 'upcoming' | 'past' | 'declined', page: number) => {
+    setCurrentPage((prev) => ({ ...prev, [tab]: page }));
+  };
 
   const handleBookingPress = (bookingId: string) => {
     router.push({
@@ -256,36 +302,126 @@ export default function BookingsScreen() {
     }
   };
 
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [selectedBookingForReview, setSelectedBookingForReview] = useState<{
+    bookingId: string;
+    providerId: string;
+    providerName: string;
+  } | null>(null);
+
   const handleReview = (booking: BookingDetail) => {
     const providerName = booking.provider
       ? `${booking.provider.firstName} ${booking.provider.lastName}`
       : 'Provider';
-    router.push({
-      pathname: '/review/submit',
-      params: {
-        bookingId: booking.id,
-        providerId: booking.providerId,
-        providerName,
-      },
+    setSelectedBookingForReview({
+      bookingId: booking.id,
+      providerId: booking.providerId,
+      providerName,
     });
+    setReviewModalVisible(true);
   };
 
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [selectedBookingIdForPayment, setSelectedBookingIdForPayment] = useState<string | null>(
+    null
+  );
+
   const handlePayment = (bookingId: string) => {
-    router.push({
-      pathname: '/payment/checkout',
-      params: { bookingId },
+    setSelectedBookingIdForPayment(bookingId);
+    setPaymentModalVisible(true);
+  };
+
+  const handleOptionsPress = (bookingId: string) => {
+    setSelectedBookingId(bookingId);
+    setOptionsMenuVisible(true);
+  };
+
+  const handleRemoveFromHistory = () => {
+    if (!selectedBookingId) return;
+    setOptionsMenuVisible(false);
+    modal.showConfirm({
+      title: 'Remove from History',
+      message:
+        'Are you sure you want to remove this booking from your history? This action cannot be undone.',
+      type: 'warning',
+      confirmText: 'Remove',
+      onConfirm: () => {
+        setHiddenBookings((prev) => new Set(prev).add(selectedBookingId));
+        setSelectedBookingId(null);
+        modal.showAlert({
+          title: 'Removed',
+          message: 'Booking has been removed from your history.',
+          type: 'success',
+        });
+      },
+      onCancel: () => {
+        setSelectedBookingId(null);
+      },
     });
   };
 
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={styles.listContent}
-        >
+        <ScrollView style={styles.content} contentContainerStyle={styles.listContent}>
           <View style={styles.header}>
-            <Text style={styles.title}>My Bookings</Text>
+            <Text style={styles.title}>
+              {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
+            </Text>
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'pending' && styles.tabActive,
+                  activeTab === 'pending' && styles.tabActivePending,
+                ]}
+                onPress={() => handleTabChange('pending')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
+                  Pending
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'upcoming' && styles.tabActive,
+                  activeTab === 'upcoming' && styles.tabActiveUpcoming,
+                ]}
+                onPress={() => handleTabChange('upcoming')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
+                  Upcoming
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'past' && styles.tabActive,
+                  activeTab === 'past' && styles.tabActiveCompleted,
+                ]}
+                onPress={() => handleTabChange('past')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
+                  Completed
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'declined' && styles.tabActive,
+                  activeTab === 'declined' && styles.tabActiveDeclined,
+                ]}
+                onPress={() => handleTabChange('declined')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'declined' ? styles.tabActiveText : styles.tabText}>
+                  Declined
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#2563eb" />
@@ -304,25 +440,103 @@ export default function BookingsScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>My Bookings</Text>
-            <View style={styles.tabContainer}>
-            <View style={[styles.tab, styles.tabActive]}>
-              <Text style={styles.tabActiveText}>Upcoming</Text>
-            </View>
-            <View style={styles.tab}>
-              <Text style={styles.tabText}>Completed</Text>
-            </View>
-          </View>
-        </View>
-          <View style={styles.emptyState}>
-            <Ionicons name="calendar-outline" size={160} color="#3B82F6" />
-            <Text style={styles.emptyTitle}>No bookings yet</Text>
-            <Text style={styles.emptyText}>
-              {user?.userType === 'PROVIDER'
-                ? 'When clients request sessions, they will appear here'
-                : 'When you book a session with a provider, it will appear here'}
+            <Text style={styles.title}>
+              {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
             </Text>
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'pending' && styles.tabActive,
+                  activeTab === 'pending' && styles.tabActivePending,
+                ]}
+                onPress={() => handleTabChange('pending')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
+                  Pending
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'upcoming' && styles.tabActive,
+                  activeTab === 'upcoming' && styles.tabActiveUpcoming,
+                ]}
+                onPress={() => handleTabChange('upcoming')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
+                  Upcoming
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'past' && styles.tabActive,
+                  activeTab === 'past' && styles.tabActiveCompleted,
+                ]}
+                onPress={() => handleTabChange('past')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
+                  Completed
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.tab,
+                  activeTab === 'declined' && styles.tabActive,
+                  activeTab === 'declined' && styles.tabActiveDeclined,
+                ]}
+                onPress={() => handleTabChange('declined')}
+                activeOpacity={0.8}
+              >
+                <Text style={activeTab === 'declined' ? styles.tabActiveText : styles.tabText}>
+                  Declined
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
+          <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
+            {activeTab === 'pending' ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="time-outline" size={160} color="#3B82F6" />
+                <Text style={styles.emptyTitle}>No pending bookings</Text>
+                <Text style={styles.emptyText}>
+                  {user?.userType === 'PROVIDER'
+                    ? 'When clients request sessions, they will appear here'
+                    : 'When you request a session, it will appear here'}
+                </Text>
+              </View>
+            ) : activeTab === 'upcoming' ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={160} color="#3B82F6" />
+                <Text style={styles.emptyTitle}>No upcoming bookings</Text>
+                <Text style={styles.emptyText}>
+                  When you schedule a session, it will appear here.
+                </Text>
+              </View>
+            ) : activeTab === 'declined' ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="close-circle-outline" size={160} color="#3B82F6" />
+                <Text style={styles.emptyTitle}>No declined bookings</Text>
+                <Text style={styles.emptyText}>
+                  {user?.userType === 'PROVIDER'
+                    ? 'Bookings that you declined will appear here.'
+                    : 'Bookings that were declined by the provider will appear here.'}
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={160} color="#3B82F6" />
+                <Text style={styles.emptyTitle}>No completed bookings yet</Text>
+                <Text style={styles.emptyText}>
+                  Completed and cancelled sessions will appear here.
+                </Text>
+              </View>
+            )}
+          </Animated.View>
         </ScrollView>
       </View>
     );
@@ -379,6 +593,19 @@ export default function BookingsScreen() {
                 Completed
               </Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.tab,
+                activeTab === 'declined' && styles.tabActive,
+                activeTab === 'declined' && styles.tabActiveDeclined,
+              ]}
+              onPress={() => handleTabChange('declined')}
+              activeOpacity={0.8}
+            >
+              <Text style={activeTab === 'declined' ? styles.tabActiveText : styles.tabText}>
+                Declined
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
         <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
@@ -395,46 +622,105 @@ export default function BookingsScreen() {
                   </Text>
                 </View>
               ) : (
-                pendingBookings.map((booking) => {
-                  const bookingCardData: BookingCardData = {
-                    id: booking.id,
-                    providerId: booking.providerId,
-                    providerName: booking.provider
-                      ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                      : 'Unknown Provider',
-                    providerPhoto: booking.provider?.profilePhoto || undefined,
-                    serviceName: booking.service?.name || 'Service',
-                    status: booking.status,
-                    scheduledDate: booking.scheduledDate,
-                    scheduledTime: booking.scheduledTime,
-                    price: booking.price,
-                    location: booking.location
-                      ? typeof booking.location === 'string'
-                        ? booking.location
-                        : booking.location.address
-                      : undefined,
-                    notes: booking.notes || undefined,
-                  };
+                <>
+                  {getPaginatedBookings(pendingBookings, 'pending').map((booking) => {
+                    const bookingCardData: BookingCardData = {
+                      id: booking.id,
+                      providerId: booking.providerId,
+                      providerName: booking.provider
+                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                        : 'Unknown Provider',
+                      providerPhoto: booking.provider?.profilePhoto || undefined,
+                      serviceName: booking.service?.name || 'Service',
+                      status: booking.status,
+                      scheduledDate: booking.scheduledDate,
+                      scheduledTime: booking.scheduledTime,
+                      price: booking.price,
+                      location: booking.location
+                        ? typeof booking.location === 'string'
+                          ? booking.location
+                          : booking.location.address
+                        : undefined,
+                      notes: booking.notes || undefined,
+                    };
 
-                  return (
-                    <View key={booking.id}>
-                      <BookingCard
-                        booking={bookingCardData}
-                        onPress={() => handleBookingPress(booking.id)}
-                        onAccept={
-                          user?.userType === 'PROVIDER' && booking.status === 'PENDING'
-                            ? () => handleAccept(booking.id)
-                            : undefined
-                        }
-                        onDecline={
-                          user?.userType === 'PROVIDER' && booking.status === 'PENDING'
-                            ? () => handleDecline(booking.id)
-                            : undefined
-                        }
-                      />
+                    return (
+                      <View key={booking.id}>
+                        <BookingCard
+                          booking={bookingCardData}
+                          onPress={() => handleBookingPress(booking.id)}
+                          onAccept={
+                            user?.userType === 'PROVIDER' && booking.status === 'PENDING'
+                              ? () => handleAccept(booking.id)
+                              : undefined
+                          }
+                          onDecline={
+                            user?.userType === 'PROVIDER' && booking.status === 'PENDING'
+                              ? () => handleDecline(booking.id)
+                              : undefined
+                          }
+                        />
+                      </View>
+                    );
+                  })}
+                  {getTotalPages(pendingBookings) > 1 && (
+                    <View style={styles.paginationContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.pending === 1 && styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('pending', currentPage.pending - 1)}
+                        disabled={currentPage.pending === 1}
+                      >
+                        <Ionicons
+                          name="chevron-back"
+                          size={20}
+                          color={currentPage.pending === 1 ? '#CBD5E1' : '#2563eb'}
+                        />
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.pending === 1 && styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Previous
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.paginationInfo}>
+                        Page {currentPage.pending} of {getTotalPages(pendingBookings)}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.pending === getTotalPages(pendingBookings) &&
+                            styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('pending', currentPage.pending + 1)}
+                        disabled={currentPage.pending === getTotalPages(pendingBookings)}
+                      >
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.pending === getTotalPages(pendingBookings) &&
+                              styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Next
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color={
+                            currentPage.pending === getTotalPages(pendingBookings)
+                              ? '#CBD5E1'
+                              : '#2563eb'
+                          }
+                        />
+                      </TouchableOpacity>
                     </View>
-                  );
-                })
+                  )}
+                </>
               )}
             </View>
           ) : activeTab === 'upcoming' ? (
@@ -448,62 +734,227 @@ export default function BookingsScreen() {
                   </Text>
                 </View>
               ) : (
-                upcomingBookings.map((booking) => {
-                  const bookingCardData: BookingCardData = {
-                    id: booking.id,
-                    providerId: booking.providerId,
-                    providerName: booking.provider
-                      ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                      : 'Unknown Provider',
-                    providerPhoto: booking.provider?.profilePhoto || undefined,
-                    serviceName: booking.service?.name || 'Service',
-                    status: booking.status,
-                    scheduledDate: booking.scheduledDate,
-                    scheduledTime: booking.scheduledTime,
-                    price: booking.price,
-                    location: booking.location
-                      ? typeof booking.location === 'string'
-                        ? booking.location
-                        : booking.location.address
-                      : undefined,
-                    notes: booking.notes || undefined,
-                  };
+                <>
+                  {getPaginatedBookings(upcomingBookings, 'upcoming').map((booking) => {
+                    const bookingCardData: BookingCardData = {
+                      id: booking.id,
+                      providerId: booking.providerId,
+                      providerName: booking.provider
+                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                        : 'Unknown Provider',
+                      providerPhoto: booking.provider?.profilePhoto || undefined,
+                      serviceName: booking.service?.name || 'Service',
+                      status: booking.status,
+                      scheduledDate: booking.scheduledDate,
+                      scheduledTime: booking.scheduledTime,
+                      price: booking.price,
+                      location: booking.location
+                        ? typeof booking.location === 'string'
+                          ? booking.location
+                          : booking.location.address
+                        : undefined,
+                      notes: booking.notes || undefined,
+                    };
 
-                  const showCompleteButton =
-                    user?.userType === 'PROVIDER' && booking.status === 'CONFIRMED';
+                    const showCompleteButton =
+                      user?.userType === 'PROVIDER' && booking.status === 'CONFIRMED';
 
-                  // Determine action button for client confirmed bookings
-                  const actionButton =
-                    user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' ? (
-                      booking.payment?.status === 'completed' ? (
-                        <View style={styles.paidButton}>
-                          <Ionicons name="checkmark-circle" size={18} color="#64748b" />
-                          <Text style={styles.paidButtonText}>Paid</Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          style={styles.paymentButton}
-                          onPress={() => handlePayment(booking.id)}
+                    // Determine action button for client confirmed bookings
+                    const actionButton =
+                      user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' ? (
+                        booking.payment?.status === 'completed' ? (
+                          <View style={styles.paidButton}>
+                            <Ionicons name="checkmark-circle" size={18} color="#64748b" />
+                            <Text style={styles.paidButtonText}>Paid</Text>
+                          </View>
+                        ) : (
+                          <TouchableOpacity
+                            style={styles.paymentButton}
+                            onPress={() => handlePayment(booking.id)}
+                          >
+                            <Ionicons name="card-outline" size={18} color="#ffffff" />
+                            <Text style={styles.paymentButtonText}>Pay Now</Text>
+                          </TouchableOpacity>
+                        )
+                      ) : undefined;
+
+                    return (
+                      <View key={booking.id}>
+                        <BookingCard
+                          booking={bookingCardData}
+                          onPress={() => handleBookingPress(booking.id)}
+                          actionButton={actionButton}
+                          onComplete={
+                            showCompleteButton ? () => handleComplete(booking.id) : undefined
+                          }
+                        />
+                      </View>
+                    );
+                  })}
+                  {getTotalPages(upcomingBookings) > 1 && (
+                    <View style={styles.paginationContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.upcoming === 1 && styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('upcoming', currentPage.upcoming - 1)}
+                        disabled={currentPage.upcoming === 1}
+                      >
+                        <Ionicons
+                          name="chevron-back"
+                          size={20}
+                          color={currentPage.upcoming === 1 ? '#CBD5E1' : '#2563eb'}
+                        />
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.upcoming === 1 && styles.paginationButtonTextDisabled,
+                          ]}
                         >
-                          <Ionicons name="card-outline" size={18} color="#ffffff" />
-                          <Text style={styles.paymentButtonText}>Pay Now</Text>
-                        </TouchableOpacity>
-                      )
-                    ) : undefined;
-
-                  return (
-                    <View key={booking.id}>
-                      <BookingCard
-                        booking={bookingCardData}
-                        onPress={() => handleBookingPress(booking.id)}
-                        actionButton={actionButton}
-                        onComplete={
-                          showCompleteButton ? () => handleComplete(booking.id) : undefined
-                        }
-                      />
+                          Previous
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.paginationInfo}>
+                        Page {currentPage.upcoming} of {getTotalPages(upcomingBookings)}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.upcoming === getTotalPages(upcomingBookings) &&
+                            styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('upcoming', currentPage.upcoming + 1)}
+                        disabled={currentPage.upcoming === getTotalPages(upcomingBookings)}
+                      >
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.upcoming === getTotalPages(upcomingBookings) &&
+                              styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Next
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color={
+                            currentPage.upcoming === getTotalPages(upcomingBookings)
+                              ? '#CBD5E1'
+                              : '#2563eb'
+                          }
+                        />
+                      </TouchableOpacity>
                     </View>
-                  );
-                })
+                  )}
+                </>
+              )}
+            </View>
+          ) : activeTab === 'declined' ? (
+            <View style={styles.section}>
+              {declinedBookings.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <Ionicons name="close-circle-outline" size={160} color="#3B82F6" />
+                  <Text style={styles.emptyTitle}>No declined bookings</Text>
+                  <Text style={styles.emptyText}>
+                    {user?.userType === 'PROVIDER'
+                      ? 'Bookings that you declined will appear here.'
+                      : 'Bookings that were declined by the provider will appear here.'}
+                  </Text>
+                </View>
+              ) : (
+                <>
+                  {getPaginatedBookings(declinedBookings, 'declined').map((booking) => {
+                    const bookingCardData: BookingCardData = {
+                      id: booking.id,
+                      providerId: booking.providerId,
+                      providerName: booking.provider
+                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                        : 'Unknown Provider',
+                      providerPhoto: booking.provider?.profilePhoto || undefined,
+                      serviceName: booking.service?.name || 'Service',
+                      status: booking.status,
+                      scheduledDate: booking.scheduledDate,
+                      scheduledTime: booking.scheduledTime,
+                      price: booking.price,
+                      location: booking.location
+                        ? typeof booking.location === 'string'
+                          ? booking.location
+                          : booking.location.address
+                        : undefined,
+                      notes: booking.notes || undefined,
+                    };
+
+                    return (
+                      <View key={booking.id}>
+                        <BookingCard
+                          booking={bookingCardData}
+                          onPress={() => handleBookingPress(booking.id)}
+                          showOptions={true}
+                          onOptionsPress={() => handleOptionsPress(booking.id)}
+                        />
+                      </View>
+                    );
+                  })}
+                  {getTotalPages(declinedBookings) > 1 && (
+                    <View style={styles.paginationContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.declined === 1 && styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('declined', currentPage.declined - 1)}
+                        disabled={currentPage.declined === 1}
+                      >
+                        <Ionicons
+                          name="chevron-back"
+                          size={20}
+                          color={currentPage.declined === 1 ? '#CBD5E1' : '#2563eb'}
+                        />
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.declined === 1 && styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Previous
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.paginationInfo}>
+                        Page {currentPage.declined} of {getTotalPages(declinedBookings)}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.declined === getTotalPages(declinedBookings) &&
+                            styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('declined', currentPage.declined + 1)}
+                        disabled={currentPage.declined === getTotalPages(declinedBookings)}
+                      >
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.declined === getTotalPages(declinedBookings) &&
+                              styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Next
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color={
+                            currentPage.declined === getTotalPages(declinedBookings)
+                              ? '#CBD5E1'
+                              : '#2563eb'
+                          }
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
               )}
             </View>
           ) : (
@@ -517,57 +968,116 @@ export default function BookingsScreen() {
                   </Text>
                 </View>
               ) : (
-                pastBookings.map((booking) => {
-                  const bookingCardData: BookingCardData = {
-                    id: booking.id,
-                    providerId: booking.providerId,
-                    providerName: booking.provider
-                      ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                      : 'Unknown Provider',
-                    providerPhoto: booking.provider?.profilePhoto || undefined,
-                    serviceName: booking.service?.name || 'Service',
-                    status: booking.status,
-                    scheduledDate: booking.scheduledDate,
-                    scheduledTime: booking.scheduledTime,
-                    price: booking.price,
-                    location: booking.location
-                      ? typeof booking.location === 'string'
-                        ? booking.location
-                        : booking.location.address
-                      : undefined,
-                    notes: booking.notes || undefined,
-                  };
+                <>
+                  {getPaginatedBookings(pastBookings, 'past').map((booking) => {
+                    const bookingCardData: BookingCardData = {
+                      id: booking.id,
+                      providerId: booking.providerId,
+                      providerName: booking.provider
+                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
+                        : 'Unknown Provider',
+                      providerPhoto: booking.provider?.profilePhoto || undefined,
+                      serviceName: booking.service?.name || 'Service',
+                      status: booking.status,
+                      scheduledDate: booking.scheduledDate,
+                      scheduledTime: booking.scheduledTime,
+                      price: booking.price,
+                      location: booking.location
+                        ? typeof booking.location === 'string'
+                          ? booking.location
+                          : booking.location.address
+                        : undefined,
+                      notes: booking.notes || undefined,
+                    };
 
-                  const hasReview = reviewedBookings.has(booking.id);
-                  const canReview =
-                    booking.status === 'COMPLETED' && user?.userType === 'CLIENT' && !hasReview;
+                    const hasReview = reviewedBookings.has(booking.id);
+                    const canReview =
+                      booking.status === 'COMPLETED' && user?.userType === 'CLIENT' && !hasReview;
 
-                  // Determine action button for past bookings
-                  const actionButton = canReview ? (
-                    <TouchableOpacity
-                      style={styles.reviewButton}
-                      onPress={() => handleReview(booking)}
-                    >
-                      <Ionicons name="star-outline" size={18} color="#2563eb" />
-                      <Text style={styles.reviewButtonText}>Write a Review</Text>
-                    </TouchableOpacity>
-                  ) : hasReview ? (
-                    <View style={styles.reviewedButton}>
-                      <Ionicons name="checkmark-circle" size={18} color="#64748b" />
-                      <Text style={styles.reviewedButtonText}>Reviewed</Text>
+                    // Determine action button for past bookings
+                    const actionButton = canReview ? (
+                      <TouchableOpacity
+                        style={styles.reviewButton}
+                        onPress={() => handleReview(booking)}
+                      >
+                        <Ionicons name="star-outline" size={18} color="#2563eb" />
+                        <Text style={styles.reviewButtonText}>Write a Review</Text>
+                      </TouchableOpacity>
+                    ) : hasReview ? (
+                      <View style={styles.reviewedButton}>
+                        <Ionicons name="star" size={18} color="#92400E" />
+                        <Text style={styles.reviewedButtonText}>Reviewed</Text>
+                      </View>
+                    ) : undefined;
+
+                    return (
+                      <View key={booking.id}>
+                        <BookingCard
+                          booking={bookingCardData}
+                          onPress={() => handleBookingPress(booking.id)}
+                          actionButton={actionButton}
+                          showOptions={true}
+                          onOptionsPress={() => handleOptionsPress(booking.id)}
+                        />
+                      </View>
+                    );
+                  })}
+                  {getTotalPages(pastBookings) > 1 && (
+                    <View style={styles.paginationContainer}>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.past === 1 && styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('past', currentPage.past - 1)}
+                        disabled={currentPage.past === 1}
+                      >
+                        <Ionicons
+                          name="chevron-back"
+                          size={20}
+                          color={currentPage.past === 1 ? '#CBD5E1' : '#2563eb'}
+                        />
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.past === 1 && styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Previous
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={styles.paginationInfo}>
+                        Page {currentPage.past} of {getTotalPages(pastBookings)}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.paginationButton,
+                          currentPage.past === getTotalPages(pastBookings) &&
+                            styles.paginationButtonDisabled,
+                        ]}
+                        onPress={() => handlePageChange('past', currentPage.past + 1)}
+                        disabled={currentPage.past === getTotalPages(pastBookings)}
+                      >
+                        <Text
+                          style={[
+                            styles.paginationButtonText,
+                            currentPage.past === getTotalPages(pastBookings) &&
+                              styles.paginationButtonTextDisabled,
+                          ]}
+                        >
+                          Next
+                        </Text>
+                        <Ionicons
+                          name="chevron-forward"
+                          size={20}
+                          color={
+                            currentPage.past === getTotalPages(pastBookings) ? '#CBD5E1' : '#2563eb'
+                          }
+                        />
+                      </TouchableOpacity>
                     </View>
-                  ) : undefined;
-
-                  return (
-                    <View key={booking.id}>
-                      <BookingCard
-                        booking={bookingCardData}
-                        onPress={() => handleBookingPress(booking.id)}
-                        actionButton={actionButton}
-                      />
-                    </View>
-                  );
-                })
+                  )}
+                </>
               )}
             </View>
           )}
@@ -599,6 +1109,65 @@ export default function BookingsScreen() {
           onCancel={modal.confirmOptions.onCancel}
         />
       )}
+
+      {/* Payment Checkout Modal */}
+      <PaymentCheckoutModal
+        visible={paymentModalVisible}
+        bookingId={selectedBookingIdForPayment}
+        onClose={() => {
+          setPaymentModalVisible(false);
+          setSelectedBookingIdForPayment(null);
+        }}
+      />
+
+      {/* Submit Review Modal */}
+      <SubmitReviewModal
+        visible={reviewModalVisible}
+        bookingId={selectedBookingForReview?.bookingId || null}
+        providerId={selectedBookingForReview?.providerId || null}
+        providerName={selectedBookingForReview?.providerName}
+        onClose={() => {
+          setReviewModalVisible(false);
+          setSelectedBookingForReview(null);
+        }}
+        onSuccess={() => {
+          // Reload bookings to refresh the review status
+          loadBookings();
+        }}
+      />
+
+      {/* Options Modal */}
+      <RNModal
+        visible={optionsMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          setOptionsMenuVisible(false);
+          setSelectedBookingId(null);
+        }}
+      >
+        <TouchableWithoutFeedback
+          onPress={() => {
+            setOptionsMenuVisible(false);
+            setSelectedBookingId(null);
+          }}
+        >
+          <View style={styles.optionsModalOverlay}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={styles.optionsModalContainer}>
+                <TouchableOpacity
+                  style={styles.optionsModalItem}
+                  onPress={handleRemoveFromHistory}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                  <Text style={styles.optionsModalText}>Remove from History</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </RNModal>
     </View>
   );
 }
@@ -616,11 +1185,12 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.display,
     color: theme.colors.neutral[900],
+    textAlign: 'center',
   },
   tabContainer: {
     marginTop: theme.spacing.lg,
     flexDirection: 'row',
-    backgroundColor: theme.colors.neutral[100],
+    backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.radii.full,
     borderWidth: 1,
     borderColor: theme.colors.neutral[200],
@@ -631,7 +1201,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.neutral[100],
+    backgroundColor: theme.colors.neutral[50],
   },
   tabActive: {
     backgroundColor: theme.colors.white,
@@ -653,6 +1223,10 @@ const styles = StyleSheet.create({
   tabActiveCompleted: {
     borderColor: theme.colors.semantic.success, // Green
     shadowColor: theme.colors.semantic.success,
+  },
+  tabActiveDeclined: {
+    borderColor: '#EF4444', // Red
+    shadowColor: '#EF4444',
   },
   tabText: {
     fontSize: 14,
@@ -760,7 +1334,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#cbd5e1',
+    backgroundColor: '#FEF3C7',
+    borderWidth: 2,
+    borderColor: '#FBBF24',
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radii.sm,
@@ -769,7 +1345,7 @@ const styles = StyleSheet.create({
   reviewedButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
+    color: '#92400E',
   },
   paymentButton: {
     flexDirection: 'row',
@@ -818,5 +1394,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#ffffff',
+  },
+  paginationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+  },
+  paginationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.radii.md,
+    backgroundColor: theme.colors.white,
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
+  },
+  paginationButtonDisabled: {
+    backgroundColor: theme.colors.neutral[50],
+    borderColor: theme.colors.neutral[200],
+    opacity: 0.5,
+  },
+  paginationButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary[500],
+  },
+  paginationButtonTextDisabled: {
+    color: theme.colors.neutral[500],
+  },
+  paginationInfo: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: theme.colors.neutral[700],
+  },
+  optionsModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  optionsModalContainer: {
+    backgroundColor: theme.colors.white,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 4,
+    borderTopColor: '#EF4444',
+    paddingTop: theme.spacing.lg,
+    paddingBottom: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.xl,
+    alignItems: 'center',
+  },
+  optionsModalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    gap: 12,
+    width: '100%',
+    maxWidth: 300,
+  },
+  optionsModalText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 });
