@@ -146,12 +146,34 @@ export const useAuth = () => {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      await authService.deleteAccount();
+    } catch (error) {
+      logger.error('Error during account deletion', error);
+      throw error;
+    } finally {
+      await Promise.all([
+        storage.removeItem(AUTH_TOKEN_KEY),
+        storage.removeItem(USER_KEY),
+      ]);
+
+      setAuthState({
+        user: null,
+        token: null,
+        isLoading: false,
+        isAuthenticated: false,
+      });
+    }
+  };
+
   return {
     ...authState,
     login,
     register,
     logout,
     refreshUser,
+    deleteAccount,
   };
 };
 

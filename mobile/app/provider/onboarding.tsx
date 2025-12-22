@@ -8,19 +8,31 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useAuth } from '../../hooks/useAuth';
 import { onboardingService } from '../../services/onboarding';
+import { plaidService } from '../../services/plaid';
+import { logger } from '../../utils/logger';
 import * as ImagePicker from 'expo-image-picker';
+import { LocationAutocomplete } from '../../components/ui/LocationAutocomplete';
 
-type Step = 'profile' | 'services' | 'credentials' | 'availability' | 'complete';
+type Step =
+  | 'location'
+  | 'bank'
+  | 'profile'
+  | 'services'
+  | 'credentials'
+  | 'availability'
+  | 'complete';
 
 export default function ProviderOnboardingScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
-  const [currentStep, setCurrentStep] = useState<Step>('profile');
+  const [currentStep, setCurrentStep] = useState<Step>('location');
   const [loading, setLoading] = useState(false);
 
   // Redirect if not a provider
@@ -37,38 +49,198 @@ export default function ProviderOnboardingScreen() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Service state
-  const [services, setServices] = useState<Array<{
-    id?: string;
-    name: string;
-    description: string;
-    price: string;
-    duration: string;
-  }>>([{ name: '', description: '', price: '', duration: '' }]);
+  const [services, setServices] = useState<
+    Array<{
+      id?: string;
+      name: string;
+      description: string;
+      price: string;
+      duration: string;
+    }>
+  >([{ name: '', description: '', price: '', duration: '' }]);
 
   // Credential state
-  const [credentials, setCredentials] = useState<Array<{
-    id?: string;
-    name: string;
-    issuer: string;
-    issueDate: string;
-    expiryDate: string;
-  }>>([{ name: '', issuer: '', issueDate: '', expiryDate: '' }]);
+  const [credentials, setCredentials] = useState<
+    Array<{
+      id?: string;
+      name: string;
+      issuer: string;
+      issueDate: string;
+      expiryDate: string;
+    }>
+  >([{ name: '', issuer: '', issueDate: '', expiryDate: '' }]);
 
   // Availability state
-  const [availability, setAvailability] = useState<Array<{
-    id?: string;
-    dayOfWeek: number;
-    startTime: string;
-    endTime: string;
-    isRecurring: boolean;
-  }>>([]);
+  const [availability, setAvailability] = useState<
+    Array<{
+      id?: string;
+      dayOfWeek: number;
+      startTime: string;
+      endTime: string;
+      isRecurring: boolean;
+    }>
+  >([]);
+
+  // Location state
+  const [city, setCity] = useState<string>('');
+  const [state, setState] = useState<string>('');
+  const [serviceRadius, setServiceRadius] = useState<string>('15');
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Bank account state
+  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
+  const [bankAccountConnected, setBankAccountConnected] = useState(false);
+  const [bankAccountInfo, setBankAccountInfo] = useState<{
+    accountName: string;
+    accountMask: string;
+  } | null>(null);
 
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Get Plaid link token when on bank step
+  useEffect(() => {
+    if (currentStep === 'bank' && !plaidLinkToken && !bankAccountConnected) {
+      loadPlaidLinkToken();
+    }
+  }, [currentStep]);
+
+  const geocodeCityState = async (cityName: string, stateName: string) => {
+    try {
+      const results = await Location.geocodeAsync(`${cityName}, ${stateName}, USA`);
+      if (results && results.length > 0) {
+        return {
+          lat: results[0].latitude,
+          lng: results[0].longitude,
+        };
+      }
+      return null;
+    } catch (error) {
+      logger.error('Error geocoding city/state', error);
+      return null;
+    }
+  };
+
+  const loadPlaidLinkToken = async () => {
+    try {
+      setLoading(true);
+      const token = await plaidService.getProviderLinkToken();
+      setPlaidLinkToken(token);
+    } catch (error: any) {
+      logger.error('Error loading Plaid link token', error);
+      Alert.alert(
+        'Error',
+        'Failed to initialize bank setup. You can set this up later in settings.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializePlaidLink = (linkToken: string) => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      Alert.alert(
+        'Info',
+        'Bank setup is currently only available on web. You can set this up later.'
+      );
+      return;
+    }
+
+    if ((window as any).Plaid) {
+      createPlaidHandler(linkToken);
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+      script.async = true;
+      script.onload = () => {
+        if ((window as any).Plaid) {
+          createPlaidHandler(linkToken);
+        } else {
+          Alert.alert('Error', 'Failed to load payment system. Please refresh the page.');
+        }
+      };
+      script.onerror = () => {
+        Alert.alert(
+          'Error',
+          'Failed to load payment system. Please check your internet connection.'
+        );
+      };
+      document.body.appendChild(script);
+    }
+  };
+
+  const createPlaidHandler = (linkToken: string) => {
+    const handler = (window as any).Plaid.create({
+      token: linkToken,
+      onSuccess: async (publicToken: string, metadata: any) => {
+        try {
+          setLoading(true);
+          const result = await plaidService.exchangePublicToken(publicToken);
+          setBankAccountConnected(true);
+          setBankAccountInfo({
+            accountName: result.accountName,
+            accountMask: result.accountMask,
+          });
+          Alert.alert(
+            'Success',
+            `Your ${result.accountName} account ending in ${result.accountMask} has been connected.`
+          );
+        } catch (error: any) {
+          logger.error('Error exchanging Plaid token', error);
+          Alert.alert(
+            'Error',
+            error.response?.data?.error?.message || 'Failed to connect bank account'
+          );
+        } finally {
+          setLoading(false);
+        }
+      },
+      onExit: (err: any) => {
+        if (err) {
+          logger.error('Plaid exit error', err);
+        }
+        setLoading(false);
+      },
+    });
+
+    handler.open();
+  };
+
+  const handleSaveLocation = async () => {
+    if (!city.trim() || !state.trim()) {
+      Alert.alert('Location Required', 'Please enter both city and state to continue.');
+      return;
+    }
+
+    // Convert miles to kilometers for storage (backend stores in km)
+    const radiusInMiles = parseFloat(serviceRadius) || 15;
+    const radius = radiusInMiles * 1.60934; // Convert miles to km
+    
+    // Geocode city/state to get coordinates for service area
+    const geocodedCoords = await geocodeCityState(city.trim(), state.trim());
+
+    // Store coordinates in state for use in profile step
+    if (geocodedCoords) {
+      setCoordinates(geocodedCoords);
+    } else {
+      // If geocoding fails, still allow continuing but with default coordinates
+      setCoordinates({ lat: 0, lng: 0 });
+    }
+
+    setCurrentStep('bank');
+  };
+
+  const handleSaveBank = async () => {
+    // Bank is optional, can skip
+    setCurrentStep('profile');
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'We need access to your photos to upload a profile picture.');
+      Alert.alert(
+        'Permission needed',
+        'We need access to your photos to upload a profile picture.'
+      );
       return;
     }
 
@@ -130,11 +302,18 @@ export default function ProviderOnboardingScreen() {
     if (existing) {
       setAvailability(availability.filter((a) => a.dayOfWeek !== dayOfWeek));
     } else {
-      setAvailability([...availability, { dayOfWeek, startTime: '09:00', endTime: '17:00', isRecurring: true }]);
+      setAvailability([
+        ...availability,
+        { dayOfWeek, startTime: '09:00', endTime: '17:00', isRecurring: true },
+      ]);
     }
   };
 
-  const updateAvailabilityTime = (dayOfWeek: number, field: 'startTime' | 'endTime', value: string) => {
+  const updateAvailabilityTime = (
+    dayOfWeek: number,
+    field: 'startTime' | 'endTime',
+    value: string
+  ) => {
     const updated = availability.map((a) =>
       a.dayOfWeek === dayOfWeek ? { ...a, [field]: value } : a
     );
@@ -155,10 +334,13 @@ export default function ProviderOnboardingScreen() {
         await refreshUser();
       }
 
-      // Get user location (for MVP, use default or prompt)
+      // Use coordinates from state (set in location step, geocoded from city/state)
+      // Convert miles to kilometers for storage (backend stores in km)
+      const radiusInMiles = parseFloat(serviceRadius) || 15;
+      const radius = radiusInMiles * 1.60934; // Convert miles to km
       const serviceArea = {
-        center: { lat: 0, lng: 0 }, // TODO: Get actual location
-        radius: 20,
+        center: coordinates || { lat: 0, lng: 0 },
+        radius,
       };
 
       await onboardingService.updateProfile({
@@ -243,6 +425,104 @@ export default function ProviderOnboardingScreen() {
     router.replace('/(tabs)/profile');
   };
 
+  const renderLocationStep = () => (
+    <ScrollView style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Set Your Service Area</Text>
+      <Text style={styles.stepDescription}>
+        We'll use your location to help clients find you. Set the radius of your service area.
+      </Text>
+
+      <LocationAutocomplete
+        city={city}
+        state={state}
+        onCityChange={setCity}
+        onStateChange={setState}
+        cityPlaceholder="Enter your city"
+        statePlaceholder="Enter your state"
+      />
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Service Range (mi)</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="15"
+          value={serviceRadius}
+          onChangeText={setServiceRadius}
+          keyboardType="numeric"
+        />
+        <Text style={styles.hint}>The distance you're willing to travel to clients</Text>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.primaryButton, (!city.trim() || !state.trim()) && styles.buttonDisabled]}
+        onPress={handleSaveLocation}
+        disabled={!city.trim() || !state.trim()}
+      >
+        <Text style={styles.primaryButtonText}>Continue</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+
+  const renderBankStep = () => (
+    <ScrollView style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Connect Bank Account</Text>
+      <Text style={styles.stepDescription}>
+        Connect your bank account to receive payments from clients. This is secure and you can skip
+        this step for now.
+      </Text>
+
+      {bankAccountConnected && bankAccountInfo ? (
+        <View style={styles.bankCard}>
+          <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
+          <View style={styles.bankInfo}>
+            <Text style={styles.bankAccountName}>{bankAccountInfo.accountName}</Text>
+            <Text style={styles.bankAccountMask}>•••• {bankAccountInfo.accountMask}</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.bankCard}>
+          <Ionicons name="card-outline" size={24} color="#94a3b8" />
+          <Text style={styles.bankPlaceholder}>No bank account connected</Text>
+        </View>
+      )}
+
+      {!bankAccountConnected && (
+        <TouchableOpacity
+          style={styles.plaidButton}
+          onPress={() => {
+            if (plaidLinkToken) {
+              initializePlaidLink(plaidLinkToken);
+            } else {
+              loadPlaidLinkToken();
+            }
+          }}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <>
+              <Ionicons name="lock-closed" size={20} color="#ffffff" />
+              <Text style={styles.plaidButtonText}>Connect Bank Account</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
+
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.skipButton, styles.primaryButton]}
+          onPress={handleSaveBank}
+        >
+          <Text style={styles.skipButtonText}>Skip for Now</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={handleSaveBank}>
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+
   const renderProfileStep = () => (
     <ScrollView style={styles.stepContent}>
       <Text style={styles.stepTitle}>Tell us about yourself</Text>
@@ -320,9 +600,7 @@ export default function ProviderOnboardingScreen() {
   const renderServicesStep = () => (
     <ScrollView style={styles.stepContent}>
       <Text style={styles.stepTitle}>Add Your Services</Text>
-      <Text style={styles.stepDescription}>
-        Define the services you offer and their pricing
-      </Text>
+      <Text style={styles.stepDescription}>Define the services you offer and their pricing</Text>
 
       {services.map((service, index) => (
         <View key={index} style={styles.serviceCard}>
@@ -465,9 +743,7 @@ export default function ProviderOnboardingScreen() {
   const renderAvailabilityStep = () => (
     <ScrollView style={styles.stepContent}>
       <Text style={styles.stepTitle}>Set Your Availability</Text>
-      <Text style={styles.stepDescription}>
-        When are you available for bookings?
-      </Text>
+      <Text style={styles.stepDescription}>When are you available for bookings?</Text>
 
       {daysOfWeek.map((day, dayIndex) => {
         const slot = availability.find((a) => a.dayOfWeek === dayIndex);
@@ -560,6 +836,8 @@ export default function ProviderOnboardingScreen() {
           />
         </View>
 
+        {currentStep === 'location' && renderLocationStep()}
+        {currentStep === 'bank' && renderBankStep()}
         {currentStep === 'profile' && renderProfileStep()}
         {currentStep === 'services' && renderServicesStep()}
         {currentStep === 'credentials' && renderCredentialsStep()}
@@ -779,6 +1057,109 @@ const styles = StyleSheet.create({
   buttonDisabled: {
     opacity: 0.6,
   },
+  locationCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  locationInfo: {
+    flex: 1,
+  },
+  locationName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginBottom: 4,
+  },
+  locationCoords: {
+    fontSize: 12,
+    color: '#64748b',
+  },
+  locationPlaceholder: {
+    color: '#64748b',
+    flex: 1,
+  },
+  permissionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#dbeafe',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#93c5fd',
+  },
+  permissionButtonText: {
+    fontWeight: '600',
+    color: '#1e40af',
+  },
+  hint: {
+    fontSize: 12,
+    color: '#64748b',
+    marginTop: 4,
+  },
+  bankCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  bankInfo: {
+    flex: 1,
+  },
+  bankAccountName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0f172a',
+    marginBottom: 4,
+  },
+  bankAccountMask: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  bankPlaceholder: {
+    color: '#64748b',
+    flex: 1,
+  },
+  plaidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  plaidButtonText: {
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skipButton: {
+    flex: 0.5,
+    backgroundColor: '#f1f5f9',
+  },
+  skipButtonText: {
+    color: '#64748b',
+    fontWeight: '600',
+  },
   primaryButtonText: {
     color: '#ffffff',
     fontSize: 16,
@@ -804,4 +1185,3 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
 });
-

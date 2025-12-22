@@ -1,12 +1,14 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { theme } from '../../theme';
 import { FormField } from '../../components/ui/FormField';
+import { PasswordRequirements } from '../../components/ui/PasswordRequirements';
 import { Button } from '../../components/ui/Button';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { validatePassword } from '../../utils/passwordValidation';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -15,6 +17,15 @@ export default function ChangePasswordScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Validate form fields
+  const isFormValid = useMemo(() => {
+    return (
+      currentPassword.trim().length > 0 &&
+      validatePassword(newPassword) &&
+      newPassword === confirmPassword
+    );
+  }, [currentPassword, newPassword, confirmPassword]);
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -106,11 +117,13 @@ export default function ChangePasswordScreen() {
 
           <FormField
             label="New Password"
-            placeholder="Enter your new password (min. 8 characters)"
+            placeholder="Enter your new password"
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry
           />
+
+          <PasswordRequirements password={newPassword} />
 
           <View style={styles.fieldSpacer} />
 
@@ -123,26 +136,11 @@ export default function ChangePasswordScreen() {
           />
         </View>
 
-        <View style={styles.requirementsCard}>
-          <Text style={styles.requirementsTitle}>Password Requirements</Text>
-          <View style={styles.requirementItem}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.neutral[500]} />
-            <Text style={styles.requirementText}>At least 8 characters long</Text>
-          </View>
-          <View style={styles.requirementItem}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.neutral[500]} />
-            <Text style={styles.requirementText}>Mix of letters and numbers recommended</Text>
-          </View>
-          <View style={styles.requirementItem}>
-            <Ionicons name="checkmark-circle-outline" size={16} color={theme.colors.neutral[500]} />
-            <Text style={styles.requirementText}>Use a unique password not used elsewhere</Text>
-          </View>
-        </View>
-
         <Button
           title="Change Password"
           onPress={handleChangePassword}
           loading={isLoading}
+          disabled={!isFormValid || isLoading}
           style={styles.changeButton}
         />
       </ScrollView>

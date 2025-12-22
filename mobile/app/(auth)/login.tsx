@@ -1,13 +1,15 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
+import { FieldRequirement } from '../../components/ui/FieldRequirement';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { validateEmail } from '../../utils/passwordValidation';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -16,6 +18,11 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Validate form fields
+  const isFormValid = useMemo(() => {
+    return validateEmail(email) && password.trim().length > 0;
+  }, [email, password]);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -81,7 +88,15 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              error={email && !validateEmail(email) ? 'Invalid email address' : undefined}
             />
+            {email && (
+              <FieldRequirement
+                met={validateEmail(email)}
+                message="Valid email format required (e.g., user@example.com)"
+                showWhenEmpty={false}
+              />
+            )}
 
             <View style={styles.fieldSpacer} />
 
@@ -92,13 +107,27 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry
             />
+            <FieldRequirement
+              met={password.trim().length > 0}
+              message="Password is required"
+              showWhenEmpty={true}
+            />
 
             <Button
               title="Sign In"
               onPress={handleLogin}
               loading={isLoading}
+              disabled={!isFormValid || isLoading}
               style={styles.primaryButton}
             />
+
+            <TouchableOpacity
+              style={styles.forgotPasswordButton}
+              onPress={() => router.push('/(auth)/reset-password')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
@@ -201,6 +230,17 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: theme.spacing.lg,
+  },
+  forgotPasswordButton: {
+    marginTop: theme.spacing.md,
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  forgotPasswordText: {
+    ...theme.typography.body,
+    color: theme.colors.primary[500],
+    fontSize: 14,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

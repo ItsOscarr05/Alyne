@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../services/payment';
 import { bookingService } from '../services/booking';
+import { plaidService } from '../services/plaid';
 import { useAuth } from '../hooks/useAuth';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
@@ -314,6 +315,8 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
   const [requiresPlaidPayment, setRequiresPlaidPayment] = useState(false);
   const [stripePaymentComplete, setStripePaymentComplete] = useState(false);
   const [plaidPaymentComplete, setPlaidPaymentComplete] = useState(false);
+  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
+  const [plaidLoading, setPlaidLoading] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
 
   // Native Stripe hooks
@@ -357,6 +360,8 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       setRequiresPlaidPayment(false);
       setStripePaymentComplete(false);
       setPlaidPaymentComplete(false);
+      setPlaidLinkToken(null);
+      setPlaidLoading(false);
       setShowReceiptModal(false);
       setLoading(true);
       setProcessing(false);
@@ -415,6 +420,14 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
       if (paymentIntent.requiresPlaidPayment) {
         setRequiresPlaidPayment(true);
+        // Pre-fetch Plaid link token so it's ready when user clicks Pay Now
+        try {
+          const linkToken = await plaidService.getPaymentLinkToken(bookingId);
+          setPlaidLinkToken(linkToken);
+        } catch (error: any) {
+          console.error('Error pre-fetching Plaid link token:', error);
+          // Don't show error to user yet, will retry when they click Pay Now
+        }
       }
 
       if (Platform.OS !== 'web' && stripeNative) {
@@ -485,30 +498,160 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
   const handleStripePaymentSuccess = async () => {
     setStripePaymentComplete(true);
-
-    if (requiresPlaidPayment && !plaidPaymentComplete) {
-      try {
-        console.log('Automatically processing Plaid transfer to provider...');
-        await paymentService.processProviderPayment(bookingId!);
-        setPlaidPaymentComplete(true);
-        console.log('Plaid transfer completed automatically');
-      } catch (error: any) {
-        console.error('Error processing Plaid transfer:', error);
-        if (Platform.OS === 'web') {
-          alert(
-            `Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`
-          );
-        } else {
-          Alert.alert(
-            'Provider Payment Error',
-            `Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`
-          );
-        }
-      }
-    }
-
+    
+    // Check if both payments are complete
     if (!requiresPlaidPayment || plaidPaymentComplete) {
       handlePaymentSuccess();
+    }
+    // If Plaid payment is still pending, it will be handled by the unified payment flow
+  };
+
+  // Initialize Plaid Link for web
+  const initializePlaidLink = (linkToken: string, onSuccess: () => void) => {
+    console.log('initializePlaidLink called', { linkToken: linkToken?.substring(0, 20) + '...' });
+    
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      console.error('Plaid Link only works on web');
+      alert('Plaid payment is only available on web. Please use a web browser.');
+      return;
+    }
+
+    // Check if Plaid script is already loaded
+    if ((window as any).Plaid) {
+      console.log('Plaid already loaded, creating handler');
+      createPlaidHandler(linkToken, onSuccess);
+    } else {
+      console.log('Loading Plaid script from CDN');
+      // Load Plaid Link from CDN
+      const script = document.createElement('script');
+      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+      script.async = true;
+      script.onload = () => {
+        console.log('Plaid script loaded');
+        if ((window as any).Plaid) {
+          createPlaidHandler(linkToken, onSuccess);
+        } else {
+          console.error('Plaid object not available after script load');
+          alert('Failed to initialize Plaid. Please refresh the page.');
+          setProcessing(false);
+        }
+      };
+      script.onerror = (error) => {
+        console.error('Failed to load Plaid Link script', error);
+        logger.error('Failed to load Plaid Link script');
+        setProcessing(false);
+        alert('Failed to load payment system. Please check your internet connection and refresh the page.');
+      };
+      document.body.appendChild(script);
+    }
+  };
+
+  const createPlaidHandler = (linkToken: string, onSuccess: () => void) => {
+    console.log('createPlaidHandler called', { hasPlaid: !!(window as any).Plaid, hasToken: !!linkToken });
+    
+    if (!(window as any).Plaid) {
+      console.error('Plaid object not available');
+      setProcessing(false);
+      alert('Plaid is not available. Please refresh the page.');
+      return;
+    }
+
+    if (!linkToken) {
+      console.error('No link token provided');
+      setProcessing(false);
+      alert('Payment token is missing. Please try again.');
+      return;
+    }
+
+    try {
+      console.log('Creating Plaid handler');
+      const handler = (window as any).Plaid.create({
+          token: linkToken,
+          onSuccess: async (publicToken: string, metadata: any) => {
+            logger.info('Plaid Link successful', { publicToken, metadata });
+            
+            try {
+              // Note: With Plaid Payment Initiation, the payment is automatically created
+              // when the user completes Plaid Link. We just need to track it.
+              // For now, we'll use the existing processProviderPayment which uses Transfer API
+              // In the future, we can implement proper Payment Initiation flow
+              
+              // Exchange the public token and process the payment
+              // The payment is already initiated by Plaid, we just need to confirm it
+              await paymentService.processProviderPayment(bookingId!);
+              
+              logger.info('Plaid payment processed successfully');
+              setPlaidPaymentComplete(true);
+              
+              // Check if both payments are complete
+              if (stripePaymentComplete) {
+                // Both payments complete, show success
+                setTimeout(() => {
+                  handlePaymentSuccess();
+                }, 500);
+              }
+              
+              // Call the onSuccess callback
+              onSuccess();
+            } catch (error: any) {
+              logger.error('Error processing Plaid payment', error);
+              setProcessing(false);
+              alert(`Provider payment error: ${error.message || 'Unknown error'}`);
+            }
+          },
+          onExit: (err: any, metadata: any) => {
+            logger.debug('Plaid exit', { err, metadata });
+            setProcessing(false);
+            if (err) {
+              const errorMsg = err.error_message || err.message || 'Unknown error';
+              alert(`Payment error: ${errorMsg}`);
+            }
+          },
+          onEvent: (eventName: string, metadata: any) => {
+            logger.debug('Plaid event', { eventName, metadata });
+          },
+        });
+        (window as any).plaidHandler = handler;
+        console.log('Plaid handler created, opening...');
+        handler.open();
+      } catch (error: any) {
+        console.error('Error creating Plaid handler:', error);
+        logger.error('Error initializing Plaid', error);
+        setProcessing(false);
+        alert(`Failed to initialize payment: ${error.message || 'Unknown error'}`);
+      }
+  };
+
+  const handlePlaidPayment = async () => {
+    console.log('handlePlaidPayment called', { plaidLinkToken, bookingId });
+    
+    if (!plaidLinkToken) {
+      console.error('No Plaid link token available');
+      if (Platform.OS === 'web') {
+        alert('Plaid payment is not ready. Please wait a moment or refresh the page.');
+      } else {
+        Alert.alert('Error', 'Plaid payment is not ready. Please wait a moment.');
+      }
+      return;
+    }
+
+    if (Platform.OS === 'web') {
+      try {
+        setProcessing(true);
+        console.log('Initializing Plaid Link with token:', plaidLinkToken.substring(0, 20) + '...');
+        initializePlaidLink(plaidLinkToken, () => {
+          // Payment completed, show success
+          console.log('Plaid payment flow completed');
+          handlePaymentSuccess();
+        });
+      } catch (error: any) {
+        console.error('Error in handlePlaidPayment:', error);
+        setProcessing(false);
+        alert(`Failed to start payment: ${error.message || 'Unknown error'}`);
+      }
+    } else {
+      // For native, you would use Plaid React Native SDK
+      Alert.alert('Info', 'Plaid payment on mobile is not yet implemented. Please use web version.');
     }
   };
 
@@ -516,19 +659,55 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     if (Platform.OS === 'web') {
       setProcessing(true);
 
-      if (stripeSubmitRef.current) {
-        stripeSubmitRef.current().catch((error) => {
+      // Ensure we have Plaid token if needed
+      if (requiresPlaidPayment && !plaidLinkToken) {
+        try {
+          setPlaidLoading(true);
+          const linkToken = await plaidService.getPaymentLinkToken(bookingId!);
+          setPlaidLinkToken(linkToken);
+          setPlaidLoading(false);
+        } catch (error: any) {
+          console.error('Error getting Plaid link token:', error);
+          setPlaidLoading(false);
+          setProcessing(false);
+          alert(`Failed to initialize provider payment: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+          return;
+        }
+      }
+
+      // Start Stripe payment first (platform fee)
+      if (stripeSubmitRef.current && !stripePaymentComplete) {
+        try {
+          await stripeSubmitRef.current();
+          // Stripe payment success is handled by handleStripePaymentSuccess
+        } catch (error: any) {
           console.error('Stripe payment error:', error);
           setProcessing(false);
-          if (Platform.OS === 'web') {
-            alert(`Payment failed: ${error.message || 'Unknown error'}`);
-          } else {
-            Alert.alert('Payment Failed', error.message || 'Unknown error');
-          }
-        });
-      } else {
-        setProcessing(false);
-        alert('Payment form is not ready. Please wait a moment and try again.');
+          alert(`Platform fee payment failed: ${error.message || 'Unknown error'}`);
+          return;
+        }
+      }
+
+      // Start Plaid payment (provider amount) simultaneously or right after Stripe
+      if (requiresPlaidPayment && !plaidPaymentComplete && plaidLinkToken) {
+        try {
+          // Initialize Plaid Link - this will open a modal for user to complete
+          // The payment completion is handled in the onSuccess callback
+          initializePlaidLink(plaidLinkToken, () => {
+            console.log('Plaid payment flow completed');
+            // Check if both are complete
+            if (stripePaymentComplete) {
+              handlePaymentSuccess();
+            }
+          });
+        } catch (error: any) {
+          console.error('Error initializing Plaid:', error);
+          setProcessing(false);
+          alert(`Provider payment failed to start: ${error.message || 'Unknown error'}`);
+        }
+      } else if (!requiresPlaidPayment) {
+        // No Plaid payment needed, just wait for Stripe
+        // handleStripePaymentSuccess will handle completion
       }
     } else {
       handlePayment();
@@ -702,43 +881,77 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                             </View>
                           )}
 
-                          {!stripePaymentComplete && !plaidPaymentComplete && (
-                            <TouchableOpacity
-                              style={[
-                                styles.payButton,
-                                (processing || !stripeInstance) && styles.payButtonDisabled,
-                              ]}
-                              onPress={handleUnifiedPayment}
-                              disabled={processing || !stripeInstance}
-                            >
-                              {processing ? (
-                                <ActivityIndicator color="#ffffff" />
-                              ) : (
-                                <Text style={styles.payButtonText}>
-                                  Pay $
-                                  {paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
-                                </Text>
+                          {/* Single Pay Now Button - Processes Both Payments */}
+                          {!stripePaymentComplete || (requiresPlaidPayment && !plaidPaymentComplete) ? (
+                            <>
+                              {requiresPlaidPayment && paymentAmounts && (
+                                <View style={styles.paymentStepCard}>
+                                  <Text style={styles.breakdownTitle}>Payment Details</Text>
+                                  <View style={styles.breakdownRow}>
+                                    <Text style={styles.breakdownLabel}>Platform Fee (Stripe)</Text>
+                                    <Text style={styles.breakdownValue}>
+                                      ${paymentAmounts.platformFee.toFixed(2)}
+                                      {stripePaymentComplete && ' ✓'}
+                                    </Text>
+                                  </View>
+                                  <View style={styles.breakdownRow}>
+                                    <Text style={styles.breakdownLabel}>Provider Payment (Plaid)</Text>
+                                    <Text style={styles.breakdownValue}>
+                                      ${paymentAmounts.providerAmount.toFixed(2)}
+                                      {plaidPaymentComplete && ' ✓'}
+                                    </Text>
+                                  </View>
+                                </View>
                               )}
-                            </TouchableOpacity>
-                          )}
 
-                          {processing && (
-                            <View style={styles.paymentStatus}>
-                              <Text style={styles.paymentStatusText}>
-                                {!stripePaymentComplete
-                                  ? 'Processing platform fee...'
-                                  : requiresPlaidPayment && !plaidPaymentComplete
-                                    ? 'Processing provider payment...'
-                                    : 'Payment completed!'}
-                              </Text>
-                              {requiresPlaidPayment && (
-                                <Text
-                                  style={[styles.paymentStatusText, { fontSize: 12, marginTop: 4 }]}
-                                >
-                                  Platform fee: {stripePaymentComplete ? '✓' : '...'} | Provider
-                                  payment: {plaidPaymentComplete ? '✓' : '...'}
-                                </Text>
+                              <TouchableOpacity
+                                style={[
+                                  styles.payButton,
+                                  (processing || !stripeInstance || (requiresPlaidPayment && !plaidLinkToken && plaidLoading)) && styles.payButtonDisabled,
+                                ]}
+                                onPress={handleUnifiedPayment}
+                                disabled={processing || !stripeInstance || (requiresPlaidPayment && !plaidLinkToken && plaidLoading)}
+                              >
+                                {processing ? (
+                                  <ActivityIndicator color="#ffffff" />
+                                ) : (
+                                  <Text style={styles.payButtonText}>
+                                    Pay Now ($
+                                    {paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)})
+                                  </Text>
+                                )}
+                              </TouchableOpacity>
+
+                              {processing && (
+                                <View style={styles.paymentStatus}>
+                                  <ActivityIndicator size="small" color="#2563eb" />
+                                  <Text style={styles.paymentStatusText}>
+                                    Processing payments...
+                                  </Text>
+                                  {requiresPlaidPayment && (
+                                    <Text style={[styles.paymentStatusText, { fontSize: 12, marginTop: 4 }]}>
+                                      Platform fee: {stripePaymentComplete ? '✓' : '...'} | Provider payment: {plaidPaymentComplete ? '✓' : '...'}
+                                    </Text>
+                                  )}
+                                </View>
                               )}
+
+                              {plaidLoading && !plaidLinkToken && (
+                                <View style={styles.paymentStatus}>
+                                  <ActivityIndicator size="small" color="#2563eb" />
+                                  <Text style={styles.paymentStatusText}>
+                                    Preparing payments...
+                                  </Text>
+                                </View>
+                              )}
+                            </>
+                          ) : (
+                            /* Both Payments Complete */
+                            <View style={styles.paymentStatus}>
+                              <Ionicons name="checkmark-circle" size={24} color="#16A34A" />
+                              <Text style={[styles.paymentStatusText, { color: '#16A34A' }]}>
+                                Payment completed successfully!
+                              </Text>
                             </View>
                           )}
                         </>
@@ -1009,5 +1222,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1e40af',
     textAlign: 'center',
+    marginTop: 8,
+  },
+  paymentStepCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  paymentStepHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  paymentStepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2563eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  paymentStepNumberText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+  },
+  paymentStepComplete: {
+    backgroundColor: '#16A34A',
+  },
+  paymentStepInfo: {
+    flex: 1,
+  },
+  paymentStepTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 4,
+  },
+  paymentStepAmount: {
+    fontSize: 14,
+    color: '#64748b',
   },
 });

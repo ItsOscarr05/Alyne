@@ -219,6 +219,30 @@ export const authService = {
     };
   },
 
+  async deleteAccount(userId: string): Promise<void> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        providerProfile: true,
+        clientProfile: true,
+      },
+    });
+
+    if (!user) {
+      throw createError('User not found', 404);
+    }
+
+    // Delete user (cascade will handle related records)
+    // Prisma will automatically delete:
+    // - ProviderProfile or ClientProfile (onDelete: Cascade)
+    // - Bookings (onDelete: Cascade)
+    // - Messages (onDelete: Cascade)
+    // - Reviews (onDelete: Cascade)
+    await prisma.user.delete({
+      where: { id: userId },
+    });
+  },
+
   generateToken(userId: string): string {
     const secret = process.env.JWT_SECRET;
     if (!secret) {

@@ -45,5 +45,9 @@ export const authService = {
   async resendVerificationEmail(): Promise<void> {
     await apiClient.post('/auth/resend-verification');
   },
+
+  async deleteAccount(): Promise<void> {
+    await apiClient.delete('/auth/account');
+  },
 };
 

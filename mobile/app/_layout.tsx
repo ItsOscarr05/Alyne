@@ -33,6 +33,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="provider/[id]" />
           <Stack.Screen name="provider/onboarding" />
+          <Stack.Screen name="client/onboarding" />
           <Stack.Screen name="booking/create" />
           <Stack.Screen name="booking/[id]" />
           <Stack.Screen name="messages/[userId]" />
@@ -45,4 +46,3 @@ export default function RootLayout() {
     </ErrorBoundary>
   );
 }
-

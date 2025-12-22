@@ -129,8 +129,9 @@ router.post('/verify-email', authController.verifyEmail);
 
 router.post('/resend-verification', authController.resendVerification);
 
-// Protected route
+// Protected routes
 router.put('/profile', authenticate, authController.updateProfile);
+router.delete('/account', authenticate, authController.deleteAccount);
 
 export { router as authRoutes };
 

@@ -25,6 +25,24 @@ export const bookingController = {
         notes,
       });
 
+      // Emit real-time update to the client
+      if (booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
+      // Also notify the provider
+      if (booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
       res.status(201).json({
         success: true,
         data: booking,
@@ -113,6 +131,24 @@ export const bookingController = {
 
       const booking = await bookingService.acceptBooking(id, userId);
 
+      // Emit real-time update to the client
+      if (booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
+      // Also notify the provider
+      if (booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
       res.json({
         success: true,
         data: booking,
@@ -129,6 +165,24 @@ export const bookingController = {
 
       const booking = await bookingService.declineBooking(id, userId);
 
+      // Emit real-time update to the client
+      if (booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
+      // Also notify the provider
+      if (booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
       res.json({
         success: true,
         data: booking,
@@ -144,6 +198,24 @@ export const bookingController = {
       const { id } = req.params;
 
       const booking = await bookingService.cancelBooking(id, userId);
+
+      // Emit real-time update to the client
+      if (booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
+      // Also notify the provider
+      if (booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
 
       res.json({
         success: true,

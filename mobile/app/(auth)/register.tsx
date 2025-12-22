@@ -1,13 +1,16 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
+import { PasswordRequirements } from '../../components/ui/PasswordRequirements';
+import { FieldRequirement } from '../../components/ui/FieldRequirement';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { validatePassword, validateEmail } from '../../utils/passwordValidation';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -19,6 +22,17 @@ export default function RegisterScreen() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Validate form fields
+  const isFormValid = useMemo(() => {
+    return (
+      userType !== null &&
+      firstName.trim().length > 0 &&
+      lastName.trim().length > 0 &&
+      validateEmail(email) &&
+      validatePassword(password)
+    );
+  }, [userType, firstName, lastName, email, password]);
 
   const handleRegister = async () => {
     if (!userType || !email || !password || !firstName || !lastName) {
@@ -41,8 +55,13 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
-      await register(email, password, firstName, lastName, userType);
-      router.replace('/(tabs)');
+      const result = await register(email, password, firstName, lastName, userType);
+      // Redirect based on user type
+      if (userType === 'provider') {
+        router.replace('/provider/onboarding');
+      } else {
+        router.replace('/client/onboarding');
+      }
     } catch (error: any) {
       modal.showAlert({
         title: 'Registration Failed',
@@ -69,13 +88,13 @@ export default function RegisterScreen() {
           >
             <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
           </TouchableOpacity>
-          
+
           <View style={styles.logoContainer}>
             <View style={styles.logoCircle}>
               <Ionicons name="person-add" size={32} color={theme.colors.white} />
             </View>
           </View>
-          
+
           <View style={styles.headerContent}>
             <Text style={styles.title}>Create Account</Text>
             <Text style={styles.subtitle}>Join the Alyne community</Text>
@@ -97,7 +116,9 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="business-outline"
                   size={20}
-                  color={userType === 'provider' ? theme.colors.primary[500] : theme.colors.neutral[500]}
+                  color={
+                    userType === 'provider' ? theme.colors.primary[500] : theme.colors.neutral[500]
+                  }
                 />
                 <Text
                   style={[
@@ -119,7 +140,9 @@ export default function RegisterScreen() {
                 <Ionicons
                   name="person-outline"
                   size={20}
-                  color={userType === 'client' ? theme.colors.primary[500] : theme.colors.neutral[500]}
+                  color={
+                    userType === 'client' ? theme.colors.primary[500] : theme.colors.neutral[500]
+                  }
                 />
                 <Text
                   style={[
@@ -131,17 +154,29 @@ export default function RegisterScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+            {!userType && (
+              <FieldRequirement
+                met={false}
+                message="Please select Provider or Client"
+                showWhenEmpty={true}
+              />
+            )}
           </View>
 
           <View style={styles.formCard}>
             <Text style={styles.cardTitle}>Account Information</Text>
-            
+
             <FormField
               label="First Name"
               placeholder="Enter your first name"
               value={firstName}
               onChangeText={setFirstName}
               autoCapitalize="words"
+            />
+            <FieldRequirement
+              met={firstName.trim().length > 0}
+              message="At least 1 character required"
+              showWhenEmpty={true}
             />
 
             <View style={styles.fieldSpacer} />
@@ -153,6 +188,11 @@ export default function RegisterScreen() {
               onChangeText={setLastName}
               autoCapitalize="words"
             />
+            <FieldRequirement
+              met={lastName.trim().length > 0}
+              message="At least 1 character required"
+              showWhenEmpty={true}
+            />
 
             <View style={styles.fieldSpacer} />
 
@@ -163,23 +203,33 @@ export default function RegisterScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              error={email && !validateEmail(email) ? 'Invalid email address' : undefined}
             />
+            {email && (
+              <FieldRequirement
+                met={validateEmail(email)}
+                message="Valid email format required (e.g., user@example.com)"
+                showWhenEmpty={false}
+              />
+            )}
 
             <View style={styles.fieldSpacer} />
 
             <FormField
               label="Password"
-              placeholder="Create a password (min. 8 characters)"
+              placeholder="Create a password"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
             />
 
+            <PasswordRequirements password={password} />
+
             <Button
               title="Create Account"
               onPress={handleRegister}
               loading={isLoading}
-              disabled={!userType || isLoading}
+              disabled={!isFormValid || isLoading}
               style={styles.primaryButton}
             />
           </View>
@@ -346,4 +396,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

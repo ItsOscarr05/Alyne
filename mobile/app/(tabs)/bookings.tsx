@@ -177,11 +177,39 @@ export default function BookingsScreen() {
       logger.debug('Booking updated via Socket.io', {
         bookingId: data.bookingId,
         status: data.status,
+        paymentStatus: data.booking?.payment?.status,
       });
-      // Refresh bookings when a booking status changes
-      if (user && !authLoading) {
-        loadBookings();
-      }
+
+      // Update the specific booking in state for instant UI update
+      setBookings((prevBookings) => {
+        const bookingIndex = prevBookings.findIndex((b) => b.id === data.bookingId);
+        
+        if (bookingIndex !== -1) {
+          // Booking exists, update it
+          const updatedBookings = [...prevBookings];
+          updatedBookings[bookingIndex] = {
+            ...updatedBookings[bookingIndex],
+            status: data.status as any,
+            ...(data.booking && {
+              ...data.booking,
+              // Preserve existing payment data if new data doesn't include it
+              payment: data.booking.payment || updatedBookings[bookingIndex].payment,
+            }),
+          };
+          return updatedBookings;
+        } else {
+          // Booking doesn't exist in current list, might be a new booking
+          // If we have the full booking data, add it
+          if (data.booking) {
+            return [data.booking, ...prevBookings];
+          }
+          // Otherwise, reload to get the updated list
+          if (user && !authLoading) {
+            loadBookings();
+          }
+        }
+        return prevBookings;
+      });
     });
 
     return unsubscribe;
@@ -226,6 +254,17 @@ export default function BookingsScreen() {
       pathname: '/booking/[id]',
       params: { id: bookingId },
     });
+  };
+
+  const handleMessage = (booking: BookingDetail) => {
+    // Determine which user to message
+    // If current user is a client, message the provider
+    // If current user is a provider, message the client
+    const otherUserId = user?.userType === 'CLIENT' ? booking.providerId : booking.clientId;
+    
+    if (otherUserId) {
+      router.push(`/messages/${otherUserId}`);
+    }
   };
 
   const handleAccept = async (bookingId: string) => {
@@ -659,6 +698,8 @@ export default function BookingsScreen() {
                               ? () => handleDecline(booking.id)
                               : undefined
                           }
+                          showMessageButton={true}
+                          onMessagePress={() => handleMessage(booking)}
                         />
                       </View>
                     );
@@ -787,6 +828,8 @@ export default function BookingsScreen() {
                           onComplete={
                             showCompleteButton ? () => handleComplete(booking.id) : undefined
                           }
+                          showMessageButton={true}
+                          onMessagePress={() => handleMessage(booking)}
                         />
                       </View>
                     );
@@ -893,6 +936,8 @@ export default function BookingsScreen() {
                           onPress={() => handleBookingPress(booking.id)}
                           showOptions={true}
                           onOptionsPress={() => handleOptionsPress(booking.id)}
+                          showMessageButton={true}
+                          onMessagePress={() => handleMessage(booking)}
                         />
                       </View>
                     );

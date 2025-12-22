@@ -106,5 +106,23 @@ export const authController = {
       next(error);
     }
   },
+
+  async deleteAccount(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      await authService.deleteAccount(userId);
+
+      res.json({
+        success: true,
+        message: 'Account deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 

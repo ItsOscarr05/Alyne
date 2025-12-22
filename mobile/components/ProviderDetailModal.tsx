@@ -607,6 +607,18 @@ export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDe
 
                   {/* Book Button */}
                   <View style={styles.footer}>
+                    {user?.userType === 'CLIENT' && providerId && (
+                      <TouchableOpacity
+                        style={styles.messageButton}
+                        onPress={() => {
+                          onClose();
+                          router.push(`/messages/${providerId}`);
+                        }}
+                      >
+                        <Ionicons name="chatbubble-outline" size={20} color="#2563eb" />
+                        <Text style={styles.messageButtonText}>Message</Text>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity style={styles.bookButton} onPress={handleBookSession}>
                       <Text style={styles.bookButtonText}>Book Session</Text>
                     </TouchableOpacity>
@@ -1066,10 +1078,30 @@ const styles = StyleSheet.create({
     padding: theme.spacing.xl,
   },
   footer: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
     backgroundColor: theme.colors.white,
     padding: theme.spacing.lg,
     borderTopWidth: 1,
     borderTopColor: theme.colors.neutral[200],
+  },
+  messageButton: {
+    backgroundColor: theme.colors.white,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.xl,
+    borderRadius: theme.radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    borderWidth: 2,
+    borderColor: theme.colors.primary[500],
+    flex: 1,
+  },
+  messageButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.primary[500],
   },
   bookButton: {
     backgroundColor: theme.colors.primary[500],
@@ -1077,6 +1109,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     borderRadius: theme.radii.md,
     alignItems: 'center',
+    flex: 1,
   },
   bookButtonText: {
     fontSize: 16,

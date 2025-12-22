@@ -5,7 +5,7 @@ import compression from 'compression';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import dotenv from 'dotenv';
-import { prisma } from './utils/db';
+import { prisma, checkDatabaseHealth, getQueryStats } from './utils/db';
 import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { sanitizeInput } from './middleware/sanitizeInput';
@@ -35,44 +35,47 @@ const io = new Server(httpServer, {
   connectTimeout: 45000,
 });
 
-
 // Listen for connection errors at Engine.IO level
 io.engine.on('connection_error', (err: any) => {
   logger.error('Socket.io connection error', err);
 });
 
-
 const PORT = process.env.PORT || 3000;
 
 // Middleware
 // Configure Helmet with CSP that allows Socket.io connections
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Socket.io
-      connectSrc: [
-        "'self'",
-        process.env.FRONTEND_URL || 'http://localhost:8081',
-        'ws://localhost:3000', // WebSocket for Socket.io
-        'wss://localhost:3000', // Secure WebSocket
-        ...(process.env.FRONTEND_URL?.split(',') || []).map(url => url.replace('http://', 'ws://').replace('https://', 'wss://')),
-      ],
-      styleSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
-      imgSrc: ["'self'", 'data:', 'https:'],
-      fontSrc: ["'self'", 'data:'],
-      objectSrc: ["'none'"],
-      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Socket.io
+        connectSrc: [
+          "'self'",
+          process.env.FRONTEND_URL || 'http://localhost:8081',
+          'ws://localhost:3000', // WebSocket for Socket.io
+          'wss://localhost:3000', // Secure WebSocket
+          ...(process.env.FRONTEND_URL?.split(',') || []).map((url) =>
+            url.replace('http://', 'ws://').replace('https://', 'wss://')
+          ),
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'"], // Required for Swagger UI
+        imgSrc: ["'self'", 'data:', 'https:'],
+        fontSrc: ["'self'", 'data:'],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false, // Disabled for Socket.io compatibility
-}));
+    crossOriginEmbedderPolicy: false, // Disabled for Socket.io compatibility
+  })
+);
 app.use(compression());
 // CORS configuration for production
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? process.env.FRONTEND_URL?.split(',') || [] // Allow multiple origins in production
-    : process.env.FRONTEND_URL || 'http://localhost:8081',
+  origin:
+    process.env.NODE_ENV === 'production'
+      ? process.env.FRONTEND_URL?.split(',') || [] // Allow multiple origins in production
+      : process.env.FRONTEND_URL || 'http://localhost:8081',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -80,7 +83,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 
 app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-encoded payload size
@@ -169,19 +171,25 @@ app.get('/security/stats', (req, res) => {
 });
 
 // API Documentation (Swagger)
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'Alyne API Documentation',
-}));
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'Alyne API Documentation',
+  })
+);
 
 // API Routes
 import { authRoutes } from './routes/auth.routes';
 import { providerRoutes } from './routes/provider.routes';
+import { clientRoutes } from './routes/client.routes';
 import { bookingRoutes } from './routes/booking.routes';
 import { messageRoutes } from './routes/message.routes';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/providers', providerRoutes);
+app.use('/api/clients', clientRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/messages', messageRoutes);
 import { reviewRoutes } from './routes/review.routes';
@@ -200,7 +208,7 @@ import jwt from 'jsonwebtoken';
 io.use((socket, next) => {
   try {
     const token = socket.handshake.auth?.token;
-    
+
     if (!token) {
       return next(new Error('Authentication required'));
     }
@@ -227,7 +235,7 @@ io.use((socket, next) => {
 // Handle Socket.io connections
 io.on('connection', (socket: any) => {
   const userId = (socket as any).userId;
-  
+
   if (!userId) {
     socket.disconnect();
     return;
@@ -249,62 +257,61 @@ io.on('connection', (socket: any) => {
   });
 
   // Handle sending messages
-  socket.on('send-message', async (data: {
-    receiverId: string;
-    content: string;
-    bookingId?: string;
-  }) => {
-    try {
-      // Save message to database
-      const message = await messageService.sendMessage({
-        senderId: userId,
-        receiverId: data.receiverId,
-        content: data.content,
-        bookingId: data.bookingId,
-      });
+  socket.on(
+    'send-message',
+    async (data: { receiverId: string; content: string; bookingId?: string }) => {
+      try {
+        // Save message to database
+        const message = await messageService.sendMessage({
+          senderId: userId,
+          receiverId: data.receiverId,
+          content: data.content,
+          bookingId: data.bookingId,
+        });
 
-      // Create room ID for the conversation
-      const roomId = [userId, data.receiverId].sort().join(':');
+        // Create room ID for the conversation
+        const roomId = [userId, data.receiverId].sort().join(':');
 
-      // Update status to DELIVERED when message is received by server
-      // (In a real app, this would happen when recipient's device receives it)
-      // For MVP, we'll update to DELIVERED immediately after sending
-      const deliveredMessage = await prisma.message.update({
-        where: { id: message.id },
-        data: { status: 'DELIVERED' },
-        include: {
-          sender: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              profilePhoto: true,
+        // Update status to DELIVERED when message is received by server
+        // (In a real app, this would happen when recipient's device receives it)
+        // For MVP, we'll update to DELIVERED immediately after sending
+        const deliveredMessage = await prisma.message.update({
+          where: { id: message.id },
+          data: { status: 'DELIVERED' },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                profilePhoto: true,
+              },
+            },
+            receiver: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                profilePhoto: true,
+              },
             },
           },
-          receiver: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              profilePhoto: true,
-            },
-          },
-        },
-      });
+        });
 
-      // Emit to conversation room (both users in the conversation)
-      io.to(`conversation:${roomId}`).emit('receive-message', deliveredMessage);
-      
-      // Also notify receiver's personal room (for conversation list updates)
-      io.to(`user:${data.receiverId}`).emit('new-message', deliveredMessage);
+        // Emit to conversation room (both users in the conversation)
+        io.to(`conversation:${roomId}`).emit('receive-message', deliveredMessage);
 
-      // Confirm to sender with DELIVERED status (only to this socket, not broadcast)
-      socket.emit('message-sent', deliveredMessage);
-    } catch (error) {
-      logger.error('Error sending message', error);
-      socket.emit('message-error', { error: 'Failed to send message' });
+        // Also notify receiver's personal room (for conversation list updates)
+        io.to(`user:${data.receiverId}`).emit('new-message', deliveredMessage);
+
+        // Confirm to sender with DELIVERED status (only to this socket, not broadcast)
+        socket.emit('message-sent', deliveredMessage);
+      } catch (error) {
+        logger.error('Error sending message', error);
+        socket.emit('message-error', { error: 'Failed to send message' });
+      }
     }
-  });
+  );
 
   // Handle marking messages as read
   socket.on('mark-as-read', async (data: { otherUserId: string }) => {
@@ -379,4 +386,3 @@ httpServer.listen(PORT, () => {
 });
 
 export { app, io };
-

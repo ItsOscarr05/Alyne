@@ -27,6 +27,8 @@ interface BookingCardProps {
   onComplete?: () => void;
   onOptionsPress?: () => void;
   showOptions?: boolean;
+  onMessagePress?: () => void;
+  showMessageButton?: boolean;
 }
 
 export function BookingCard({
@@ -38,6 +40,8 @@ export function BookingCard({
   onComplete,
   onOptionsPress,
   showOptions = false,
+  onMessagePress,
+  showMessageButton = false,
 }: BookingCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -193,7 +197,7 @@ export function BookingCard({
               <Ionicons name="cash-outline" size={16} color="#64748b" />
               <Text style={styles.detailText}>${booking.price}/session</Text>
             </View>
-            {(onAccept || onDecline || onComplete) && (
+            {(onAccept || onDecline || onComplete || (showMessageButton && onMessagePress)) && (
               <View style={styles.actionButtonsContainer}>
                 {onAccept && (
                   <TouchableOpacity
@@ -220,6 +224,18 @@ export function BookingCard({
                     activeOpacity={0.7}
                   >
                     <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                  </TouchableOpacity>
+                )}
+                {showMessageButton && onMessagePress && (
+                  <TouchableOpacity
+                    style={styles.messageButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onMessagePress();
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="chatbubble-outline" size={18} color="#2563eb" />
                   </TouchableOpacity>
                 )}
               </View>
@@ -256,6 +272,18 @@ export function BookingCard({
                   activeOpacity={0.7}
                 >
                   <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                </TouchableOpacity>
+              )}
+              {showMessageButton && onMessagePress && (
+                <TouchableOpacity
+                  style={styles.messageButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onMessagePress();
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="chatbubble-outline" size={18} color="#2563eb" />
                 </TouchableOpacity>
               )}
             </View>
@@ -431,5 +459,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: '#16A34A',
+  },
+  messageButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2563eb20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#2563eb',
   },
 });

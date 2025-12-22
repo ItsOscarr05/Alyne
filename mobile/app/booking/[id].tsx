@@ -194,9 +194,27 @@ export default function BookingDetailScreen() {
 
         {/* Provider/Client Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {user?.userType === 'CLIENT' ? 'Provider' : 'Client'}
-          </Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {user?.userType === 'CLIENT' ? 'Provider' : 'Client'}
+            </Text>
+            {((user?.userType === 'CLIENT' && booking.providerId) ||
+              (user?.userType === 'PROVIDER' && booking.clientId)) && (
+              <TouchableOpacity
+                style={styles.messageButton}
+                onPress={() => {
+                  const otherUserId =
+                    user?.userType === 'CLIENT' ? booking.providerId : booking.clientId;
+                  if (otherUserId) {
+                    router.push(`/messages/${otherUserId}`);
+                  }
+                }}
+              >
+                <Ionicons name="chatbubble-outline" size={18} color="#2563eb" />
+                <Text style={styles.messageButtonText}>Message</Text>
+              </TouchableOpacity>
+            )}
+          </View>
           <View style={styles.infoCard}>
             {user?.userType === 'CLIENT' && booking.provider ? (
               <>
@@ -373,11 +391,32 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-    marginBottom: 12,
+  },
+  messageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.5,
+    borderColor: '#2563eb',
+  },
+  messageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   infoCard: {
     backgroundColor: '#ffffff',

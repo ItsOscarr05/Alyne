@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { paymentService } from '../services/payment.service';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { io } from '../index';
+import { bookingService } from '../services/booking.service';
 
 export const paymentController = {
   async createPaymentIntent(req: AuthRequest, res: Response, next: NextFunction) {
@@ -42,6 +44,27 @@ export const paymentController = {
       }
 
       const payment = await paymentService.confirmPayment(bookingId, paymentIntentId, userId);
+
+      // Fetch the updated booking to emit socket event
+      const booking = await bookingService.getBookingById(bookingId, userId);
+
+      // Emit real-time update to the client
+      if (booking && booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
+
+      // Also notify the provider
+      if (booking && booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking,
+        });
+      }
 
       res.json({
         success: true,
