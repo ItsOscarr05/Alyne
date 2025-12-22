@@ -169,7 +169,13 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.inputContainer, showCityDropdown && styles.inputContainerActive]}>
+      <View
+        style={[
+          styles.inputContainer,
+          showCityDropdown && styles.inputContainerActive,
+          { marginBottom: theme.spacing.lg },
+        ]}
+      >
         <Text style={styles.label}>City</Text>
         <View style={styles.inputWrapper}>
           <TextInput
@@ -207,7 +213,9 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
                   onPress={() => handleCitySelect(item)}
                 >
                   <Ionicons name="location-outline" size={16} color={theme.colors.primary[500]} />
-                  <Text style={styles.dropdownItemText}>{item}</Text>
+                  <Text style={[styles.dropdownItemText, { marginLeft: theme.spacing.sm }]}>
+                    {item}
+                  </Text>
                 </TouchableOpacity>
               )}
               style={styles.dropdownList}
@@ -255,7 +263,9 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
                   onPress={() => handleStateSelect(item)}
                 >
                   <Ionicons name="location-outline" size={16} color={theme.colors.primary[500]} />
-                  <Text style={styles.dropdownItemText}>{item}</Text>
+                  <Text style={[styles.dropdownItemText, { marginLeft: theme.spacing.sm }]}>
+                    {item}
+                  </Text>
                 </TouchableOpacity>
               )}
               style={styles.dropdownList}
@@ -270,7 +280,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    gap: theme.spacing.lg,
+    // gap replaced with marginBottom on first input container
   },
   inputContainer: {
     position: 'relative',
@@ -329,7 +339,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
-    gap: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.neutral[50],
   },

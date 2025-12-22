@@ -36,8 +36,14 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      await login(email, password);
-      router.replace('/(tabs)');
+      const response = await login(email, password);
+      // Route based on user type - navigate immediately
+      if (response.user.userType === 'PROVIDER') {
+        // Navigate immediately to dashboard
+        router.replace('/(tabs)/dashboard');
+      } else {
+        router.replace('/(tabs)'); // Defaults to discover/index for clients
+      }
     } catch (error: any) {
       modal.showAlert({
         title: 'Login Failed',

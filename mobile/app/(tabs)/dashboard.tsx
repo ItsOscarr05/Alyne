@@ -84,7 +84,7 @@ function AnimatedBar({
 
 export default function ProviderDashboardScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { onBookingUpdate } = useSocket();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -310,17 +310,12 @@ export default function ProviderDashboardScreen() {
     return unsubscribe;
   }, [onBookingUpdate, loadDashboardData]);
 
-  // Redirect clients to discover
+  // Redirect clients to discover immediately (same pattern as discover redirects providers)
   useEffect(() => {
-    // Wait a tick to ensure router is mounted
-    const timer = setTimeout(() => {
-      if (user?.userType !== 'PROVIDER') {
-        router.replace('/(tabs)/');
-      }
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [user, router]);
+    if (!authLoading && user?.userType !== 'PROVIDER') {
+      router.replace('/(tabs)/');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (user && user.userType === 'PROVIDER') {
@@ -357,11 +352,13 @@ export default function ProviderDashboardScreen() {
   };
 
   // Don't render dashboard for clients (but all hooks must still be called)
-  if (user?.userType !== 'PROVIDER') {
+  // Wait for auth to load before making this decision
+  if (!authLoading && user?.userType !== 'PROVIDER') {
     return null;
   }
 
-  if (isLoading) {
+  // Show loading state while auth is loading or data is loading
+  if (authLoading || isLoading) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -410,23 +407,26 @@ export default function ProviderDashboardScreen() {
                 {stats.averageRating > 0 && (
                   <View style={styles.heroRatingInline}>
                     <Ionicons name="star" size={16} color="#fbbf24" />
-                    <Text style={styles.heroRatingValueInline}>
+                    <Text style={[styles.heroRatingValueInline, { marginLeft: theme.spacing.xs }]}>
                       {stats.averageRating.toFixed(1)}
                     </Text>
-                    <Text style={styles.heroRatingLabelInline}>({stats.totalReviews})</Text>
+                    <Text style={[styles.heroRatingLabelInline, { marginLeft: theme.spacing.xs }]}>
+                      ({stats.totalReviews})
+                    </Text>
                   </View>
                 )}
               </View>
-              <View style={styles.heroChart}>
+              <View style={[styles.heroChart, { marginLeft: theme.spacing.lg }]}>
                 <View style={styles.chartHeader}>
                   <Text style={styles.chartTitle}>Last {timeRange}M</Text>
                   <View style={styles.timeRangePills}>
-                    {([1, 3, 6, 12] as const).map((months) => (
+                    {([1, 3, 6, 12] as const).map((months, index) => (
                       <TouchableOpacity
                         key={months}
                         style={[
                           styles.timeRangePill,
                           timeRange === months && styles.timeRangePillActive,
+                          index > 0 && { marginLeft: theme.spacing.xs },
                         ]}
                         onPress={() => setTimeRange(months)}
                         activeOpacity={0.7}
@@ -512,14 +512,14 @@ export default function ProviderDashboardScreen() {
                           : theme.colors.neutral[200];
 
                       return (
-                        <AnimatedBar
-                          key={index}
-                          height={barHeight}
-                          color={barColor}
-                          monthName={month.monthName}
-                          earnings={month.earnings}
-                          isFocused={focusedBarIndex === index}
-                          onPressIn={() => {
+                        <View key={index} style={index > 0 ? { marginLeft: theme.spacing.sm } : {}}>
+                          <AnimatedBar
+                            height={barHeight}
+                            color={barColor}
+                            monthName={month.monthName}
+                            earnings={month.earnings}
+                            isFocused={focusedBarIndex === index}
+                            onPressIn={() => {
                             if (month.hasData && month.earnings > 0) {
                               setFocusedBarIndex(index);
                               // Calculate tooltip position (approximate)
@@ -538,7 +538,8 @@ export default function ProviderDashboardScreen() {
                             setFocusedBarIndex(null);
                             setTooltipData(null);
                           }}
-                        />
+                          />
+                        </View>
                       );
                     });
                   })()}
@@ -594,7 +595,7 @@ export default function ProviderDashboardScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.statCard, styles.statCardUpcoming]}
+              style={[styles.statCard, styles.statCardUpcoming, { marginLeft: theme.spacing.md }]}
               onPress={() => {
                 router.push({
                   pathname: '/(tabs)/bookings',
@@ -611,7 +612,7 @@ export default function ProviderDashboardScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.statCard, styles.statCardCompleted]}
+              style={[styles.statCard, styles.statCardCompleted, { marginLeft: theme.spacing.md }]}
               onPress={() => {
                 router.push({
                   pathname: '/(tabs)/bookings',
@@ -696,7 +697,7 @@ export default function ProviderDashboardScreen() {
                     )}
                   </View>
 
-                  <View style={styles.bookingInfo}>
+                  <View style={[styles.bookingInfo, { marginLeft: theme.spacing.md }]}>
                     <Text style={styles.bookingService}>
                       {booking.service?.name || 'Service'}
                       {providerAmount !== null && (
@@ -809,7 +810,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: theme.spacing.lg,
-    gap: theme.spacing.lg,
   },
   heroMain: {
     flex: 1,
@@ -829,7 +829,6 @@ const styles = StyleSheet.create({
   heroRatingInline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
     marginTop: theme.spacing.sm,
   },
   heroRatingValueInline: {
@@ -861,7 +860,6 @@ const styles = StyleSheet.create({
   },
   timeRangePills: {
     flexDirection: 'row',
-    gap: theme.spacing.xs,
     flexWrap: 'wrap',
   },
   timeRangePill: {
@@ -888,7 +886,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     height: 100,
-    gap: theme.spacing.sm,
     width: '100%',
     position: 'relative',
   },
@@ -960,7 +957,6 @@ const styles = StyleSheet.create({
   },
   heroMetrics: {
     flexDirection: 'row',
-    gap: theme.spacing.lg,
   },
   heroMetric: {
     flex: 1,
@@ -982,7 +978,6 @@ const styles = StyleSheet.create({
   },
   statsGrid: {
     flexDirection: 'row',
-    gap: theme.spacing.md,
   },
   statCard: {
     flex: 1,
@@ -1047,7 +1042,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.sm,
-    gap: theme.spacing.md,
     borderWidth: 2,
     ...theme.shadows.card,
   },
@@ -1127,13 +1121,11 @@ const styles = StyleSheet.create({
   bookingMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
     marginTop: theme.spacing.xs,
   },
   bookingRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
   },
   emptyState: {
     backgroundColor: theme.colors.white,

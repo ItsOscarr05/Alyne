@@ -24,7 +24,7 @@ import { mockProviders } from '../../data/mockProviders';
 
 export default function DiscoverScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,17 +45,27 @@ export default function DiscoverScreen() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
 
-  // Redirect providers to dashboard
-  useEffect(() => {
-    // Wait a tick to ensure router is mounted
-    const timer = setTimeout(() => {
-      if (user?.userType === 'PROVIDER') {
-        router.replace('/(tabs)/dashboard');
+  const requestLocationPermission = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({});
+        setUserLocation({
+          lat: location.coords.latitude,
+          lng: location.coords.longitude,
+        });
       }
-    }, 0);
+    } catch (error) {
+      logger.error('Error getting location', error);
+    }
+  };
 
-    return () => clearTimeout(timer);
-  }, [user, router]);
+  // Redirect providers to dashboard immediately
+  useEffect(() => {
+    if (!authLoading && user?.userType === 'PROVIDER') {
+      router.replace('/(tabs)/dashboard');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (user?.userType !== 'PROVIDER') {
@@ -148,21 +158,6 @@ export default function DiscoverScreen() {
       loadProviders();
     }
   }, [loadProviders, user]);
-
-  const requestLocationPermission = async () => {
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        });
-      }
-    } catch (error) {
-      logger.error('Error getting location', error);
-    }
-  };
 
   const handleProviderPress = (providerId: string) => {
     setSelectedProviderId(providerId);

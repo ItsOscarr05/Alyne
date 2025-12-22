@@ -5,17 +5,17 @@ import { Platform } from 'react-native';
 
 const isWeb = Platform.OS === 'web';
 
-// Use sessionStorage for web to isolate storage per browser tab/window
-// This prevents token conflicts when multiple users are logged in simultaneously
-// sessionStorage is tab-specific, unlike localStorage which is shared across tabs
+// Use localStorage for web to persist authentication across browser sessions
+// This ensures users remain logged in when closing and reopening the app
+// localStorage persists across browser sessions, unlike sessionStorage which is cleared on tab close
 const getWebStorage = () => {
-  if (typeof window !== 'undefined' && window.sessionStorage) {
-    return window.sessionStorage;
-  }
-  // Fallback to localStorage if sessionStorage is not available
   if (typeof window !== 'undefined' && window.localStorage) {
-    logger.warn('sessionStorage not available, falling back to localStorage');
     return window.localStorage;
+  }
+  // Fallback to sessionStorage if localStorage is not available
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    logger.warn('localStorage not available, falling back to sessionStorage');
+    return window.sessionStorage;
   }
   // Last resort: use AsyncStorage (shared across tabs, but better than nothing)
   return null;

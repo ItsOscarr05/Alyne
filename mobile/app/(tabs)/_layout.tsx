@@ -32,8 +32,14 @@ export default function TabsLayout() {
     dashboardOptions.href = null;
   }
 
+  // Set initial route - default to dashboard
+  // The dashboard screen will redirect clients to discover (same pattern as discover redirects providers to dashboard)
+  // This way providers see dashboard immediately, just like clients see discover immediately
+  const initialRouteName = 'dashboard';
+
   return (
     <Tabs
+      initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary[500],

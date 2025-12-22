@@ -25,7 +25,9 @@ export const FieldRequirement: React.FC<FieldRequirementProps> = ({
         size={14}
         color={met ? theme.colors.semantic.success : theme.colors.neutral[500]}
       />
-      <Text style={[styles.text, met && styles.textMet]}>{message}</Text>
+      <Text style={[styles.text, met && styles.textMet, { marginLeft: theme.spacing.xs }]}>
+        {message}
+      </Text>
     </View>
   );
 };
@@ -34,7 +36,6 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
     marginTop: theme.spacing.xs,
   },
   text: {

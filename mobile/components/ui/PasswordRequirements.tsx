@@ -87,6 +87,7 @@ export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({ pass
                 styles.requirementText,
                 isMet && styles.requirementTextMet,
                 isNext && !isMet && styles.requirementTextNext,
+                { marginLeft: theme.spacing.sm },
               ]}
             >
               {requirement.label}
@@ -101,12 +102,10 @@ export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({ pass
 const styles = StyleSheet.create({
   container: {
     marginTop: theme.spacing.sm,
-    gap: theme.spacing.xs,
   },
   requirementItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
   },
   requirementItemNext: {
