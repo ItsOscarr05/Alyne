@@ -26,6 +26,26 @@ const loginSchema = z.object({
   }),
 });
 
+const requestPasswordResetSchema = z.object({
+  body: z.object({
+    email: z.string().email('Invalid email address'),
+  }),
+});
+
+const resetPasswordSchema = z.object({
+  body: z.object({
+    token: z.string().min(1, 'Reset token is required'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+  }),
+});
+
+const changePasswordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(8, 'New password must be at least 8 characters'),
+  }),
+});
+
 /**
  * @swagger
  * /api/auth/register:
@@ -129,8 +149,79 @@ router.post('/verify-email', authController.verifyEmail);
 
 router.post('/resend-verification', authController.resendVerification);
 
+/**
+ * @swagger
+ * /api/auth/request-password-reset:
+ *   post:
+ *     summary: Request password reset
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Reset email sent (if account exists)
+ *       400:
+ *         description: Validation error
+ */
+router.post(
+  '/request-password-reset',
+  authRateLimiter,
+  validateRequest(requestPasswordResetSchema),
+  authController.requestPasswordReset
+);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset password with token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *       400:
+ *         description: Invalid or expired token
+ */
+router.post(
+  '/reset-password',
+  authRateLimiter,
+  validateRequest(resetPasswordSchema),
+  authController.resetPassword
+);
+
 // Protected routes
 router.put('/profile', authenticate, authController.updateProfile);
+router.put(
+  '/change-password',
+  authenticate,
+  validateRequest(changePasswordSchema),
+  authController.changePassword
+);
 router.delete('/account', authenticate, authController.deleteAccount);
 
 export { router as authRoutes };

@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validatePassword } from '../../utils/passwordValidation';
+import { authService } from '../../services/auth';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
@@ -57,8 +58,7 @@ export default function ChangePasswordScreen() {
 
     setIsLoading(true);
     try {
-      // TODO: Implement API call to change password
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      await authService.changePassword(currentPassword, newPassword);
       modal.showAlert({
         title: 'Success',
         message: 'Password changed successfully',
@@ -66,9 +66,10 @@ export default function ChangePasswordScreen() {
         onButtonPress: () => router.back(),
       });
     } catch (error: any) {
+      const errorMessage = error.response?.data?.error?.message || error.message || 'Failed to change password. Please check your current password and try again.';
       modal.showAlert({
         title: 'Error',
-        message: 'Failed to change password. Please check your current password and try again.',
+        message: errorMessage,
         type: 'error',
       });
     } finally {

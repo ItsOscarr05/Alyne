@@ -1,10 +1,11 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../utils/db';
 import { createError } from '../middleware/errorHandler';
+import { emailService } from '../utils/email';
 
 type UserType = 'PROVIDER' | 'CLIENT';
-
 
 interface RegisterData {
   email: string;
@@ -100,7 +101,7 @@ export const authService = {
     // Test user for development - allows login with any password
     const isDevelopment = process.env.NODE_ENV === 'development';
     const TEST_USER_EMAIL = 'test@alyne.com';
-    
+
     if (isDevelopment && email.toLowerCase() === TEST_USER_EMAIL.toLowerCase()) {
       // Find or create test user
       let user = await prisma.user.findUnique({
@@ -192,12 +193,122 @@ export const authService = {
     throw createError('Email verification not yet implemented', 501);
   },
 
-  async updateUser(userId: string, updates: {
-    firstName?: string;
-    lastName?: string;
-    phoneNumber?: string;
-    profilePhoto?: string; // Base64 or URL for MVP
-  }) {
+  async requestPasswordReset(email: string): Promise<void> {
+    // Find user by email
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    // Don't reveal if user exists or not (security best practice)
+    // Always return success message, but only send email if user exists
+    if (!user) {
+      // Log for debugging but don't reveal to client
+      return;
+    }
+
+    // Generate 6-character alphanumeric reset code (uppercase letters and numbers)
+    // Using crypto for secure random generation
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let resetToken = '';
+    const randomBytes = crypto.randomBytes(6);
+    for (let i = 0; i < 6; i++) {
+      resetToken += characters[randomBytes[i] % characters.length];
+    }
+    const resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes from now
+
+    // Save reset token to database
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetToken,
+        resetTokenExpiry,
+      },
+    });
+
+    // Send reset email
+    try {
+      await emailService.sendPasswordResetEmail(user.email, resetToken);
+    } catch (error) {
+      // Log error but don't fail the request
+      // The token is still saved, user can request another email if needed
+      console.error('Failed to send password reset email:', error);
+      throw createError('Failed to send reset email. Please try again later.', 500);
+    }
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    // Find user by reset token
+    const user = await prisma.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiry: {
+          gt: new Date(), // Token must not be expired
+        },
+      },
+    });
+
+    if (!user) {
+      throw createError('Invalid or expired reset token', 400);
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password and clear reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        resetToken: null,
+        resetTokenExpiry: null,
+      },
+    });
+  },
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    // Find user
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw createError('User not found', 404);
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.passwordHash);
+
+    if (!isValidPassword) {
+      throw createError('Current password is incorrect', 401);
+    }
+
+    // Check if new password is different from current password
+    const isSamePassword = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSamePassword) {
+      throw createError('New password must be different from current password', 400);
+    }
+
+    // Hash new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update password
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+      },
+    });
+  },
+
+  async updateUser(
+    userId: string,
+    updates: {
+      firstName?: string;
+      lastName?: string;
+      phoneNumber?: string;
+      profilePhoto?: string; // Base64 or URL for MVP
+    }
+  ) {
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
@@ -255,4 +366,3 @@ export const authService = {
     } as jwt.SignOptions);
   },
 };
-

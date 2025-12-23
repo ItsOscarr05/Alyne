@@ -102,25 +102,48 @@ PLATFORM_FEE_PERCENTAGE=10  # Platform fee as percentage (e.g., 10 = 10%)
 
 #### Email Configuration
 ```env
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USER=resend
+SMTP_PASS=your_resend_api_key
+EMAIL_FROM=noreply@alyne.com
+```
+
+**Resend Setup (Recommended - 3,000 emails/month free):**
+1. Sign up at [resend.com](https://resend.com)
+2. Go to API Keys and create a new key
+3. Verify your domain (or use their test domain for development)
+4. Use the API key in `SMTP_PASS`
+
+**Brevo (Sendinblue) Setup (300 emails/day free):**
+```env
+SMTP_HOST=smtp.brevo.com
+SMTP_PORT=587
+SMTP_USER=your_brevo_email@example.com
+SMTP_PASS=your_brevo_smtp_key
+EMAIL_FROM=noreply@alyne.com
+```
+
+**Mailgun Setup (1,000 emails/month free after trial):**
+```env
+SMTP_HOST=smtp.mailgun.org
+SMTP_PORT=587
+SMTP_USER=postmaster@your-domain.mailgun.org
+SMTP_PASS=your_mailgun_smtp_password
+EMAIL_FROM=noreply@alyne.com
+```
+
+**Gmail Setup (for development only):**
+```env
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
 EMAIL_FROM=noreply@alyne.com
 ```
-
-**Gmail Setup:**
 1. Enable 2-factor authentication
 2. Generate app password: [Google Account Settings](https://myaccount.google.com/apppasswords)
 3. Use app password in `SMTP_PASS`
-
-**SendGrid Setup:**
-```env
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASS=your_sendgrid_api_key
-```
 
 #### Google OAuth (Optional)
 ```env

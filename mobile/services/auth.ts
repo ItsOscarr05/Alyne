@@ -46,6 +46,18 @@ export const authService = {
     await apiClient.post('/auth/resend-verification');
   },
 
+  async requestPasswordReset(email: string): Promise<void> {
+    await apiClient.post('/auth/request-password-reset', { email });
+  },
+
+  async resetPassword(token: string, password: string): Promise<void> {
+    await apiClient.post('/auth/reset-password', { token, password });
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiClient.put('/auth/change-password', { currentPassword, newPassword });
+  },
+
   async deleteAccount(): Promise<void> {
     await apiClient.delete('/auth/account');
   },

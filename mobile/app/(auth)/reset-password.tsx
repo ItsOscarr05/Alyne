@@ -10,6 +10,7 @@ import { FieldRequirement } from '../../components/ui/FieldRequirement';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validateEmail, validatePassword } from '../../utils/passwordValidation';
+import { authService } from '../../services/auth';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -29,7 +30,7 @@ export default function ResetPasswordScreen() {
   // Validate form fields for reset step
   const isResetStepValid = useMemo(() => {
     return (
-      resetToken.trim().length > 0 &&
+      resetToken.trim().length === 6 &&
       validatePassword(newPassword) &&
       newPassword === confirmPassword
     );
@@ -47,8 +48,7 @@ export default function ResetPasswordScreen() {
 
     setIsLoading(true);
     try {
-      // TODO: Implement API call to request password reset
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      await authService.requestPasswordReset(email);
       modal.showAlert({
         title: 'Reset Link Sent',
         message: 'If an account exists with this email, a password reset link has been sent.',
@@ -87,8 +87,7 @@ export default function ResetPasswordScreen() {
 
     setIsLoading(true);
     try {
-      // TODO: Implement API call to reset password
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate API call
+      await authService.resetPassword(resetToken, newPassword);
       modal.showAlert({
         title: 'Password Reset',
         message: 'Your password has been reset successfully. You can now sign in.',
@@ -134,8 +133,8 @@ export default function ResetPasswordScreen() {
             </Text>
             <Text style={styles.subtitle}>
               {step === 'email'
-                ? 'Enter your email to receive a reset link'
-                : 'Enter your reset token and new password'}
+                ? 'Enter your email to receive a reset code'
+                : 'Enter your reset code and new password'}
             </Text>
           </View>
         </View>
@@ -176,15 +175,16 @@ export default function ResetPasswordScreen() {
                 <Text style={styles.cardTitle}>Reset Password</Text>
                 
                 <FormField
-                  label="Reset Token"
-                  placeholder="Enter the token from your email"
+                  label="Reset Code"
+                  placeholder="Enter the 6-digit code from your email"
                   value={resetToken}
                   onChangeText={setResetToken}
-                  autoCapitalize="none"
+                  autoCapitalize="characters"
+                  maxLength={6}
                 />
                 <FieldRequirement
-                  met={resetToken.trim().length > 0}
-                  message="Token from email is required"
+                  met={resetToken.trim().length === 6}
+                  message="6-character code from email is required"
                   showWhenEmpty={true}
                 />
 
