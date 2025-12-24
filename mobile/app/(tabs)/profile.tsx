@@ -20,6 +20,7 @@ import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { EditProviderModal } from '../../components/EditProviderModal';
 
 interface ProviderProfile {
   id: string;
@@ -41,6 +42,7 @@ export default function ProfileScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     if (user?.userType === 'PROVIDER') {
@@ -162,7 +164,7 @@ export default function ProfileScreen() {
             style={styles.headerEditButton}
             onPress={() => {
               if (user?.userType === 'PROVIDER') {
-                router.push('/provider/onboarding');
+                setShowEditModal(true);
               } else {
                 router.push('/settings/edit-profile');
               }
@@ -364,7 +366,7 @@ export default function ProfileScreen() {
           {user?.userType === 'PROVIDER' && (
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => router.push('/provider/onboarding')}
+              onPress={() => setShowEditModal(true)}
             >
               <Ionicons name="person-outline" size={20} color={theme.colors.primary[500]} />
               <Text style={styles.menuText}>
@@ -480,6 +482,18 @@ export default function ProfileScreen() {
           type={modal.alertOptions.type}
           buttonText={modal.alertOptions.buttonText}
           onButtonPress={modal.alertOptions.onButtonPress}
+        />
+      )}
+
+      {/* Edit Provider Modal */}
+      {user?.userType === 'PROVIDER' && (
+        <EditProviderModal
+          visible={showEditModal}
+          onClose={() => setShowEditModal(false)}
+          onSuccess={() => {
+            setShowEditModal(false);
+            loadProviderProfile();
+          }}
         />
       )}
     </View>

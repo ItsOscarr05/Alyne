@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,9 +17,11 @@ import * as Location from 'expo-location';
 import { useAuth } from '../../hooks/useAuth';
 import { onboardingService } from '../../services/onboarding';
 import { plaidService } from '../../services/plaid';
+import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
 import * as ImagePicker from 'expo-image-picker';
 import { LocationAutocomplete } from '../../components/ui/LocationAutocomplete';
+import { formatTime12Hour, formatTime24Hour } from '../../utils/timeUtils';
 
 type Step =
   | 'location'
@@ -42,10 +45,15 @@ export default function ProviderOnboardingScreen() {
     }
   }, [user, router]);
 
+  // Track if profile has been loaded to prevent reloading
+  const [profileLoaded, setProfileLoaded] = useState(false);
+
   // Profile state
   const [bio, setBio] = useState('');
+  const [bioFocused, setBioFocused] = useState(false);
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [specialtyInput, setSpecialtyInput] = useState('');
+  const [specialtyInputFocused, setSpecialtyInputFocused] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Service state
@@ -85,6 +93,7 @@ export default function ProviderOnboardingScreen() {
   const [city, setCity] = useState<string>('');
   const [state, setState] = useState<string>('');
   const [serviceRadius, setServiceRadius] = useState<string>('15');
+  const [serviceRadiusFocused, setServiceRadiusFocused] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
   // Bank account state
@@ -96,6 +105,236 @@ export default function ProviderOnboardingScreen() {
   } | null>(null);
 
   const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // Load existing profile data when component mounts (for edit mode)
+  const loadExistingProfile = async () => {
+    if (!user?.id) {
+      console.log('No user ID, skipping profile load');
+      return;
+    }
+
+    if (profileLoaded) {
+      console.log('Profile already loaded, skipping');
+      return;
+    }
+
+    try {
+      console.log('Starting to load existing profile for user:', user.id);
+      // Try to load existing profile
+      const profile = await providerService.getById(user.id);
+      
+      console.log('Profile API response:', profile);
+      console.log('Profile data:', {
+        hasProfile: !!profile,
+        hasBio: !!profile?.bio,
+        specialtiesCount: profile?.specialties?.length || 0,
+        hasServiceArea: !!profile?.serviceArea,
+        servicesCount: profile?.services?.length || 0,
+        credentialsCount: profile?.credentials?.length || 0,
+        availabilityCount: profile?.availability?.length || 0,
+      });
+      
+      if (profile) {
+        // Load bio and specialties
+        if (profile.bio) {
+          console.log('Setting bio to:', profile.bio.substring(0, 50) + '...');
+          setBio(profile.bio);
+          logger.debug('Set bio', { bioLength: profile.bio.length });
+        }
+        if (profile.specialties && profile.specialties.length > 0) {
+          console.log('Setting specialties to:', profile.specialties);
+          setSpecialties(profile.specialties);
+          logger.debug('Set specialties', { count: profile.specialties.length });
+        }
+
+        // Load profile photo
+        if (user.profilePhoto) {
+          setProfilePhoto(user.profilePhoto);
+        }
+
+        // Load service area (location)
+        console.log('Checking serviceArea:', profile.serviceArea);
+        if (profile.serviceArea) {
+          const serviceArea = profile.serviceArea as { center?: { lat?: number; lng?: number }; radius?: number };
+          console.log('Parsed serviceArea:', serviceArea);
+          
+          if (serviceArea.radius) {
+            // Convert radius from km to miles for display
+            const radiusInMiles = (serviceArea.radius / 1.60934).toFixed(0);
+            console.log('Setting service radius to:', radiusInMiles);
+            setServiceRadius(radiusInMiles);
+            logger.debug('Set service radius', { radiusInMiles });
+          }
+          
+          if (serviceArea.center) {
+            console.log('Service area center object:', serviceArea.center);
+            console.log('Service area center lat:', serviceArea.center.lat);
+            console.log('Service area center lng:', serviceArea.center.lng);
+            console.log('Type of center:', typeof serviceArea.center);
+            console.log('Center keys:', Object.keys(serviceArea.center));
+            
+            setCoordinates(serviceArea.center);
+            logger.debug('Set coordinates', { center: serviceArea.center });
+            
+            // Try to reverse geocode to get city/state
+            const lat = serviceArea.center.lat;
+            const lng = serviceArea.center.lng;
+            console.log('Checking lat/lng for reverse geocode:', { lat, lng, latType: typeof lat, lngType: typeof lng });
+            if (lat && lng && lat !== 0 && lng !== 0) {
+              try {
+                console.log('Attempting reverse geocode for:', serviceArea.center.lat, serviceArea.center.lng);
+                const reverseGeocodeResult = await Location.reverseGeocodeAsync({
+                  latitude: serviceArea.center.lat,
+                  longitude: serviceArea.center.lng,
+                });
+                console.log('Reverse geocode result:', reverseGeocodeResult);
+                if (reverseGeocodeResult && reverseGeocodeResult.length > 0) {
+                  const address = reverseGeocodeResult[0];
+                  console.log('Address from reverse geocode:', address);
+                  if (address.city) {
+                    console.log('Setting city to:', address.city);
+                    setCity(address.city);
+                    logger.debug('Set city from reverse geocode', { city: address.city });
+                  }
+                  if (address.region) {
+                    console.log('Setting state to:', address.region);
+                    setState(address.region);
+                    logger.debug('Set state from reverse geocode', { state: address.region });
+                  }
+                }
+              } catch (error) {
+                // Reverse geocoding failed - that's okay, user can manually enter
+                console.log('Reverse geocoding failed:', error);
+                logger.debug('Reverse geocoding failed', error);
+              }
+            }
+          }
+        }
+
+        // Load services
+        if (profile.services && profile.services.length > 0) {
+          const formattedServices = profile.services.map((service) => ({
+            id: service.id,
+            name: service.name,
+            description: service.description || '',
+            price: service.price.toString(),
+            duration: service.duration.toString(),
+          }));
+          setServices(formattedServices);
+          logger.debug('Set services', { count: formattedServices.length });
+        } else {
+          // If no services, ensure at least one empty service for adding
+          setServices([{ name: '', description: '', price: '', duration: '' }]);
+        }
+
+        // Load credentials
+        if (profile.credentials && profile.credentials.length > 0) {
+          const formattedCredentials = profile.credentials.map((cred) => {
+            // Handle date fields - they might be Date objects or strings
+            let issueDate = '';
+            let expiryDate = '';
+            
+            if (cred.issueDate) {
+              if (typeof cred.issueDate === 'string') {
+                issueDate = cred.issueDate.split('T')[0]; // Extract YYYY-MM-DD from ISO string
+              } else {
+                issueDate = new Date(cred.issueDate).toISOString().split('T')[0];
+              }
+            }
+            
+            if (cred.expiryDate) {
+              if (typeof cred.expiryDate === 'string') {
+                expiryDate = cred.expiryDate.split('T')[0]; // Extract YYYY-MM-DD from ISO string
+              } else {
+                expiryDate = new Date(cred.expiryDate).toISOString().split('T')[0];
+              }
+            }
+            
+            return {
+              id: cred.id,
+              name: cred.name,
+              issuer: cred.issuer || '',
+              issueDate,
+              expiryDate,
+            };
+          });
+          setCredentials(formattedCredentials);
+          logger.debug('Set credentials', { count: formattedCredentials.length });
+        } else {
+          // If no credentials, keep one empty credential for adding
+          setCredentials([{ name: '', issuer: '', issueDate: '', expiryDate: '' }]);
+        }
+
+        // Load availability (convert from 24-hour to 12-hour format)
+        if (profile.availability && profile.availability.length > 0) {
+          const formattedAvailability = profile.availability.map((slot) => ({
+            id: slot.id,
+            dayOfWeek: slot.dayOfWeek,
+            startTime: formatTime12Hour(slot.startTime),
+            endTime: formatTime12Hour(slot.endTime),
+            isRecurring: slot.isRecurring,
+          }));
+          setAvailability(formattedAvailability);
+          logger.debug('Set availability', { count: formattedAvailability.length });
+        }
+
+        // Load bank account info (if verified)
+        try {
+          const bankInfo = await plaidService.getBankAccountInfo();
+          if (bankInfo && bankInfo.verified) {
+            setBankAccountConnected(true);
+            // Note: accountName and accountMask aren't stored/returned by backend
+            // They're only available during the Plaid Link flow
+            // So we'll just mark it as connected
+            setBankAccountInfo({
+              accountName: 'Connected Account',
+              accountMask: '••••',
+            });
+            logger.debug('Bank account is verified');
+          }
+        } catch (error) {
+          // Bank account not connected or error loading - that's okay
+          logger.debug('No bank account info or error loading', error);
+        }
+
+        // Mark profile as loaded
+        console.log('Profile loading complete, marking as loaded');
+        setProfileLoaded(true);
+      }
+    } catch (error: any) {
+      // Profile doesn't exist yet - that's okay, this is a new profile
+      logger.debug('No existing profile found or error loading', {
+        error: error.message,
+        statusCode: error.response?.status,
+      });
+      
+      // Log to console for debugging
+      if (error.response?.status !== 404) {
+        console.error('Error loading existing profile:', error);
+      }
+    }
+  };
+
+  // Load existing profile data when component mounts (for edit mode)
+  useEffect(() => {
+    console.log('useEffect triggered for profile load', { 
+      userId: user?.id, 
+      userType: user?.userType,
+      hasUser: !!user,
+      profileLoaded
+    });
+    if (user?.id && user.userType === 'PROVIDER' && !profileLoaded) {
+      console.log('Calling loadExistingProfile for user:', user.id);
+      loadExistingProfile();
+    } else {
+      console.log('Not loading profile - conditions not met', {
+        hasUserId: !!user?.id,
+        userType: user?.userType,
+        profileLoaded,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, user?.userType, profileLoaded]);
 
   // Get Plaid link token when on bank step
   useEffect(() => {
@@ -206,24 +445,22 @@ export default function ProviderOnboardingScreen() {
   };
 
   const handleSaveLocation = async () => {
-    if (!city.trim() || !state.trim()) {
-      Alert.alert('Location Required', 'Please enter both city and state to continue.');
-      return;
-    }
+    // Location is optional - allow continuing even if city/state aren't filled
+    if (city.trim() && state.trim()) {
+      // Convert miles to kilometers for storage (backend stores in km)
+      const radiusInMiles = parseFloat(serviceRadius) || 15;
+      const radius = radiusInMiles * 1.60934; // Convert miles to km
+      
+      // Geocode city/state to get coordinates for service area
+      const geocodedCoords = await geocodeCityState(city.trim(), state.trim());
 
-    // Convert miles to kilometers for storage (backend stores in km)
-    const radiusInMiles = parseFloat(serviceRadius) || 15;
-    const radius = radiusInMiles * 1.60934; // Convert miles to km
-    
-    // Geocode city/state to get coordinates for service area
-    const geocodedCoords = await geocodeCityState(city.trim(), state.trim());
-
-    // Store coordinates in state for use in profile step
-    if (geocodedCoords) {
-      setCoordinates(geocodedCoords);
-    } else {
-      // If geocoding fails, still allow continuing but with default coordinates
-      setCoordinates({ lat: 0, lng: 0 });
+      // Store coordinates in state for use in profile step
+      if (geocodedCoords) {
+        setCoordinates(geocodedCoords);
+      } else {
+        // If geocoding fails, still allow continuing but with default coordinates
+        setCoordinates({ lat: 0, lng: 0 });
+      }
     }
 
     setCurrentStep('bank');
@@ -304,7 +541,7 @@ export default function ProviderOnboardingScreen() {
     } else {
       setAvailability([
         ...availability,
-        { dayOfWeek, startTime: '09:00', endTime: '17:00', isRecurring: true },
+        { dayOfWeek, startTime: '9:00 AM', endTime: '5:00 PM', isRecurring: true },
       ]);
     }
   };
@@ -367,12 +604,23 @@ export default function ProviderOnboardingScreen() {
     setLoading(true);
     try {
       for (const service of validServices) {
-        await onboardingService.createService({
-          name: service.name,
-          description: service.description,
-          price: parseFloat(service.price),
-          duration: parseInt(service.duration, 10),
-        });
+        if (service.id) {
+          // Update existing service
+          await onboardingService.updateService(service.id, {
+            name: service.name,
+            description: service.description,
+            price: parseFloat(service.price),
+            duration: parseInt(service.duration, 10),
+          });
+        } else {
+          // Create new service
+          await onboardingService.createService({
+            name: service.name,
+            description: service.description,
+            price: parseFloat(service.price),
+            duration: parseInt(service.duration, 10),
+          });
+        }
       }
       setCurrentStep('credentials');
     } catch (error: any) {
@@ -387,12 +635,23 @@ export default function ProviderOnboardingScreen() {
     try {
       const validCredentials = credentials.filter((c) => c.name.trim());
       for (const credential of validCredentials) {
-        await onboardingService.createCredential({
-          name: credential.name,
-          issuer: credential.issuer || undefined,
-          issueDate: credential.issueDate || undefined,
-          expiryDate: credential.expiryDate || undefined,
-        });
+        if (credential.id) {
+          // Update existing credential
+          await onboardingService.updateCredential(credential.id, {
+            name: credential.name,
+            issuer: credential.issuer || undefined,
+            issueDate: credential.issueDate || undefined,
+            expiryDate: credential.expiryDate || undefined,
+          });
+        } else {
+          // Create new credential
+          await onboardingService.createCredential({
+            name: credential.name,
+            issuer: credential.issuer || undefined,
+            issueDate: credential.issueDate || undefined,
+            expiryDate: credential.expiryDate || undefined,
+          });
+        }
       }
       setCurrentStep('availability');
     } catch (error: any) {
@@ -406,12 +665,27 @@ export default function ProviderOnboardingScreen() {
     setLoading(true);
     try {
       for (const slot of availability) {
-        await onboardingService.createAvailability({
-          dayOfWeek: slot.dayOfWeek,
-          startTime: slot.startTime,
-          endTime: slot.endTime,
-          isRecurring: slot.isRecurring,
-        });
+        // Convert 12-hour format to 24-hour format for backend
+        const startTime24 = formatTime24Hour(slot.startTime);
+        const endTime24 = formatTime24Hour(slot.endTime);
+        
+        if (slot.id) {
+          // Update existing availability
+          await onboardingService.updateAvailability(slot.id, {
+            dayOfWeek: slot.dayOfWeek,
+            startTime: startTime24,
+            endTime: endTime24,
+            isRecurring: slot.isRecurring,
+          });
+        } else {
+          // Create new availability
+          await onboardingService.createAvailability({
+            dayOfWeek: slot.dayOfWeek,
+            startTime: startTime24,
+            endTime: endTime24,
+            isRecurring: slot.isRecurring,
+          });
+        }
       }
       setCurrentStep('complete');
     } catch (error: any) {
@@ -422,11 +696,11 @@ export default function ProviderOnboardingScreen() {
   };
 
   const handleComplete = () => {
-    router.replace('/(tabs)/profile');
+    router.replace('/(tabs)/dashboard');
   };
 
   const renderLocationStep = () => (
-    <ScrollView style={styles.stepContent}>
+    <ScrollView style={styles.stepContent} keyboardShouldPersistTaps="handled">
       <Text style={styles.stepTitle}>Set Your Service Area</Text>
       <Text style={styles.stepDescription}>
         We'll use your location to help clients find you. Set the radius of your service area.
@@ -444,51 +718,75 @@ export default function ProviderOnboardingScreen() {
       <View style={styles.section}>
         <Text style={styles.label}>Service Range (mi)</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, serviceRadiusFocused && styles.inputFocused]}
           placeholder="15"
           value={serviceRadius}
           onChangeText={setServiceRadius}
+          onFocus={() => setServiceRadiusFocused(true)}
+          onBlur={() => setServiceRadiusFocused(false)}
           keyboardType="numeric"
         />
         <Text style={styles.hint}>The distance you're willing to travel to clients</Text>
       </View>
 
-      <TouchableOpacity
-        style={[styles.primaryButton, (!city.trim() || !state.trim()) && styles.buttonDisabled]}
-        onPress={handleSaveLocation}
-        disabled={!city.trim() || !state.trim()}
-      >
-        <Text style={styles.primaryButtonText}>Continue</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonRow}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSaveLocation}>
+          <Text style={styles.skipButtonText}>Skip for Now</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.primaryButton, { flex: 1, marginTop: 0 }]}
+          onPress={handleSaveLocation}
+        >
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 
   const renderBankStep = () => (
     <ScrollView style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Connect Bank Account</Text>
-      <Text style={styles.stepDescription}>
-        Connect your bank account to receive payments from clients. This is secure and you can skip
-        this step for now.
-      </Text>
+      <View style={styles.bankHeader}>
+        <View style={styles.bankIconContainer}>
+          <Ionicons name="shield-checkmark" size={32} color="#2563eb" />
+        </View>
+        <Text style={styles.stepTitle}>Connect Bank Account</Text>
+        <Text style={styles.stepDescription}>
+          Securely connect your bank account to receive payments from clients. Your financial
+          information is encrypted and protected.
+        </Text>
+      </View>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <View style={styles.bankCard}>
-          <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-          <View style={styles.bankInfo}>
-            <Text style={styles.bankAccountName}>{bankAccountInfo.accountName}</Text>
-            <Text style={styles.bankAccountMask}>•••• {bankAccountInfo.accountMask}</Text>
+        <View style={styles.bankCardConnected}>
+          <View style={styles.bankCardHeader}>
+            <View style={styles.bankCardIconContainer}>
+              <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
+            </View>
+            <View style={styles.bankInfo}>
+              <Text style={styles.bankAccountName}>{bankAccountInfo.accountName}</Text>
+              <Text style={styles.bankAccountMask}>•••• {bankAccountInfo.accountMask}</Text>
+            </View>
+          </View>
+          <View style={styles.bankCardFooter}>
+            <Ionicons name="lock-closed" size={14} color="#64748b" />
+            <Text style={styles.bankCardFooterText}>Securely connected</Text>
           </View>
         </View>
       ) : (
-        <View style={styles.bankCard}>
-          <Ionicons name="card-outline" size={24} color="#94a3b8" />
-          <Text style={styles.bankPlaceholder}>No bank account connected</Text>
+        <View style={styles.bankCardEmpty}>
+          <View style={styles.bankCardEmptyIcon}>
+            <Ionicons name="card-outline" size={40} color="#cbd5e1" />
+          </View>
+          <Text style={styles.bankCardEmptyTitle}>No bank account connected</Text>
+          <Text style={styles.bankCardEmptyText}>
+            Connect your account to start receiving payments
+          </Text>
         </View>
       )}
 
       {!bankAccountConnected && (
         <TouchableOpacity
-          style={styles.plaidButton}
+          style={[styles.plaidButton, loading && styles.buttonDisabled]}
           onPress={() => {
             if (plaidLinkToken) {
               initializePlaidLink(plaidLinkToken);
@@ -509,14 +807,30 @@ export default function ProviderOnboardingScreen() {
         </TouchableOpacity>
       )}
 
+      <View style={styles.bankFeatures}>
+        <View style={styles.bankFeature}>
+          <Ionicons name="shield-checkmark-outline" size={20} color="#2563eb" />
+          <Text style={styles.bankFeatureText}>Bank-level security</Text>
+        </View>
+        <View style={styles.bankFeature}>
+          <Ionicons name="flash-outline" size={20} color="#2563eb" />
+          <Text style={styles.bankFeatureText}>Instant verification</Text>
+        </View>
+        <View style={styles.bankFeature}>
+          <Ionicons name="time-outline" size={20} color="#2563eb" />
+          <Text style={styles.bankFeatureText}>Skip for now</Text>
+        </View>
+      </View>
+
       <View style={styles.buttonRow}>
-        <TouchableOpacity
-          style={[styles.skipButton, styles.primaryButton]}
-          onPress={handleSaveBank}
-        >
+        <TouchableOpacity style={styles.skipButton} onPress={handleSaveBank}>
           <Text style={styles.skipButtonText}>Skip for Now</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.primaryButton, { flex: 1 }]} onPress={handleSaveBank}>
+        <TouchableOpacity
+          style={[styles.primaryButton, { flex: 1, marginTop: 0 }]}
+          onPress={handleSaveBank}
+          disabled={!bankAccountConnected}
+        >
           <Text style={styles.primaryButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
@@ -525,68 +839,119 @@ export default function ProviderOnboardingScreen() {
 
   const renderProfileStep = () => (
     <ScrollView style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Tell us about yourself</Text>
-      <Text style={styles.stepDescription}>
-        Create your professional profile to start attracting clients
-      </Text>
+      <View style={styles.profileHeader}>
+        <View style={styles.profileIconContainer}>
+          <Ionicons name="person-circle-outline" size={32} color="#2563eb" />
+        </View>
+        <Text style={styles.stepTitle}>Tell us about yourself</Text>
+        <Text style={styles.stepDescription}>
+          Create your professional profile to start attracting clients
+        </Text>
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>Profile Photo</Text>
+        <Text style={styles.hint}>Add a professional photo to help clients recognize you</Text>
         <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
           {profilePhoto ? (
-            <Text style={styles.photoButtonText}>Photo selected ✓</Text>
+            <View style={styles.photoPreview}>
+              <Image 
+                source={{ uri: profilePhoto }} 
+                style={styles.photoPreviewImage}
+                resizeMode="cover"
+              />
+              <View style={styles.photoOverlay}>
+                <Ionicons name="camera" size={24} color="#ffffff" />
+                <Text style={styles.photoOverlayText}>Change Photo</Text>
+              </View>
+            </View>
           ) : (
-            <>
-              <Ionicons name="camera-outline" size={24} color="#2563eb" />
+            <View style={styles.photoPlaceholder}>
+              <View style={styles.photoIconContainer}>
+                <Ionicons name="camera-outline" size={32} color="#2563eb" />
+              </View>
               <Text style={styles.photoButtonText}>Add Photo</Text>
-            </>
+              <Text style={styles.photoHint}>Tap to upload from your device</Text>
+            </View>
           )}
         </TouchableOpacity>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Bio *</Text>
+        <View style={styles.labelRow}>
+          <Text style={styles.label}>Bio *</Text>
+          <Text style={styles.charCount}>{bio.length} / 500</Text>
+        </View>
+        <Text style={styles.hint}>
+          Share your background, experience, and what makes you unique. This helps clients get to know you.
+        </Text>
         <TextInput
-          style={styles.textArea}
+          style={[styles.textArea, bioFocused && styles.textAreaFocused]}
           placeholder="Tell clients about your experience and approach..."
+          placeholderTextColor="#94a3b8"
           value={bio}
-          onChangeText={setBio}
+          onChangeText={(text) => {
+            if (text.length <= 500) {
+              setBio(text);
+            }
+          }}
+          onFocus={() => setBioFocused(true)}
+          onBlur={() => setBioFocused(false)}
           multiline
           numberOfLines={6}
           textAlignVertical="top"
+          maxLength={500}
         />
       </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>Specialties</Text>
+        <Text style={styles.hint}>Add your areas of expertise (e.g., Personal Training, Yoga, Nutrition)</Text>
         <View style={styles.specialtyInputContainer}>
           <TextInput
-            style={styles.specialtyInput}
+            style={[styles.specialtyInput, specialtyInputFocused && styles.inputFocused]}
             placeholder="e.g., Personal Training, Yoga"
+            placeholderTextColor="#94a3b8"
             value={specialtyInput}
             onChangeText={setSpecialtyInput}
+            onFocus={() => setSpecialtyInputFocused(true)}
+            onBlur={() => setSpecialtyInputFocused(false)}
             onSubmitEditing={addSpecialty}
           />
-          <TouchableOpacity style={styles.addButton} onPress={addSpecialty}>
+          <TouchableOpacity
+            style={[styles.addButton, !specialtyInput.trim() && styles.addButtonDisabled]}
+            onPress={addSpecialty}
+            disabled={!specialtyInput.trim()}
+          >
             <Ionicons name="add" size={20} color="#ffffff" />
           </TouchableOpacity>
         </View>
-        <View style={styles.specialtyTags}>
-          {specialties.map((specialty, index) => (
-            <View key={index} style={styles.specialtyTag}>
-              <Text style={styles.specialtyTagText}>{specialty}</Text>
-              <TouchableOpacity onPress={() => removeSpecialty(index)}>
-                <Ionicons name="close-circle" size={18} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+        {specialties.length > 0 ? (
+          <View style={styles.specialtyTags}>
+            {specialties.map((specialty, index) => (
+              <View key={index} style={styles.specialtyTag}>
+                <Text style={styles.specialtyTagText}>{specialty}</Text>
+                <TouchableOpacity
+                  onPress={() => removeSpecialty(index)}
+                  style={styles.specialtyRemoveButton}
+                >
+                  <Ionicons name="close-circle" size={18} color="#64748b" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptySpecialties}>
+            <Ionicons name="information-circle-outline" size={16} color="#94a3b8" />
+            <Text style={styles.emptySpecialtiesText}>No specialties added yet</Text>
+          </View>
+        )}
       </View>
 
       <TouchableOpacity
-        style={[styles.primaryButton, loading && styles.buttonDisabled]}
+        style={[styles.primaryButton, (loading || !bio.trim()) && styles.buttonDisabled]}
         onPress={handleSaveProfile}
-        disabled={loading}
+        disabled={loading || !bio.trim()}
       >
         {loading ? (
           <ActivityIndicator color="#ffffff" />
@@ -618,12 +983,38 @@ export default function ProviderOnboardingScreen() {
             placeholder="Service name *"
             value={service.name}
             onChangeText={(value) => updateService(index, 'name', value)}
+            onFocus={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.outline = 'none';
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.borderWidth = '2px';
+              }
+            }}
+            onBlur={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.borderColor = '#1e293b';
+                e.target.style.borderWidth = '1px';
+              }
+            }}
           />
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="Description"
             value={service.description}
             onChangeText={(value) => updateService(index, 'description', value)}
+            onFocus={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.outline = 'none';
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.borderWidth = '2px';
+              }
+            }}
+            onBlur={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.borderColor = '#1e293b';
+                e.target.style.borderWidth = '1px';
+              }
+            }}
             multiline
             numberOfLines={3}
             textAlignVertical="top"
@@ -635,6 +1026,19 @@ export default function ProviderOnboardingScreen() {
                 placeholder="Price ($) *"
                 value={service.price}
                 onChangeText={(value) => updateService(index, 'price', value)}
+                onFocus={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.borderWidth = '2px';
+                  }
+                }}
+                onBlur={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.borderColor = '#1e293b';
+                    e.target.style.borderWidth = '1px';
+                  }
+                }}
                 keyboardType="numeric"
               />
             </View>
@@ -644,6 +1048,19 @@ export default function ProviderOnboardingScreen() {
                 placeholder="Duration (min) *"
                 value={service.duration}
                 onChangeText={(value) => updateService(index, 'duration', value)}
+                onFocus={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.borderWidth = '2px';
+                  }
+                }}
+                onBlur={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.borderColor = '#1e293b';
+                    e.target.style.borderWidth = '1px';
+                  }
+                }}
                 keyboardType="numeric"
               />
             </View>
@@ -693,12 +1110,38 @@ export default function ProviderOnboardingScreen() {
             placeholder="Credential name *"
             value={credential.name}
             onChangeText={(value) => updateCredential(index, 'name', value)}
+            onFocus={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.outline = 'none';
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.borderWidth = '2px';
+              }
+            }}
+            onBlur={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.borderColor = '#1e293b';
+                e.target.style.borderWidth = '1px';
+              }
+            }}
           />
           <TextInput
             style={styles.input}
             placeholder="Issuing organization"
             value={credential.issuer}
             onChangeText={(value) => updateCredential(index, 'issuer', value)}
+            onFocus={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.outline = 'none';
+                e.target.style.borderColor = '#2563eb';
+                e.target.style.borderWidth = '2px';
+              }
+            }}
+            onBlur={(e) => {
+              if (Platform.OS === 'web') {
+                e.target.style.borderColor = '#1e293b';
+                e.target.style.borderWidth = '1px';
+              }
+            }}
           />
           <View style={styles.row}>
             <View style={styles.halfInput}>
@@ -707,6 +1150,19 @@ export default function ProviderOnboardingScreen() {
                 placeholder="Issue date (YYYY-MM-DD)"
                 value={credential.issueDate}
                 onChangeText={(value) => updateCredential(index, 'issueDate', value)}
+                onFocus={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.borderWidth = '2px';
+                  }
+                }}
+                onBlur={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.borderColor = '#1e293b';
+                    e.target.style.borderWidth = '1px';
+                  }
+                }}
               />
             </View>
             <View style={styles.halfInput}>
@@ -715,6 +1171,19 @@ export default function ProviderOnboardingScreen() {
                 placeholder="Expiry date (YYYY-MM-DD)"
                 value={credential.expiryDate}
                 onChangeText={(value) => updateCredential(index, 'expiryDate', value)}
+                onFocus={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.outline = 'none';
+                    e.target.style.borderColor = '#2563eb';
+                    e.target.style.borderWidth = '2px';
+                  }
+                }}
+                onBlur={(e) => {
+                  if (Platform.OS === 'web') {
+                    e.target.style.borderColor = '#1e293b';
+                    e.target.style.borderWidth = '1px';
+                  }
+                }}
               />
             </View>
           </View>
@@ -766,18 +1235,44 @@ export default function ProviderOnboardingScreen() {
                   <Text style={styles.timeLabel}>Start Time</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="09:00"
+                    placeholder="9:00 AM"
                     value={slot.startTime}
                     onChangeText={(value) => updateAvailabilityTime(dayIndex, 'startTime', value)}
+                    onFocus={(e) => {
+                      if (Platform.OS === 'web') {
+                        e.target.style.outline = 'none';
+                        e.target.style.borderColor = '#2563eb';
+                        e.target.style.borderWidth = '2px';
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (Platform.OS === 'web') {
+                        e.target.style.borderColor = '#1e293b';
+                        e.target.style.borderWidth = '1px';
+                      }
+                    }}
                   />
                 </View>
                 <View style={styles.halfInput}>
                   <Text style={styles.timeLabel}>End Time</Text>
                   <TextInput
                     style={styles.input}
-                    placeholder="17:00"
+                    placeholder="5:00 PM"
                     value={slot.endTime}
                     onChangeText={(value) => updateAvailabilityTime(dayIndex, 'endTime', value)}
+                    onFocus={(e) => {
+                      if (Platform.OS === 'web') {
+                        e.target.style.outline = 'none';
+                        e.target.style.borderColor = '#2563eb';
+                        e.target.style.borderWidth = '2px';
+                      }
+                    }}
+                    onBlur={(e) => {
+                      if (Platform.OS === 'web') {
+                        e.target.style.borderColor = '#1e293b';
+                        e.target.style.borderWidth = '1px';
+                      }
+                    }}
                   />
                 </View>
               </View>
@@ -808,42 +1303,40 @@ export default function ProviderOnboardingScreen() {
         Your provider profile is now set up. You can start receiving booking requests!
       </Text>
       <TouchableOpacity style={styles.primaryButton} onPress={handleComplete}>
-        <Text style={styles.primaryButtonText}>Go to Profile</Text>
+        <Text style={styles.primaryButtonText}>Go to Dashboard</Text>
       </TouchableOpacity>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Provider Setup</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.headerDivider} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#1e293b" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Provider Setup</Text>
+        <View style={{ width: 24 }} />
+      </View>
+      <View style={styles.headerDivider} />
 
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              {
-                width: `${((['profile', 'services', 'credentials', 'availability'].indexOf(currentStep) + 1) / 4) * 100}%`,
-              },
-            ]}
-          />
-        </View>
+      <View style={styles.progressBar}>
+        <View
+          style={[
+            styles.progressFill,
+            {
+              width: `${((['location', 'bank', 'profile', 'services', 'credentials', 'availability', 'complete'].indexOf(currentStep) + 1) / 7) * 100}%`,
+            },
+          ]}
+        />
+      </View>
 
-        {currentStep === 'location' && renderLocationStep()}
-        {currentStep === 'bank' && renderBankStep()}
-        {currentStep === 'profile' && renderProfileStep()}
-        {currentStep === 'services' && renderServicesStep()}
-        {currentStep === 'credentials' && renderCredentialsStep()}
-        {currentStep === 'availability' && renderAvailabilityStep()}
-        {currentStep === 'complete' && renderCompleteStep()}
-      </ScrollView>
+      {currentStep === 'location' && renderLocationStep()}
+      {currentStep === 'bank' && renderBankStep()}
+      {currentStep === 'profile' && renderProfileStep()}
+      {currentStep === 'services' && renderServicesStep()}
+      {currentStep === 'credentials' && renderCredentialsStep()}
+      {currentStep === 'availability' && renderAvailabilityStep()}
+      {currentStep === 'complete' && renderCompleteStep()}
     </View>
   );
 }
@@ -860,6 +1353,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 12,
+    backgroundColor: '#ffffff',
   },
   headerDivider: {
     height: 1,
@@ -867,12 +1361,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  contentContainer: {
-    paddingBottom: 24,
   },
   headerTitle: {
     fontSize: 18,
@@ -914,31 +1402,132 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#1e293b',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
     color: '#1e293b',
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
+  },
+  inputFocused: {
+    borderColor: '#2563eb',
+    borderWidth: 2,
   },
   textArea: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: '#1e293b',
     minHeight: 120,
     paddingTop: 16,
+  },
+  textAreaFocused: {
+    borderColor: '#2563eb',
+    borderWidth: 2,
+  },
+  profileHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  profileIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   photoButton: {
     backgroundColor: '#ffffff',
     borderWidth: 2,
-    borderColor: '#2563eb',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 32,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    overflow: 'hidden',
+    minHeight: 200,
+  },
+  photoPlaceholder: {
+    padding: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: 12,
+  },
+  photoIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   photoButtonText: {
     fontSize: 16,
     color: '#2563eb',
     fontWeight: '600',
+  },
+  photoHint: {
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  photoPreview: {
+    width: '100%',
+    height: 200,
+    position: 'relative',
+  },
+  photoPreviewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  photoOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  photoOverlayText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  labelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  charCount: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  addButtonDisabled: {
+    opacity: 0.5,
+  },
+  emptySpecialties: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    padding: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  emptySpecialtiesText: {
+    fontSize: 13,
+    color: '#94a3b8',
+  },
+  specialtyRemoveButton: {
+    marginLeft: 4,
   },
   specialtyInputContainer: {
     flexDirection: 'row',
@@ -949,10 +1538,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#1e293b',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
   },
   addButton: {
     backgroundColor: '#2563eb',
@@ -1052,113 +1644,156 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 24,
+    minHeight: 52,
   },
   buttonDisabled: {
     opacity: 0.6,
-  },
-  locationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  locationInfo: {
-    flex: 1,
-  },
-  locationName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#0f172a',
-    marginBottom: 4,
-  },
-  locationCoords: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  locationPlaceholder: {
-    color: '#64748b',
-    flex: 1,
-  },
-  permissionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#dbeafe',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#93c5fd',
-  },
-  permissionButtonText: {
-    fontWeight: '600',
-    color: '#1e40af',
   },
   hint: {
     fontSize: 12,
     color: '#64748b',
     marginTop: 4,
   },
-  bankCard: {
+  bankHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  bankIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#eff6ff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  bankCardConnected: {
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#16a34a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  bankCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+  },
+  bankCardIconContainer: {
+    marginRight: 16,
   },
   bankInfo: {
     flex: 1,
   },
   bankAccountName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#0f172a',
     marginBottom: 4,
   },
   bankAccountMask: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#64748b',
   },
-  bankPlaceholder: {
+  bankCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    gap: 6,
+  },
+  bankCardFooterText: {
+    fontSize: 13,
     color: '#64748b',
-    flex: 1,
+  },
+  bankCardEmpty: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 16,
+    padding: 32,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    borderStyle: 'dashed',
+    alignItems: 'center',
+  },
+  bankCardEmptyIcon: {
+    marginBottom: 16,
+  },
+  bankCardEmptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 8,
+  },
+  bankCardEmptyText: {
+    fontSize: 14,
+    color: '#64748b',
+    textAlign: 'center',
   },
   plaidButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    gap: 8,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   plaidButtonText: {
     fontWeight: '600',
     color: '#ffffff',
+    fontSize: 16,
+  },
+  bankFeatures: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 32,
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+  },
+  bankFeature: {
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+  },
+  bankFeatureText: {
+    fontSize: 12,
+    color: '#64748b',
+    textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
     gap: 12,
+    alignItems: 'stretch',
   },
   skipButton: {
     flex: 0.5,
     backgroundColor: '#f1f5f9',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
   },
   skipButtonText: {
     color: '#64748b',
     fontWeight: '600',
+    fontSize: 16,
   },
   primaryButtonText: {
     color: '#ffffff',
@@ -1185,3 +1820,4 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
 });
+

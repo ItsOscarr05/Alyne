@@ -210,16 +210,16 @@ export default function BookingsScreen() {
               }
             : {
                 ...existingBooking,
-                status: data.status as any,
+            status: data.status as any,
                 // Update any other fields from data.booking if provided
-                ...(data.booking && {
-                  ...data.booking,
+            ...(data.booking && {
+              ...data.booking,
                   service: data.booking.service || existingBooking.service,
                   provider: data.booking.provider || existingBooking.provider,
                   client: data.booking.client || existingBooking.client,
                   payment: data.booking.payment || existingBooking.payment,
-                }),
-              };
+            }),
+          };
 
           const updatedBookings = [...prevBookings];
           updatedBookings[bookingIndex] = updatedBooking;

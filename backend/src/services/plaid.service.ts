@@ -24,12 +24,21 @@ export const plaidService = {
    */
   async createLinkToken(userId: string) {
     try {
+      // Check if Plaid credentials are configured
+      if (!process.env.PLAID_CLIENT_ID || !process.env.PLAID_SECRET) {
+        logger.error('Plaid credentials not configured', {
+          hasClientId: !!process.env.PLAID_CLIENT_ID,
+          hasSecret: !!process.env.PLAID_SECRET,
+        });
+        throw createError('Plaid integration not configured. Please contact support.', 503);
+      }
+
       const request = {
         user: {
           client_user_id: userId,
         },
         client_name: 'Alyne',
-        products: ['auth', 'transfer', 'payment_initiation'], // 'auth' for verification, 'transfer' for transfers, 'payment_initiation' for client-to-provider payments
+        products: ['auth', 'transfer'], // 'auth' for verification, 'transfer' for ACH transfers to provider
         country_codes: ['US'],
         language: 'en',
       };
@@ -37,8 +46,21 @@ export const plaidService = {
       const response = await plaidClient.linkTokenCreate(request);
       return response.data.link_token;
     } catch (error: any) {
-      logger.error('Error creating Plaid link token', error);
-      throw createError('Failed to create Plaid link token', 500);
+      logger.error('Error creating Plaid link token', {
+        error: error.message,
+        statusCode: error.statusCode,
+        response: error.response?.data,
+        stack: error.stack,
+      });
+      
+      // If it's already a created error, re-throw it
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      // Provide more specific error message
+      const errorMessage = error.response?.data?.error_message || error.message || 'Failed to create Plaid link token';
+      throw createError(errorMessage, 500);
     }
   },
 
@@ -70,23 +92,43 @@ export const plaidService = {
         throw createError('No valid checking or savings account found', 400);
       }
 
-      // Create processor token for Stripe
-      const processorTokenResponse = await plaidClient.processorTokenCreate({
-        access_token: accessToken,
-        account_id: bankAccount.account_id,
-        processor: 'stripe' as ProcessorTokenCreateRequest.ProcessorEnum,
-      });
+      // Create processor token for Stripe (optional - only if using Stripe Connect)
+      let processorToken: string | null = null;
+      try {
+        const processorTokenResponse = await plaidClient.processorTokenCreate({
+          access_token: accessToken,
+          account_id: bankAccount.account_id,
+          processor: 'stripe' as ProcessorTokenCreateRequest.ProcessorEnum,
+        });
+        processorToken = processorTokenResponse.data.processor_token;
+      } catch (processorError: any) {
+        // Processor token creation is optional - we use Plaid Transfer API directly
+        logger.warn('Processor token creation failed (optional)', {
+          error: processorError.message,
+          statusCode: processorError.statusCode,
+        });
+        // Continue without processor token - we'll use Plaid Transfer API
+      }
 
-      const processorToken = processorTokenResponse.data.processor_token;
-
-      // Update provider profile with Plaid information
+      // Get or create provider profile
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { providerProfile: true },
       });
 
-      if (!user || user.userType !== 'PROVIDER' || !user.providerProfile) {
-        throw createError('Provider profile not found', 404);
+      if (!user || user.userType !== 'PROVIDER') {
+        throw createError('Provider account not found', 404);
+      }
+
+      // Create provider profile if it doesn't exist (for onboarding flow)
+      let providerProfile = user.providerProfile;
+      if (!providerProfile) {
+        providerProfile = await prisma.providerProfile.create({
+          data: {
+            userId: userId,
+            isActive: true,
+          },
+        });
       }
 
       // Note: Plaid processor tokens are designed for Stripe Connect
@@ -116,7 +158,7 @@ export const plaidService = {
       // Update provider profile with Plaid information
       // Note: In production, encrypt the access token before storing
       await prisma.providerProfile.update({
-        where: { id: user.providerProfile.id },
+        where: { id: providerProfile.id },
         data: {
           plaidProcessorToken: processorToken,
           plaidItemId: itemId,
@@ -138,11 +180,21 @@ export const plaidService = {
         verified: true,
       };
     } catch (error: any) {
-      logger.error('Error exchanging Plaid public token', error);
+      logger.error('Error exchanging Plaid public token', {
+        error: error.message,
+        statusCode: error.statusCode,
+        response: error.response?.data,
+        stack: error.stack,
+      });
+      
+      // If it's already a created error, re-throw it
       if (error.statusCode) {
-        throw createError(error.message || 'Failed to exchange Plaid token', error.statusCode);
+        throw error;
       }
-      throw createError('Failed to exchange Plaid token', 500);
+      
+      // Provide more specific error message
+      const errorMessage = error.response?.data?.error_message || error.message || 'Failed to exchange Plaid token';
+      throw createError(errorMessage, 500);
     }
   },
 

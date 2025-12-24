@@ -148,29 +148,29 @@ export default function ProviderDetailScreen() {
       title: 'Flag Review',
       message: 'Are you sure you want to flag this review? It will be hidden and reviewed by our team.',
       onConfirm: async () => {
-        try {
-          await reviewService.flagReview(reviewId);
+      try {
+        await reviewService.flagReview(reviewId);
           setAlertModal({
             visible: true,
             type: 'success',
             title: 'Success',
             message: 'Review has been flagged. Thank you for your report.',
           });
-          // Reload provider to refresh reviews
-          loadProvider();
-        } catch (error: any) {
-          const errorMessage =
-            error.response?.data?.error?.message ||
-            error.response?.data?.message ||
-            error.message ||
-            'Failed to flag review';
+        // Reload provider to refresh reviews
+        loadProvider();
+      } catch (error: any) {
+        const errorMessage =
+          error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          error.message ||
+          'Failed to flag review';
           setAlertModal({
             visible: true,
             type: 'error',
             title: 'Error',
             message: errorMessage,
           });
-        }
+      }
       },
     });
   };
@@ -182,7 +182,7 @@ export default function ProviderDetailScreen() {
       title: 'Delete Review',
       message: 'Are you sure you want to delete this review? This action cannot be undone.',
       onConfirm: async () => {
-        try {
+              try {
           await reviewService.deleteReview(reviewId);
           setAlertModal({
             visible: true,
@@ -190,13 +190,13 @@ export default function ProviderDetailScreen() {
             title: 'Success',
             message: 'Review deleted successfully',
           });
-          // Reload provider to refresh reviews
-          loadProvider();
-        } catch (error: any) {
-          const errorMessage =
-            error.response?.data?.error?.message ||
-            error.response?.data?.message ||
-            error.message ||
+                // Reload provider to refresh reviews
+                loadProvider();
+              } catch (error: any) {
+                const errorMessage =
+                  error.response?.data?.error?.message ||
+                  error.response?.data?.message ||
+                  error.message ||
             'Failed to delete review';
           setAlertModal({
             visible: true,
@@ -204,8 +204,8 @@ export default function ProviderDetailScreen() {
             title: 'Error',
             message: errorMessage,
           });
-        }
-      },
+              }
+            },
     });
   };
 
@@ -595,22 +595,22 @@ export default function ProviderDetailScreen() {
                           <View style={styles.reviewActions}>
                             {user && user.id === review.client.id && (
                               <>
-                                <TouchableOpacity
-                                  style={styles.editButton}
-                                  onPress={() => {
-                                    router.push({
-                                      pathname: '/review/edit',
-                                      params: {
-                                        reviewId: review.id,
-                                        providerName: provider.name,
-                                        initialRating: review.rating.toString(),
-                                        initialComment: review.comment || '',
-                                      },
-                                    });
-                                  }}
-                                >
-                                  <Ionicons name="pencil-outline" size={16} color="#2563eb" />
-                                </TouchableOpacity>
+                              <TouchableOpacity
+                                style={styles.editButton}
+                                onPress={() => {
+                                  router.push({
+                                    pathname: '/review/edit',
+                                    params: {
+                                      reviewId: review.id,
+                                      providerName: provider.name,
+                                      initialRating: review.rating.toString(),
+                                      initialComment: review.comment || '',
+                                    },
+                                  });
+                                }}
+                              >
+                                <Ionicons name="pencil-outline" size={16} color="#2563eb" />
+                              </TouchableOpacity>
                                 <TouchableOpacity
                                   style={styles.deleteButton}
                                   onPress={() => handleDeleteReview(review.id)}

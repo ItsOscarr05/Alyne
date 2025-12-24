@@ -167,8 +167,8 @@ model Booking {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  client   User     @relation("ClientBookings", fields: [clientId], references: [id])
-  provider User     @relation("ProviderBookings", fields: [providerId], references: [id])
+  client   User     @relation("ClientBookings", fields: [clientId], references: [id], onDelete: Cascade)
+  provider User     @relation("ProviderBookings", fields: [providerId], references: [id], onDelete: Cascade)
   service  Service  @relation(fields: [serviceId], references: [id])
   payment  Payment?
   review   Review?
@@ -217,8 +217,8 @@ model Review {
   updatedAt  DateTime @updatedAt
 
   booking  Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  client   User    @relation("ClientReviews", fields: [clientId], references: [id])
-  provider User    @relation("ProviderReviews", fields: [providerId], references: [id])
+  client   User    @relation("ClientReviews", fields: [clientId], references: [id], onDelete: Cascade)
+  provider User    @relation("ProviderReviews", fields: [providerId], references: [id], onDelete: Cascade)
 
   @@index([providerId])
   @@index([rating])
@@ -238,8 +238,8 @@ model Message {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
-  sender   User @relation("SenderMessages", fields: [senderId], references: [id])
-  receiver User @relation("ReceiverMessages", fields: [receiverId], references: [id])
+  sender   User @relation("SenderMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceiverMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   @@index([senderId])
   @@index([receiverId])
