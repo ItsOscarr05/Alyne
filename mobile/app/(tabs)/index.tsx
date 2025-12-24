@@ -21,6 +21,7 @@ import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
 import { mockProviders } from '../../data/mockProviders';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -44,19 +45,33 @@ export default function DiscoverScreen() {
   const [reviewsOption, setReviewsOption] = useState<'highest' | 'lowest' | null>(null);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+
+  const FILTER_STORAGE_KEY = 'discover_filters';
 
   const requestLocationPermission = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
-        setUserLocation({
-          lat: location.coords.latitude,
-          lng: location.coords.longitude,
-        });
+        try {
+          const location = await Location.getCurrentPositionAsync({});
+          setUserLocation({
+            lat: location.coords.latitude,
+            lng: location.coords.longitude,
+          });
+          setLocationPermissionDenied(false);
+        } catch (error) {
+          logger.error('Error getting current position', error);
+          setLocationPermissionDenied(true);
+        }
+      } else {
+        // Permission denied - continue without location
+        setLocationPermissionDenied(true);
+        logger.info('Location permission denied, continuing without location');
       }
     } catch (error) {
-      logger.error('Error getting location', error);
+      logger.error('Error requesting location permission', error);
+      setLocationPermissionDenied(true);
     }
   };
 
@@ -67,9 +82,43 @@ export default function DiscoverScreen() {
     }
   }, [user, authLoading, router]);
 
+  // Load persisted filters from storage
+  const loadPersistedFilters = async () => {
+    try {
+      const savedFilters = await AsyncStorage.getItem(FILTER_STORAGE_KEY);
+      if (savedFilters) {
+        const filters = JSON.parse(savedFilters);
+        if (filters.ratingOption !== undefined) setRatingOption(filters.ratingOption);
+        if (filters.priceOption !== undefined) setPriceOption(filters.priceOption);
+        if (filters.distanceOption !== undefined) setDistanceOption(filters.distanceOption);
+        if (filters.reviewsOption !== undefined) setReviewsOption(filters.reviewsOption);
+        if (filters.activeFilter) setActiveFilter(filters.activeFilter);
+      }
+    } catch (error) {
+      logger.error('Error loading persisted filters', error);
+    }
+  };
+
+  // Save filters to storage
+  const saveFilters = async () => {
+    try {
+      const filters = {
+        ratingOption,
+        priceOption,
+        distanceOption,
+        reviewsOption,
+        activeFilter,
+      };
+      await AsyncStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+    } catch (error) {
+      logger.error('Error saving filters', error);
+    }
+  };
+
   useEffect(() => {
     if (user?.userType !== 'PROVIDER') {
       requestLocationPermission();
+      loadPersistedFilters();
     }
   }, [user]);
 
@@ -90,10 +139,12 @@ export default function DiscoverScreen() {
         // Convert miles to km (approximate)
         filters.radius = distanceOption === 20 ? 50 : distanceOption * 1.60934;
       } else {
+        // Default radius when no distance filter is set
         filters.radius = 50;
       }
 
-      if (userLocation) {
+      // Only include location if permission was granted and we have coordinates
+      if (userLocation && !locationPermissionDenied) {
         filters.lat = userLocation.lat;
         filters.lng = userLocation.lng;
       }
@@ -116,7 +167,11 @@ export default function DiscoverScreen() {
         });
       } else if (activeFilter === 'distance') {
         // Distance sorting is already handled by the backend when lat/lng are provided
-        // Keep results as-is
+        // If no location, sort by rating as fallback
+        if (!userLocation) {
+          results = results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        }
+        // Otherwise keep results as-is (already sorted by distance from backend)
       } else if (activeFilter === 'reviews' && reviewsOption !== null) {
         // Sort by review count based on option
         if (reviewsOption === 'lowest') {
@@ -159,6 +214,13 @@ export default function DiscoverScreen() {
     }
   }, [loadProviders, user]);
 
+  // Save filters whenever they change
+  useEffect(() => {
+    if (user?.userType !== 'PROVIDER') {
+      saveFilters();
+    }
+  }, [ratingOption, priceOption, distanceOption, reviewsOption, activeFilter, user]);
+
   const handleProviderPress = (providerId: string) => {
     setSelectedProviderId(providerId);
     setIsProviderModalVisible(true);
@@ -173,6 +235,10 @@ export default function DiscoverScreen() {
       setDistanceOption(null);
       setReviewsOption(null);
       setShowDropdown(false);
+      // Save cleared filters
+      setTimeout(() => {
+        saveFilters();
+      }, 0);
     } else {
       setActiveFilter(filter);
       setDropdownFilter(filter);
@@ -196,9 +262,13 @@ export default function DiscoverScreen() {
     }
     setShowDropdown(false);
     setDropdownFilter(null);
+    // Save filters after selection
+    setTimeout(() => {
+      saveFilters();
+    }, 0);
   };
 
-  const handleClearFilters = () => {
+  const handleClearFilters = async () => {
     setRatingOption(null);
     setPriceOption(null);
     setDistanceOption(null);
@@ -206,6 +276,12 @@ export default function DiscoverScreen() {
     setActiveFilter('all');
     setShowDropdown(false);
     setDropdownFilter(null);
+    // Clear persisted filters
+    try {
+      await AsyncStorage.removeItem(FILTER_STORAGE_KEY);
+    } catch (error) {
+      logger.error('Error clearing persisted filters', error);
+    }
   };
 
   // Don't render discover screen for providers (but all hooks must still be called)

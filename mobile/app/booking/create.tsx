@@ -18,6 +18,7 @@ import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { generateTimeSlots, getDayOfWeek, formatTime12Hour } from '../../utils/timeUtils';
 
 export default function CreateBookingScreen() {
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
@@ -139,19 +140,41 @@ export default function CreateBookingScreen() {
     }
   };
 
-  // Generate time slots (simplified - in real app, use provider availability)
-  const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 9; hour <= 17; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        slots.push(time);
-      }
+  // Generate time slots based on provider availability for selected date
+  const getAvailableTimeSlots = () => {
+    if (!provider || !selectedDate) {
+      // Default slots if no provider or date selected
+      return generateTimeSlots('09:00', '17:00', 30);
     }
-    return slots;
+
+    const dayOfWeek = getDayOfWeek(selectedDate);
+    const matchingSlots = provider.availability.filter(slot => {
+      if (slot.specificDate) {
+        const specificDate = new Date(slot.specificDate);
+        const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+        return specificDate.toDateString() === selectedDateObj.toDateString();
+      } else if (slot.isRecurring) {
+        return slot.dayOfWeek === dayOfWeek;
+      }
+      return false;
+    });
+
+    if (matchingSlots.length === 0) {
+      return []; // No availability for this date
+    }
+
+    // Generate slots for all matching availability periods
+    const allSlots: string[] = [];
+    matchingSlots.forEach(slot => {
+      const slots = generateTimeSlots(slot.startTime, slot.endTime, 30);
+      allSlots.push(...slots);
+    });
+
+    // Remove duplicates and sort
+    return [...new Set(allSlots)].sort((a, b) => a.localeCompare(b));
   };
 
-  const timeSlots = generateTimeSlots();
+  const timeSlots = getAvailableTimeSlots();
 
   if (isLoading || !provider) {
     return (
@@ -274,7 +297,7 @@ export default function CreateBookingScreen() {
                       selectedTime === time && styles.timeSlotTextSelected,
                     ]}
                   >
-                    {time}
+                    {formatTime12Hour(time)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -323,7 +346,7 @@ export default function CreateBookingScreen() {
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Time:</Text>
-              <Text style={styles.summaryValue}>{selectedTime}</Text>
+              <Text style={styles.summaryValue}>{formatTime12Hour(selectedTime)}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Duration:</Text>

@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { bookingService, BookingDetail } from '../../services/booking';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { formatTime12Hour } from '../../utils/timeUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
 
@@ -248,7 +249,7 @@ export default function BookingDetailScreen() {
             </View>
             <View style={styles.scheduleRow}>
               <Ionicons name="time-outline" size={20} color="#2563eb" />
-              <Text style={styles.scheduleText}>{booking.scheduledTime}</Text>
+              <Text style={styles.scheduleText}>{formatTime12Hour(booking.scheduledTime)}</Text>
             </View>
             {booking.location && (
               <View style={styles.scheduleRow}>

@@ -17,6 +17,7 @@ import { reviewService } from '../../services/review';
 import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { formatTime12Hour } from '../../utils/timeUtils';
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -311,9 +312,12 @@ export default function ProviderDetailScreen() {
                     return {
                       label,
                       hasAvailability: true,
-                      timeRange: `${first.startTime} – ${last.endTime}`,
+                      timeRange: `${formatTime12Hour(first.startTime)} – ${formatTime12Hour(last.endTime)}`,
                     };
                   });
+
+                  // Filter to only show days with availability
+                  const availableDays = summaries.filter(day => day.hasAvailability);
 
                   return (
                     <>
@@ -321,20 +325,12 @@ export default function ProviderDetailScreen() {
                       <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Availability</Text>
                         <View style={styles.availabilityDaysRow}>
-                          {summaries.map((day) => (
+                          {availableDays.map((day) => (
                             <View
                               key={day.label}
-                              style={[
-                                styles.availabilityDayPill,
-                                !day.hasAvailability && styles.availabilityDayPillDisabled,
-                              ]}
+                              style={styles.availabilityDayPill}
                             >
-                              <Text
-                                style={[
-                                  styles.availabilityDayPillText,
-                                  !day.hasAvailability && styles.availabilityDayPillTextDisabled,
-                                ]}
-                              >
+                              <Text style={styles.availabilityDayPillText}>
                                 {day.label}
                               </Text>
                               <Text style={styles.availabilityTimeSmall}>

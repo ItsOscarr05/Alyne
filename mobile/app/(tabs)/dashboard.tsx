@@ -17,6 +17,7 @@ import { bookingService, BookingDetail } from '../../services/booking';
 import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
 import { theme } from '../../theme';
+import { formatTime12Hour } from '../../utils/timeUtils';
 
 // Animated bar component for smooth transitions
 function AnimatedBar({
@@ -714,7 +715,7 @@ export default function ProviderDashboardScreen() {
                         color={theme.colors.neutral[500]}
                       />
                       <Text style={styles.bookingDate}>
-                        {dateText} at {booking.scheduledTime}
+                        {dateText} at {formatTime12Hour(booking.scheduledTime)}
                       </Text>
                     </View>
                   </View>

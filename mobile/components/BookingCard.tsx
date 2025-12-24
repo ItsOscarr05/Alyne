@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { formatTime12Hour } from '../utils/timeUtils';
 
 export interface BookingCardData {
   id: string;
@@ -93,11 +94,7 @@ export function BookingCard({
   };
 
   const formatTime = (time: string) => {
-    const [hours, minutes] = time.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
+    return formatTime12Hour(time);
   };
 
   const formatAddress = (location?: string) => {

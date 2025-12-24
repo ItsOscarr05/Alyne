@@ -94,11 +94,8 @@ export default function PaymentHistoryScreen() {
   };
 
   const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
+    const { formatTime12Hour } = require('../../utils/timeUtils');
+    return formatTime12Hour(timeString);
   };
 
   const getStatusColor = (status: string) => {

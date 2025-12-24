@@ -115,12 +115,23 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
         {/* Spacer to fill remaining space */}
         <View style={styles.spacer} />
 
-        {/* Footer Row: Rating */}
+        {/* Footer Row: Price and Rating */}
         <View style={styles.footerRow}>
-          <View style={styles.ratingRow}>
-            <View style={styles.stars}>{renderStars(provider.rating)}</View>
-            <Text style={styles.ratingValue}>{provider.rating.toFixed(1)}</Text>
-            <Text style={styles.reviewCount}>({provider.reviewCount} reviews)</Text>
+          {provider.startingPrice > 0 && (
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceText}>Starting at ${provider.startingPrice.toFixed(0)}</Text>
+            </View>
+          )}
+          <View style={styles.footerRight}>
+            {provider.reviewCount > 0 ? (
+              <View style={styles.ratingRow}>
+                <View style={styles.stars}>{renderStars(provider.rating)}</View>
+                <Text style={styles.ratingValue}>{provider.rating.toFixed(1)}</Text>
+                <Text style={styles.reviewCount}>({provider.reviewCount} reviews)</Text>
+              </View>
+            ) : (
+              <Text style={styles.noReviews}>No reviews yet</Text>
+            )}
           </View>
         </View>
       </View>
@@ -238,10 +249,17 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
     borderTopColor: theme.colors.neutral[200],
     marginTop: theme.spacing.xs,
+  },
+  priceContainer: {
+    flex: 1,
+  },
+  footerRight: {
+    marginLeft: theme.spacing.md,
   },
   ratingRow: {
     flexDirection: 'row',
@@ -261,6 +279,18 @@ const styles = StyleSheet.create({
   reviewCount: {
     ...theme.typography.caption,
     color: theme.colors.neutral[500],
+  },
+  noReviews: {
+    ...theme.typography.body,
+    fontSize: 14,
+    color: theme.colors.neutral[500],
+    fontStyle: 'italic',
+  },
+  priceText: {
+    ...theme.typography.body,
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.primary[500],
   },
 });
 

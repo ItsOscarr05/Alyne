@@ -16,6 +16,7 @@ import { bookingService } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { formatTime12Hour } from '../../utils/timeUtils';
 import Constants from 'expo-constants';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
@@ -726,7 +727,7 @@ export default function PaymentCheckoutScreen() {
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Date & Time</Text>
             <Text style={styles.summaryValue}>
-              {new Date(booking.scheduledDate).toLocaleDateString()} at {booking.scheduledTime}
+              {new Date(booking.scheduledDate).toLocaleDateString()} at {formatTime12Hour(booking.scheduledTime)}
             </Text>
           </View>
 
