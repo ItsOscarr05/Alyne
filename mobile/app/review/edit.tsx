@@ -6,15 +6,14 @@ import {
   ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewService } from '../../services/review';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function EditReviewScreen() {
   const router = useRouter();
@@ -29,34 +28,53 @@ export default function EditReviewScreen() {
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialRatingValue, setInitialRatingValue] = useState<number>(0);
+  const [initialCommentValue, setInitialCommentValue] = useState<string>('');
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   // Load initial review data from route params
   useEffect(() => {
-    if (initialRating) {
-      setRating(parseInt(initialRating, 10));
-    }
-    if (initialComment !== undefined) {
-      setComment(initialComment);
-    }
+    const ratingValue = initialRating ? parseInt(initialRating, 10) : 0;
+    const commentValue = initialComment || '';
+    
+    setRating(ratingValue);
+    setComment(commentValue);
+    setInitialRatingValue(ratingValue);
+    setInitialCommentValue(commentValue);
     setLoading(false);
   }, [initialRating, initialComment]);
 
+  // Check if any changes have been made
+  const hasChanges = rating !== initialRatingValue || comment.trim() !== initialCommentValue.trim();
+
   const handleSubmit = async () => {
     if (!rating) {
-      if (Platform.OS === 'web') {
-        alert('Please select a rating');
-      } else {
-        Alert.alert('Required', 'Please select a rating');
-      }
+      setAlertModal({
+        visible: true,
+        type: 'warning',
+        title: 'Required',
+        message: 'Please select a rating',
+      });
       return;
     }
 
     if (!reviewId) {
-      if (Platform.OS === 'web') {
-        alert('Error: Missing review information');
-      } else {
-        Alert.alert('Error', 'Missing review information');
-      }
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Missing review information',
+      });
       return;
     }
 
@@ -69,35 +87,33 @@ export default function EditReviewScreen() {
       });
       logger.info('Review updated successfully', { reviewId: result.id });
 
-      if (Platform.OS === 'web') {
-        alert('Review updated successfully!');
-        // Navigate back after a short delay
-        setTimeout(() => {
-          router.back();
-        }, 500);
-      } else {
-        Alert.alert('Success', 'Review updated successfully!', [
-          {
-            text: 'OK',
-            onPress: () => router.back(),
-          },
-        ]);
-      }
+      setAlertModal({
+        visible: true,
+        type: 'success',
+        title: 'Success',
+        message: 'Review updated successfully!',
+      });
     } catch (error: any) {
       logger.error('Error updating review', error);
       const errorMessage = error.response?.data?.error?.message 
         || error.response?.data?.message 
         || error.message 
         || 'Failed to update review. Please try again.';
-      
-      if (Platform.OS === 'web') {
-        alert(`Error: ${errorMessage}`);
-      } else {
-        Alert.alert('Error', errorMessage);
-      }
+
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+      });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleSuccessAlertClose = () => {
+    setAlertModal({ ...alertModal, visible: false });
+    router.back();
   };
 
   const renderStars = () => {
@@ -185,9 +201,9 @@ export default function EditReviewScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.submitButton, (!rating || submitting) && styles.submitButtonDisabled]}
+          style={[styles.submitButton, (!rating || submitting || !hasChanges) && styles.submitButtonDisabled]}
           onPress={handleSubmit}
-          disabled={!rating || submitting}
+          disabled={!rating || submitting || !hasChanges}
         >
           {submitting ? (
             <ActivityIndicator color="#ffffff" />
@@ -196,6 +212,16 @@ export default function EditReviewScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={alertModal.type === 'success' ? handleSuccessAlertClose : () => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        onButtonPress={alertModal.type === 'success' ? handleSuccessAlertClose : undefined}
+      />
     </View>
   );
 }

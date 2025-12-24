@@ -9,13 +9,12 @@ import {
   ActivityIndicator,
   Modal as RNModal,
   TouchableWithoutFeedback,
-  Platform,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { reviewService } from '../services/review';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
+import { AlertModal } from './ui/AlertModal';
 
 interface EditReviewModalProps {
   visible: boolean;
@@ -40,41 +39,62 @@ export function EditReviewModal({
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [initialRatingValue, setInitialRatingValue] = useState<number>(0);
+  const [initialCommentValue, setInitialCommentValue] = useState<string>('');
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
 
   // Load initial review data when modal opens
   useEffect(() => {
     if (visible && reviewId) {
-      if (initialRating) {
-        setRating(initialRating);
-      }
-      if (initialComment !== undefined) {
-        setComment(initialComment);
-      }
+      const ratingValue = initialRating || 0;
+      const commentValue = initialComment || '';
+      
+      setRating(ratingValue);
+      setComment(commentValue);
+      setInitialRatingValue(ratingValue);
+      setInitialCommentValue(commentValue);
       setLoading(false);
     } else {
       setRating(0);
       setComment('');
+      setInitialRatingValue(0);
+      setInitialCommentValue('');
       setSubmitting(false);
       setLoading(true);
     }
   }, [visible, reviewId, initialRating, initialComment]);
 
+  // Check if any changes have been made
+  const hasChanges = rating !== initialRatingValue || comment.trim() !== initialCommentValue.trim();
+
   const handleSubmit = async () => {
     if (!rating) {
-      if (Platform.OS === 'web') {
-        alert('Please select a rating');
-      } else {
-        Alert.alert('Required', 'Please select a rating');
-      }
+      setAlertModal({
+        visible: true,
+        type: 'warning',
+        title: 'Required',
+        message: 'Please select a rating',
+      });
       return;
     }
 
     if (!reviewId) {
-      if (Platform.OS === 'web') {
-        alert('Error: Missing review information');
-      } else {
-        Alert.alert('Error', 'Missing review information');
-      }
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Missing review information',
+      });
       return;
     }
 
@@ -87,23 +107,12 @@ export function EditReviewModal({
       });
       logger.info('Review updated successfully', { reviewId: result.id });
 
-      if (Platform.OS === 'web') {
-        alert('Review updated successfully!');
-        setTimeout(() => {
-          onClose();
-          onSuccess?.();
-        }, 500);
-      } else {
-        Alert.alert('Success', 'Review updated successfully!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              onClose();
-              onSuccess?.();
-            },
-          },
-        ]);
-      }
+      setAlertModal({
+        visible: true,
+        type: 'success',
+        title: 'Success',
+        message: 'Review updated successfully!',
+      });
     } catch (error: any) {
       logger.error('Error updating review', error);
       const errorMessage =
@@ -112,14 +121,25 @@ export function EditReviewModal({
         error.message ||
         'Failed to update review. Please try again.';
 
-      if (Platform.OS === 'web') {
-        alert(`Error: ${errorMessage}`);
-      } else {
-        Alert.alert('Error', errorMessage);
-      }
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: errorMessage,
+      });
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleAlertClose = () => {
+    setAlertModal({ ...alertModal, visible: false });
+  };
+
+  const handleSuccessAlertClose = () => {
+    setAlertModal({ ...alertModal, visible: false });
+    onClose();
+    onSuccess?.();
   };
 
   const renderStars = () => {
@@ -203,10 +223,10 @@ export function EditReviewModal({
                   <TouchableOpacity
                     style={[
                       styles.submitButton,
-                      (!rating || submitting) && styles.submitButtonDisabled,
+                      (!rating || submitting || !hasChanges) && styles.submitButtonDisabled,
                     ]}
                     onPress={handleSubmit}
-                    disabled={!rating || submitting}
+                    disabled={!rating || submitting || !hasChanges}
                   >
                     {submitting ? (
                       <ActivityIndicator color="#ffffff" />
@@ -220,6 +240,17 @@ export function EditReviewModal({
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={alertModal.type === 'success' ? handleSuccessAlertClose : handleAlertClose}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+        buttonText="OK"
+        onButtonPress={alertModal.type === 'success' ? handleSuccessAlertClose : undefined}
+      />
     </RNModal>
   );
 }

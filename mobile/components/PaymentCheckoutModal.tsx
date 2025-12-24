@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Platform,
   Modal as RNModal,
   TouchableWithoutFeedback,
@@ -164,9 +163,12 @@ function WebPaymentForm({
 
     if (!stripeInstance || !elements) {
       logger.debug('Stripe not ready', { stripe: !!stripeInstance, elements: !!elements });
-      if (Platform.OS === 'web') {
-        alert('Payment form is not ready. Please wait a moment and try again.');
-      }
+      setErrorModal({
+        visible: true,
+        type: 'warning',
+        title: 'Payment Form Not Ready',
+        message: 'Payment form is not ready. Please wait a moment and try again.',
+      });
       return;
     }
 
@@ -175,11 +177,12 @@ function WebPaymentForm({
     try {
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        if (Platform.OS === 'web') {
-          alert(`Error: ${submitError.message}`);
-        } else {
-          Alert.alert('Error', submitError.message);
-        }
+        setErrorModal({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: submitError.message,
+        });
         setProcessing(false);
         return;
       }
@@ -198,11 +201,12 @@ function WebPaymentForm({
         if (onError) {
           onError('Payment Failed', error.message || 'Your payment could not be processed. Please try again.');
         } else {
-          if (Platform.OS === 'web') {
-            alert(`Payment failed: ${error.message}`);
-          } else {
-            Alert.alert('Payment Failed', error.message);
-          }
+          setErrorModal({
+            visible: true,
+            type: 'error',
+            title: 'Payment Failed',
+            message: error.message,
+          });
         }
         setProcessing(false);
         return;
@@ -218,16 +222,12 @@ function WebPaymentForm({
           logger.info('Payment confirmed on backend', { paymentId: confirmedPayment.id });
         } catch (confirmError: any) {
           logger.error('Error confirming payment on backend', confirmError);
-          if (Platform.OS === 'web') {
-            alert(
-              `Payment succeeded but failed to confirm on backend: ${confirmError.response?.data?.message || confirmError.message}`
-            );
-          } else {
-            Alert.alert(
-              'Backend Error',
-              `Payment succeeded but failed to confirm on backend: ${confirmError.response?.data?.message || confirmError.message}`
-            );
-          }
+          setErrorModal({
+            visible: true,
+            type: 'error',
+            title: 'Backend Error',
+            message: `Payment succeeded but failed to confirm on backend: ${confirmError.response?.data?.message || confirmError.message}`,
+          });
         }
 
         onSuccess();
@@ -240,11 +240,12 @@ function WebPaymentForm({
       if (onError) {
         onError('Payment Error', errorMessage);
       } else {
-        if (Platform.OS === 'web') {
-          alert(`Error: ${errorMessage}`);
-        } else {
-          Alert.alert('Error', errorMessage);
-        }
+        setErrorModal({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: errorMessage,
+        });
       }
     } finally {
       setProcessing(false);
@@ -335,10 +336,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [errorModal, setErrorModal] = useState<{
     visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
     title: string;
     message: string;
   }>({
     visible: false,
+    type: 'error',
     title: '',
     message: '',
   });
@@ -434,11 +437,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
       if (bookingData.status !== 'CONFIRMED') {
         const statusMessage = `This booking is ${bookingData.status.toLowerCase()}. Only confirmed bookings can be paid.`;
-        if (Platform.OS === 'web') {
-          alert(statusMessage);
-        } else {
-          Alert.alert('Cannot Pay', statusMessage);
-        }
+        setErrorModal({
+          visible: true,
+          type: 'warning',
+          title: 'Cannot Pay',
+          message: statusMessage,
+        });
         setLoading(false);
         onClose();
         return;
@@ -487,7 +491,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         });
 
         if (initError) {
-          Alert.alert('Error', initError.message);
+          setErrorModal({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: initError.message,
+          });
           onClose();
           return;
         }
@@ -500,11 +509,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
 
-      if (Platform.OS === 'web') {
-        alert(`${errorTitle}: ${errorMessage}`);
-      } else {
-        Alert.alert(errorTitle, errorMessage);
-      }
+      setErrorModal({
+        visible: true,
+        type: 'error',
+        title: errorTitle,
+        message: errorMessage,
+      });
       setLoading(false);
       onClose();
     }
@@ -581,7 +591,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     
     if (Platform.OS !== 'web' || typeof window === 'undefined') {
       console.error('Plaid Link only works on web');
-      alert('Plaid payment is only available on web. Please use a web browser.');
+      setErrorModal({
+        visible: true,
+        type: 'warning',
+        title: 'Plaid Unavailable',
+        message: 'Plaid payment is only available on web. Please use a web browser.',
+      });
       return;
     }
 
@@ -601,7 +616,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           createPlaidHandler(linkToken, onSuccess);
         } else {
           console.error('Plaid object not available after script load');
-          alert('Failed to initialize Plaid. Please refresh the page.');
+          setErrorModal({
+            visible: true,
+            type: 'error',
+            title: 'Initialization Failed',
+            message: 'Failed to initialize Plaid. Please refresh the page.',
+          });
           setProcessing(false);
         }
       };
@@ -609,7 +629,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         console.error('Failed to load Plaid Link script', error);
         logger.error('Failed to load Plaid Link script');
         setProcessing(false);
-        alert('Failed to load payment system. Please check your internet connection and refresh the page.');
+        setErrorModal({
+          visible: true,
+          type: 'error',
+          title: 'Load Failed',
+          message: 'Failed to load payment system. Please check your internet connection and refresh the page.',
+        });
       };
       document.body.appendChild(script);
     }
@@ -621,14 +646,24 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     if (!(window as any).Plaid) {
       console.error('Plaid object not available');
       setProcessing(false);
-      alert('Plaid is not available. Please refresh the page.');
+      setErrorModal({
+        visible: true,
+        type: 'error',
+        title: 'Plaid Unavailable',
+        message: 'Plaid is not available. Please refresh the page.',
+      });
       return;
     }
 
     if (!linkToken) {
       console.error('No link token provided');
       setProcessing(false);
-      alert('Payment token is missing. Please try again.');
+      setErrorModal({
+        visible: true,
+        type: 'error',
+        title: 'Token Missing',
+        message: 'Payment token is missing. Please try again.',
+      });
       return;
     }
 
@@ -665,7 +700,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
             } catch (error: any) {
               logger.error('Error processing Plaid payment', error);
               setProcessing(false);
-              alert(`Provider payment error: ${error.message || 'Unknown error'}`);
+              setErrorModal({
+                visible: true,
+                type: 'error',
+                title: 'Provider Payment Error',
+                message: error.message || 'Unknown error',
+              });
             }
           },
           onExit: (err: any, metadata: any) => {
@@ -673,7 +713,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
             setProcessing(false);
             if (err) {
               const errorMsg = err.error_message || err.message || 'Unknown error';
-              alert(`Payment error: ${errorMsg}`);
+              setErrorModal({
+                visible: true,
+                type: 'error',
+                title: 'Payment Error',
+                message: errorMsg,
+              });
             }
           },
           onEvent: (eventName: string, metadata: any) => {
@@ -688,7 +733,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         logger.error('Error initializing Plaid', error);
         endPayment(); // End payment processing on error
         setProcessing(false);
-        alert(`Failed to initialize payment: ${error.message || 'Unknown error'}`);
+        setErrorModal({
+          visible: true,
+          type: 'error',
+          title: 'Initialization Failed',
+          message: error.message || 'Unknown error',
+        });
       }
   };
 
@@ -697,11 +747,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     
     if (!plaidLinkToken) {
       console.error('No Plaid link token available');
-      if (Platform.OS === 'web') {
-        alert('Plaid payment is not ready. Please wait a moment or refresh the page.');
-      } else {
-        Alert.alert('Error', 'Plaid payment is not ready. Please wait a moment.');
-      }
+      setErrorModal({
+        visible: true,
+        type: 'warning',
+        title: 'Payment Not Ready',
+        message: 'Plaid payment is not ready. Please wait a moment or refresh the page.',
+      });
       return;
     }
 
@@ -718,11 +769,21 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         console.error('Error in handlePlaidPayment:', error);
         endPayment(); // End payment processing on error
         setProcessing(false);
-        alert(`Failed to start payment: ${error.message || 'Unknown error'}`);
+        setErrorModal({
+          visible: true,
+          type: 'error',
+          title: 'Payment Start Failed',
+          message: error.message || 'Unknown error',
+        });
       }
     } else {
       // For native, you would use Plaid React Native SDK
-      Alert.alert('Info', 'Plaid payment on mobile is not yet implemented. Please use web version.');
+      setErrorModal({
+        visible: true,
+        type: 'info',
+        title: 'Info',
+        message: 'Plaid payment on mobile is not yet implemented. Please use web version.',
+      });
     }
   };
 
@@ -795,7 +856,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           console.error('Error initializing Plaid:', error);
           endPayment(); // End payment processing on error
           setProcessing(false);
-          alert(`Provider payment failed to start: ${error.message || 'Unknown error'}`);
+          setErrorModal({
+            visible: true,
+            type: 'error',
+            title: 'Provider Payment Failed',
+            message: error.message || 'Unknown error',
+          });
         }
       } else if (!requiresPlaidPayment) {
         // No Plaid payment needed, just wait for Stripe
@@ -822,17 +888,13 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         onClose();
       }
     } else {
-      Alert.alert('Success', 'Payment completed successfully!', [
-        {
-          text: 'View Receipt',
-          onPress: () => setShowReceiptModal(true),
-        },
-        {
-          text: 'Done',
-          style: 'cancel',
-          onPress: () => onClose(),
-        },
-      ]);
+      setErrorModal({
+        visible: true,
+        type: 'success',
+        title: 'Success',
+        message: 'Payment completed successfully!',
+      });
+      setShowReceiptModal(true);
     }
   };
 
@@ -974,7 +1036,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                                 hideButton={true}
                                 onError={(title, message) => {
                                   setProcessing(false);
-                                  setErrorModal({ visible: true, title, message });
+                                  setErrorModal({ visible: true, type: 'error', title, message });
                                 }}
                               />
                             </View>
@@ -1105,14 +1167,14 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       <AlertModal
         visible={errorModal.visible}
         onClose={() => {
-          setErrorModal({ visible: false, title: '', message: '' });
+          setErrorModal({ visible: false, type: 'error', title: '', message: '' });
           // Reset all loading states when error modal is closed
           setProcessing(false);
           setPlaidLoading(false);
         }}
         title={errorModal.title}
         message={errorModal.message}
-        type="error"
+        type={errorModal.type}
         buttonText="Try Again"
       />
     </>

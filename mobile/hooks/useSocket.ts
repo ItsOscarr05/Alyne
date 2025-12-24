@@ -238,6 +238,16 @@ export const useSocket = () => {
     };
   };
 
+  const onReviewDeleted = (callback: (data: { bookingId: string; reviewId: string }) => void) => {
+    if (!socket) return () => {};
+
+    socket.on('review-deleted', callback);
+
+    return () => {
+      socket.off('review-deleted', callback);
+    };
+  };
+
   return {
     socket,
     isConnected,
@@ -248,6 +258,7 @@ export const useSocket = () => {
     onMessagesRead,
     onBookingUpdate,
     onProviderRatingUpdate,
+    onReviewDeleted,
   };
 };
 

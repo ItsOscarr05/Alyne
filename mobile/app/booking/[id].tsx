@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
@@ -16,6 +15,7 @@ import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -24,6 +24,17 @@ export default function BookingDetailScreen() {
   const { onBookingUpdate } = useSocket();
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     if (id) {
@@ -73,7 +84,12 @@ export default function BookingDetailScreen() {
       logger.error('Error loading booking', error);
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
-      Alert.alert(errorTitle, errorMessage);
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: errorTitle,
+        message: errorMessage,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -318,6 +334,15 @@ export default function BookingDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </View>
   );
 }

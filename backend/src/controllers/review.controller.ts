@@ -144,5 +144,67 @@ export const reviewController = {
       next(error);
     }
   },
+
+  async deleteReview(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const { id } = req.params;
+
+      // Get review before deletion to get providerId for rating update
+      const review = await prisma.review.findUnique({
+        where: { id },
+      });
+
+      if (!review) {
+        return next(createError('Review not found', 404));
+      }
+
+      const providerId = review.providerId;
+      const bookingId = review.bookingId;
+
+      // Delete the review
+      await reviewService.deleteReview(id, userId);
+
+      // Calculate updated provider rating stats after deletion
+      const reviews = await prisma.review.findMany({
+        where: {
+          providerId,
+          isVisible: true,
+          isFlagged: false,
+        },
+      });
+
+      const avgRating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : 0;
+      const reviewCount = reviews.length;
+
+      // Emit real-time update to all users viewing this provider
+      io.emit('provider-rating-updated', {
+        providerId,
+        rating: avgRating,
+        reviewCount,
+      });
+
+      // Emit review deleted event to notify clients that a review was deleted (so they can refresh their booking cards)
+      if (bookingId) {
+        io.to(`user:${userId}`).emit('review-deleted', {
+          bookingId,
+          reviewId: id,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Review deleted successfully',
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 

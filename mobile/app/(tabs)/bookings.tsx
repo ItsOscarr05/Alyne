@@ -34,7 +34,7 @@ import { mockBookings } from '../../data/mockBookings';
 export default function BookingsScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { onBookingUpdate } = useSocket();
+  const { onBookingUpdate, onReviewDeleted } = useSocket();
   const { isProcessing: paymentProcessing, currentBookingId } = usePaymentContext();
   const modal = useModal();
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
@@ -258,6 +258,25 @@ export default function BookingsScreen() {
 
     return unsubscribe;
   }, [onBookingUpdate, user, authLoading, loadBookings]);
+
+  // Listen for review deletion events to refresh reviewed bookings
+  useEffect(() => {
+    const unsubscribe = onReviewDeleted((data) => {
+      logger.debug('Review deleted via Socket.io', {
+        bookingId: data.bookingId,
+        reviewId: data.reviewId,
+      });
+
+      // Remove the booking from reviewedBookings set so "Write a Review" button appears
+      setReviewedBookings((prev) => {
+        const updated = new Set(prev);
+        updated.delete(data.bookingId);
+        return updated;
+      });
+    });
+
+    return unsubscribe;
+  }, [onReviewDeleted]);
 
   const pendingBookings = bookings.filter(
     (b) => b.status === 'PENDING' && !hiddenBookings.has(b.id)

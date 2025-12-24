@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -19,6 +18,7 @@ import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { AlertModal } from '../../components/ui/AlertModal';
 import Constants from 'expo-constants';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
@@ -128,31 +128,33 @@ const STRIPE_PUBLISHABLE_KEY = getStripePublishableKey();
 
 // Web payment component using Stripe.js directly (no React Stripe.js)
 // Plaid Link initialization - exposes handler via window for parent to access
-function initializePlaidLink(linkToken: string, onSuccess: () => void) {
+function initializePlaidLink(linkToken: string, onSuccess: () => void, onError?: (title: string, message: string) => void) {
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     // Check if Plaid script is already loaded
-    if ((window as any).Plaid) {
-      createPlaidHandler(linkToken, onSuccess);
-    } else {
+        if ((window as any).Plaid) {
+          createPlaidHandler(linkToken, onSuccess, onError);
+        } else {
       // Load Plaid Link from CDN
       const script = document.createElement('script');
       script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
       script.async = true;
       script.onload = () => {
         if ((window as any).Plaid) {
-          createPlaidHandler(linkToken, onSuccess);
+          createPlaidHandler(linkToken, onSuccess, onError);
         }
       };
       script.onerror = () => {
         logger.error('Failed to load Plaid Link script');
-        alert('Failed to load payment system. Please refresh the page.');
+        if (onError) {
+          onError('Load Failed', 'Failed to load payment system. Please refresh the page.');
+        }
       };
       document.body.appendChild(script);
     }
   }
 }
 
-function createPlaidHandler(linkToken: string, onSuccess: () => void) {
+function createPlaidHandler(linkToken: string, onSuccess: () => void, onError?: (title: string, message: string) => void) {
   if ((window as any).Plaid && linkToken) {
     try {
       const handler = (window as any).Plaid.create({
@@ -166,7 +168,9 @@ function createPlaidHandler(linkToken: string, onSuccess: () => void) {
             logger.debug('Plaid exit', { err, metadata });
           if (err) {
             const errorMsg = err.error_message || err.message || 'Unknown error';
-            alert(`Payment error: ${errorMsg}`);
+            if (onError) {
+              onError('Payment Error', errorMsg);
+            }
           }
         },
         onEvent: (eventName: string, metadata: any) => {
@@ -176,7 +180,9 @@ function createPlaidHandler(linkToken: string, onSuccess: () => void) {
       (window as any).plaidHandler = handler;
     } catch (error: any) {
       logger.error('Error initializing Plaid', error);
-      alert(`Failed to initialize payment: ${error.message || 'Unknown error'}`);
+      if (onError) {
+        onError('Initialization Failed', error.message || 'Unknown error');
+      }
     }
   }
 }
@@ -190,7 +196,8 @@ function WebPaymentForm({
   publishableKey,
   amount,
   onSubmitRef,
-  hideButton = false
+  hideButton = false,
+  onError
 }: { 
   clientSecret: string; 
   booking: any; 
@@ -201,6 +208,7 @@ function WebPaymentForm({
   amount: number;
   onSubmitRef?: React.MutableRefObject<(() => Promise<void>) | null>;
   hideButton?: boolean;
+  onError?: (title: string, message: string) => void;
 }) {
   const [processing, setProcessing] = useState(false);
   const [elements, setElements] = useState<any>(null);
@@ -239,8 +247,8 @@ function WebPaymentForm({
     
     if (!stripeInstance || !elements) {
       logger.debug('Stripe not ready', { stripe: !!stripeInstance, elements: !!elements });
-      if (Platform.OS === 'web') {
-        alert('Payment form is not ready. Please wait a moment and try again.');
+      if (onError) {
+        onError('Payment Form Not Ready', 'Payment form is not ready. Please wait a moment and try again.');
       }
       return;
     }
@@ -251,10 +259,8 @@ function WebPaymentForm({
       // Submit the form
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        if (Platform.OS === 'web') {
-          alert(`Error: ${submitError.message}`);
-        } else {
-          Alert.alert('Error', submitError.message);
+        if (onError) {
+          onError('Error', submitError.message);
         }
         setProcessing(false);
         return;
@@ -271,10 +277,8 @@ function WebPaymentForm({
       });
 
       if (error) {
-        if (Platform.OS === 'web') {
-          alert(`Payment failed: ${error.message}`);
-        } else {
-          Alert.alert('Payment Failed', error.message);
+        if (onError) {
+          onError('Payment Failed', error.message);
         }
         setProcessing(false);
         return;
@@ -293,10 +297,8 @@ function WebPaymentForm({
             response: confirmError.response?.data,
             status: confirmError.response?.status,
           });
-          if (Platform.OS === 'web') {
-            alert(`Payment succeeded but failed to confirm on backend: ${confirmError.response?.data?.message || confirmError.message}`);
-          } else {
-            Alert.alert('Backend Error', `Payment succeeded but failed to confirm on backend: ${confirmError.response?.data?.message || confirmError.message}`);
+          if (onError) {
+            onError('Backend Error', `Payment succeeded but failed to confirm on backend: ${confirmError.response?.data?.message || confirmError.message}`);
           }
           // Still call onSuccess since payment succeeded on Stripe
         }
@@ -306,10 +308,8 @@ function WebPaymentForm({
     } catch (error: any) {
       logger.error('Error processing payment', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to process payment';
-      if (Platform.OS === 'web') {
-        alert(`Error: ${errorMessage}`);
-      } else {
-        Alert.alert('Error', errorMessage);
+      if (onError) {
+        onError('Error', errorMessage);
       }
     } finally {
       setProcessing(false);
@@ -392,6 +392,17 @@ export default function PaymentCheckoutScreen() {
   const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
   const [stripeInstance, setStripeInstance] = useState<any>(null);
   const [stripeModulesLoaded, setStripeModulesLoaded] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
   const [paymentAmounts, setPaymentAmounts] = useState<{
     total: number;
     providerAmount: number;
@@ -409,20 +420,24 @@ export default function PaymentCheckoutScreen() {
     if (bookingId) {
       // Check if another payment is already processing
       if (globalIsProcessing && currentBookingId !== bookingId) {
-        Alert.alert(
-          'Payment Already in Progress',
-          'Another payment is currently being processed. Please wait for it to complete before starting a new payment.'
-        );
+        setAlertModal({
+          visible: true,
+          type: 'warning',
+          title: 'Payment Already in Progress',
+          message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
+        });
         router.back();
         return;
       }
       
       // Start payment processing
       if (!startPayment(bookingId)) {
-        Alert.alert(
-          'Payment Already in Progress',
-          'A payment is already being processed. Please wait for it to complete before starting a new payment.'
-        );
+        setAlertModal({
+          visible: true,
+          type: 'warning',
+          title: 'Payment Already in Progress',
+          message: 'A payment is already being processed. Please wait for it to complete before starting a new payment.',
+        });
         router.back();
         return;
       }
@@ -497,11 +512,12 @@ export default function PaymentCheckoutScreen() {
       // Check booking status
       if (bookingData.status !== 'CONFIRMED') {
         const statusMessage = `This booking is ${bookingData.status.toLowerCase()}. Only confirmed bookings can be paid.`;
-        if (Platform.OS === 'web') {
-          alert(statusMessage);
-        } else {
-          Alert.alert('Cannot Pay', statusMessage);
-        }
+        setAlertModal({
+          visible: true,
+          type: 'warning',
+          title: 'Cannot Pay',
+          message: statusMessage,
+        });
         setLoading(false);
         router.back();
         return;
@@ -549,11 +565,12 @@ export default function PaymentCheckoutScreen() {
         });
 
         if (initError) {
-          if (Platform.OS === 'web') {
-            alert(`Error: ${initError.message}`);
-          } else {
-            Alert.alert('Error', initError.message);
-          }
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: initError.message,
+          });
           router.back();
           return;
         }
@@ -565,11 +582,12 @@ export default function PaymentCheckoutScreen() {
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
       
-      if (Platform.OS === 'web') {
-        alert(`${errorTitle}: ${errorMessage}`);
-      } else {
-        Alert.alert(errorTitle, errorMessage);
-      }
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: errorTitle,
+        message: errorMessage,
+      });
       setLoading(false);
       router.back();
     }
@@ -585,7 +603,12 @@ export default function PaymentCheckoutScreen() {
         const { error } = await presentPaymentSheet();
 
         if (error) {
-          Alert.alert('Payment Failed', error.message);
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Payment Failed',
+            message: error.message,
+          });
           setProcessing(false);
           return;
         }
@@ -607,15 +630,23 @@ export default function PaymentCheckoutScreen() {
           console.warn('No stripePaymentId found in payment record');
         }
 
-        Alert.alert('Success', 'Payment completed successfully!', [
-          {
-            text: 'OK',
-            onPress: () => router.replace('/(tabs)/bookings'),
-          },
-        ]);
+        setAlertModal({
+          visible: true,
+          type: 'success',
+          title: 'Success',
+          message: 'Payment completed successfully!',
+        });
+        setTimeout(() => {
+          router.replace('/(tabs)/bookings');
+        }, 1000);
       } catch (error: any) {
         console.error('Error processing payment:', error);
-        Alert.alert('Error', error.response?.data?.message || 'Failed to process payment');
+        setAlertModal({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: error.response?.data?.message || 'Failed to process payment',
+        });
       } finally {
         setProcessing(false);
       }
@@ -638,11 +669,12 @@ export default function PaymentCheckoutScreen() {
         console.error('Error processing Plaid transfer:', error);
         // Don't block the flow - Stripe payment succeeded
         // Show error but still allow completion
-        if (Platform.OS === 'web') {
-          alert(`Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`);
-        } else {
-          Alert.alert('Provider Payment Error', `Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`);
-        }
+        setAlertModal({
+          visible: true,
+          type: 'warning',
+          title: 'Provider Payment Error',
+          message: `Platform fee paid, but provider payment failed: ${error.response?.data?.message || error.message || 'Unknown error'}`,
+        });
       }
     }
     
@@ -663,15 +695,21 @@ export default function PaymentCheckoutScreen() {
         stripeSubmitRef.current().catch((error) => {
           console.error('Stripe payment error:', error);
           setProcessing(false);
-          if (Platform.OS === 'web') {
-            alert(`Payment failed: ${error.message || 'Unknown error'}`);
-          } else {
-            Alert.alert('Payment Failed', error.message || 'Unknown error');
-          }
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Payment Failed',
+            message: error.message || 'Unknown error',
+          });
         });
       } else {
         setProcessing(false);
-        alert('Payment form is not ready. Please wait a moment and try again.');
+        setAlertModal({
+          visible: true,
+          type: 'warning',
+          title: 'Payment Form Not Ready',
+          message: 'Payment form is not ready. Please wait a moment and try again.',
+        });
       }
     } else {
       // For native, use existing flow
@@ -816,6 +854,14 @@ export default function PaymentCheckoutScreen() {
                   amount={paymentAmounts?.platformFee || 0}
                   onSubmitRef={stripeSubmitRef}
                   hideButton={true}
+                  onError={(title, message) => {
+                    setAlertModal({
+                      visible: true,
+                      type: 'error',
+                      title,
+                      message,
+                    });
+                  }}
                 />
               )}
               
@@ -899,6 +945,15 @@ export default function PaymentCheckoutScreen() {
           setShowReceiptModal(false);
           router.replace('/(tabs)/bookings');
         }}
+      />
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
       />
     </View>
   );

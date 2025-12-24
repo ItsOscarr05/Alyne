@@ -17,6 +17,7 @@ import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { formatTime12Hour } from '../utils/timeUtils';
 import { bookingService } from '../services/booking';
+import { AlertModal } from './ui/AlertModal';
 
 interface ReceiptModalProps {
   visible: boolean;
@@ -29,6 +30,17 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     if (visible && bookingId) {
@@ -56,9 +68,12 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
       logger.error('Error loading receipt', error);
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
-      if (Platform.OS === 'web') {
-        alert(`${errorTitle}: ${errorMessage}`);
-      }
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: errorTitle,
+        message: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -253,6 +268,15 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </RNModal>
   );
 }

@@ -5,8 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
-  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -19,6 +17,8 @@ import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
+import { AlertModal } from '../../components/ui/AlertModal';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,6 +28,30 @@ export default function ProviderDetailScreen() {
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>('about');
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+  });
+  const [confirmModal, setConfirmModal] = useState<{
+    visible: boolean;
+    type: 'danger' | 'warning' | 'info';
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    visible: false,
+    type: 'info',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
 
   useEffect(() => {
     loadProvider();
@@ -80,7 +104,12 @@ export default function ProviderDetailScreen() {
       logger.error('Error loading provider', error);
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
-      Alert.alert(errorTitle, errorMessage);
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: errorTitle,
+        message: errorMessage,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -113,57 +142,71 @@ export default function ProviderDetailScreen() {
   };
 
   const handleFlagReview = async (reviewId: string) => {
-    // On web, use window.confirm as fallback
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(
-        'Are you sure you want to flag this review? It will be hidden and reviewed by our team.'
-      );
-      if (!confirmed) {
-        return;
-      }
+    setConfirmModal({
+      visible: true,
+      type: 'warning',
+      title: 'Flag Review',
+      message: 'Are you sure you want to flag this review? It will be hidden and reviewed by our team.',
+      onConfirm: async () => {
+        try {
+          await reviewService.flagReview(reviewId);
+          setAlertModal({
+            visible: true,
+            type: 'success',
+            title: 'Success',
+            message: 'Review has been flagged. Thank you for your report.',
+          });
+          // Reload provider to refresh reviews
+          loadProvider();
+        } catch (error: any) {
+          const errorMessage =
+            error.response?.data?.error?.message ||
+            error.response?.data?.message ||
+            error.message ||
+            'Failed to flag review';
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: errorMessage,
+          });
+        }
+      },
+    });
+  };
 
-      try {
-        await reviewService.flagReview(reviewId);
-        window.alert('Success! Review has been flagged. Thank you for your report.');
-        // Reload provider to refresh reviews
-        loadProvider();
-      } catch (error: any) {
-        const errorMessage =
-          error.response?.data?.error?.message ||
-          error.response?.data?.message ||
-          error.message ||
-          'Failed to flag review';
-        window.alert(`Error: ${errorMessage}`);
-      }
-    } else {
-      // Show confirmation dialog for native
-      Alert.alert(
-        'Flag Review',
-        'Are you sure you want to flag this review? It will be hidden and reviewed by our team.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Flag',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                await reviewService.flagReview(reviewId);
-                Alert.alert('Success', 'Review has been flagged. Thank you for your report.');
-                // Reload provider to refresh reviews
-                loadProvider();
-              } catch (error: any) {
-                const errorMessage =
-                  error.response?.data?.error?.message ||
-                  error.response?.data?.message ||
-                  error.message ||
-                  'Failed to flag review';
-                Alert.alert('Error', errorMessage);
-              }
-            },
-          },
-        ]
-      );
-    }
+  const handleDeleteReview = async (reviewId: string) => {
+    setConfirmModal({
+      visible: true,
+      type: 'danger',
+      title: 'Delete Review',
+      message: 'Are you sure you want to delete this review? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await reviewService.deleteReview(reviewId);
+          setAlertModal({
+            visible: true,
+            type: 'success',
+            title: 'Success',
+            message: 'Review deleted successfully',
+          });
+          // Reload provider to refresh reviews
+          loadProvider();
+        } catch (error: any) {
+          const errorMessage =
+            error.response?.data?.error?.message ||
+            error.response?.data?.message ||
+            error.message ||
+            'Failed to delete review';
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: errorMessage,
+          });
+        }
+      },
+    });
   };
 
   if (isLoading) {
@@ -551,22 +594,30 @@ export default function ProviderDetailScreen() {
 
                           <View style={styles.reviewActions}>
                             {user && user.id === review.client.id && (
-                              <TouchableOpacity
-                                style={styles.editButton}
-                                onPress={() => {
-                                  router.push({
-                                    pathname: '/review/edit',
-                                    params: {
-                                      reviewId: review.id,
-                                      providerName: provider.name,
-                                      initialRating: review.rating.toString(),
-                                      initialComment: review.comment || '',
-                                    },
-                                  });
-                                }}
-                              >
-                                <Ionicons name="pencil-outline" size={16} color="#2563eb" />
-                              </TouchableOpacity>
+                              <>
+                                <TouchableOpacity
+                                  style={styles.editButton}
+                                  onPress={() => {
+                                    router.push({
+                                      pathname: '/review/edit',
+                                      params: {
+                                        reviewId: review.id,
+                                        providerName: provider.name,
+                                        initialRating: review.rating.toString(),
+                                        initialComment: review.comment || '',
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <Ionicons name="pencil-outline" size={16} color="#2563eb" />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={styles.deleteButton}
+                                  onPress={() => handleDeleteReview(review.id)}
+                                >
+                                  <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                </TouchableOpacity>
+                              </>
                             )}
                             {user && user.id !== review.client.id && (
                               <TouchableOpacity
@@ -602,6 +653,26 @@ export default function ProviderDetailScreen() {
           <Text style={styles.bookButtonText}>Book Session</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        visible={confirmModal.visible}
+        onClose={() => setConfirmModal({ ...confirmModal, visible: false })}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        type={confirmModal.type}
+        confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Flag'}
+        onConfirm={confirmModal.onConfirm}
+      />
     </View>
   );
 }
@@ -909,6 +980,10 @@ const styles = StyleSheet.create({
   },
   editButton: {
     padding: 4,
+  },
+  deleteButton: {
+    padding: 4,
+    marginLeft: 8,
   },
   flagButton: {
     padding: 4,

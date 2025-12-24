@@ -4,7 +4,6 @@ import {
   StyleSheet,
   FlatList,
   ActivityIndicator,
-  Alert,
   TouchableOpacity,
   Modal as RNModal,
 } from 'react-native';
@@ -23,6 +22,7 @@ import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
 import { mockProviders } from '../../data/mockProviders';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -48,6 +48,17 @@ export default function DiscoverScreen() {
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
 
   const FILTER_STORAGE_KEY = 'discover_filters';
 
@@ -189,13 +200,21 @@ export default function DiscoverScreen() {
       logger.error('Error loading providers', error);
       // Fallback to mock data if API fails
       if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-        Alert.alert('Connection Error', 'Unable to connect to server. Using demo data.', [
-          { text: 'OK' },
-        ]);
+        setAlertModal({
+          visible: true,
+          type: 'warning',
+          title: 'Connection Error',
+          message: 'Unable to connect to server. Using demo data.',
+        });
         // Use mock data as fallback
         setProviders(mockProviders);
       } else {
-        Alert.alert('Error', 'Failed to load providers');
+        setAlertModal({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: 'Failed to load providers',
+        });
       }
     } finally {
       setIsLoading(false);
@@ -686,6 +705,15 @@ export default function DiscoverScreen() {
           </View>
         </TouchableOpacity>
       </RNModal>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </View>
   );
 }
@@ -764,6 +792,7 @@ const styles = StyleSheet.create({
   },
   cardWrapper: {
     flex: 1,
+    maxWidth: '50%',
     paddingHorizontal: theme.spacing.xs,
     marginBottom: theme.spacing.lg,
   },

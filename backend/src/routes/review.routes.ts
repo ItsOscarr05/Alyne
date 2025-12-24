@@ -44,6 +44,12 @@ const flagReviewSchema = z.object({
   }),
 });
 
+const deleteReviewSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, 'Review ID is required'),
+  }),
+});
+
 // Routes with validation
 router.post(
   '/submit',
@@ -67,6 +73,12 @@ router.post(
   '/:id/flag',
   validateRequest(flagReviewSchema),
   reviewController.flagReview
+);
+
+router.delete(
+  '/:id',
+  validateRequest(deleteReviewSchema),
+  reviewController.deleteReview
 );
 
 export { router as reviewRoutes };

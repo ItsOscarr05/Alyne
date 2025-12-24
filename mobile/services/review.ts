@@ -57,5 +57,10 @@ export const reviewService = {
     const response = await apiClient.post(`/reviews/${reviewId}/flag`, { reason });
     return response.data;
   },
+
+  async deleteReview(reviewId: string) {
+    const response = await apiClient.delete(`/reviews/${reviewId}`);
+    return response.data;
+  },
 };
 

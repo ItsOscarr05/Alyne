@@ -200,5 +200,27 @@ export const reviewService = {
 
     return updated;
   },
+
+  async deleteReview(reviewId: string, userId: string) {
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+    });
+
+    if (!review) {
+      throw createError('Review not found', 404);
+    }
+
+    // Only the client who wrote the review can delete it
+    if (review.clientId !== userId) {
+      throw createError('Unauthorized: Only the reviewer can delete this review', 403);
+    }
+
+    // Delete the review
+    await prisma.review.delete({
+      where: { id: reviewId },
+    });
+
+    return { success: true };
+  },
 };
 

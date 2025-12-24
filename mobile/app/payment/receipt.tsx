@@ -15,6 +15,7 @@ import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
 import { bookingService } from '../../services/booking';
+import { AlertModal } from '../../components/ui/AlertModal';
 
 export default function ReceiptScreen() {
   const router = useRouter();
@@ -22,6 +23,17 @@ export default function ReceiptScreen() {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    type: 'success' | 'error' | 'info' | 'warning';
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    type: 'error',
+    title: '',
+    message: '',
+  });
 
   useEffect(() => {
     if (bookingId) {
@@ -42,9 +54,12 @@ export default function ReceiptScreen() {
       logger.error('Error loading receipt', error);
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
-      if (Platform.OS === 'web') {
-        alert(`${errorTitle}: ${errorMessage}`);
-      }
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: errorTitle,
+        message: errorMessage,
+      });
     } finally {
       setLoading(false);
     }
@@ -263,6 +278,15 @@ export default function ReceiptScreen() {
           <Text style={styles.primaryButtonText}>Done</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Alert Modal */}
+      <AlertModal
+        visible={alertModal.visible}
+        onClose={() => setAlertModal({ ...alertModal, visible: false })}
+        title={alertModal.title}
+        message={alertModal.message}
+        type={alertModal.type}
+      />
     </View>
   );
 }
