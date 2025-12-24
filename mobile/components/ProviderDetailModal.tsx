@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { providerService, ProviderDetail, Service, Review } from '../services/provider';
 import { reviewService } from '../services/review';
 import { useAuth } from '../hooks/useAuth';
+import { useSocket } from '../hooks/useSocket';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { formatTime12Hour } from '../utils/timeUtils';
@@ -33,6 +34,7 @@ interface ProviderDetailModalProps {
 export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDetailModalProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { onProviderRatingUpdate } = useSocket();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>('about');
@@ -54,6 +56,31 @@ export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDe
       setActiveTab('about');
     }
   }, [visible, providerId]);
+
+  // Listen for real-time provider rating updates
+  useEffect(() => {
+    const unsubscribe = onProviderRatingUpdate((data) => {
+      logger.debug('Provider rating updated via Socket.io in modal', {
+        providerId: data.providerId,
+        rating: data.rating,
+        reviewCount: data.reviewCount,
+      });
+
+      // Update the provider if it matches the current provider
+      if (provider && provider.id === data.providerId) {
+        setProvider((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            rating: data.rating,
+            reviewCount: data.reviewCount,
+          };
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [onProviderRatingUpdate, provider]);
 
   const loadProvider = async () => {
     if (!providerId) return;

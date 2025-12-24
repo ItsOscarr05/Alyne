@@ -178,6 +178,7 @@ export default function BookingsScreen() {
         bookingId: data.bookingId,
         status: data.status,
         paymentStatus: data.booking?.payment?.status,
+        hasFullBooking: !!data.booking,
       });
 
       // Update the specific booking in state for instant UI update
@@ -185,26 +186,67 @@ export default function BookingsScreen() {
         const bookingIndex = prevBookings.findIndex((b) => b.id === data.bookingId);
         
         if (bookingIndex !== -1) {
-          // Booking exists, update it
+          // Booking exists, update it with new status and any other changes
+          const existingBooking = prevBookings[bookingIndex];
+          const oldStatus = existingBooking.status;
+          
+          logger.debug('Updating existing booking', {
+            bookingId: data.bookingId,
+            oldStatus,
+            newStatus: data.status,
+          });
+
+          // If we have full booking data, use it; otherwise merge status update
+          const updatedBooking = data.booking
+            ? {
+                ...data.booking,
+                // Preserve nested objects that might not be in the update
+                service: data.booking.service || existingBooking.service,
+                provider: data.booking.provider || existingBooking.provider,
+                client: data.booking.client || existingBooking.client,
+                payment: data.booking.payment || existingBooking.payment,
+              }
+            : {
+                ...existingBooking,
+                status: data.status as any,
+                // Update any other fields from data.booking if provided
+                ...(data.booking && {
+                  ...data.booking,
+                  service: data.booking.service || existingBooking.service,
+                  provider: data.booking.provider || existingBooking.provider,
+                  client: data.booking.client || existingBooking.client,
+                  payment: data.booking.payment || existingBooking.payment,
+                }),
+              };
+
           const updatedBookings = [...prevBookings];
-          updatedBookings[bookingIndex] = {
-            ...updatedBookings[bookingIndex],
-            status: data.status as any,
-            ...(data.booking && {
-              ...data.booking,
-              // Preserve existing payment data if new data doesn't include it
-              payment: data.booking.payment || updatedBookings[bookingIndex].payment,
-            }),
-          };
+          updatedBookings[bookingIndex] = updatedBooking;
+          
+          // Log status change for debugging
+          if (oldStatus !== data.status) {
+            logger.info('Booking status changed', {
+              bookingId: data.bookingId,
+              oldStatus,
+              newStatus: data.status,
+              willMoveTab: true,
+            });
+          }
+          
           return updatedBookings;
         } else {
           // Booking doesn't exist in current list, might be a new booking
+          logger.debug('Booking not found in current list, adding or reloading', {
+            bookingId: data.bookingId,
+            hasFullBooking: !!data.booking,
+          });
+          
           // If we have the full booking data, add it
           if (data.booking) {
             return [data.booking, ...prevBookings];
           }
           // Otherwise, reload to get the updated list
           if (user && !authLoading) {
+            logger.debug('Reloading bookings to get updated list');
             loadBookings();
           }
         }

@@ -5,19 +5,45 @@ import { Platform } from 'react-native';
 
 const isWeb = Platform.OS === 'web';
 
-// Use localStorage for web to persist authentication across browser sessions
-// This ensures users remain logged in when closing and reopening the app
-// localStorage persists across browser sessions, unlike sessionStorage which is cleared on tab close
-const getWebStorage = () => {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    return window.localStorage;
+// Generate or retrieve a unique tab ID for web
+// This ensures each tab has its own isolated storage
+const getTabId = (): string => {
+  if (!isWeb || typeof window === 'undefined') {
+    return 'default';
   }
-  // Fallback to sessionStorage if localStorage is not available
+
+  // Try to get existing tab ID from sessionStorage (tab-specific)
+  const existingTabId = sessionStorage.getItem('alyne_tab_id');
+  if (existingTabId) {
+    return existingTabId;
+  }
+
+  // Generate a new unique tab ID
+  const tabId = `tab_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  sessionStorage.setItem('alyne_tab_id', tabId);
+  return tabId;
+};
+
+// Get tab-specific storage key
+const getTabKey = (key: string): string => {
+  if (!isWeb) {
+    return key;
+  }
+  const tabId = getTabId();
+  return `${tabId}_${key}`;
+};
+
+// Use sessionStorage for web to ensure each tab has isolated storage
+// sessionStorage is tab-specific and prevents tabs from overwriting each other
+const getWebStorage = () => {
   if (typeof window !== 'undefined' && window.sessionStorage) {
-    logger.warn('localStorage not available, falling back to sessionStorage');
     return window.sessionStorage;
   }
-  // Last resort: use AsyncStorage (shared across tabs, but better than nothing)
+  // Fallback to localStorage if sessionStorage is not available
+  if (typeof window !== 'undefined' && window.localStorage) {
+    logger.warn('sessionStorage not available, falling back to localStorage');
+    return window.localStorage;
+  }
   return null;
 };
 
@@ -26,7 +52,9 @@ export const storage = {
     if (isWeb) {
       const webStorage = getWebStorage();
       if (webStorage) {
-        return webStorage.getItem(key);
+        // Use tab-specific key for web
+        const tabKey = getTabKey(key);
+        return webStorage.getItem(tabKey);
       }
       // Fallback to AsyncStorage
       return await AsyncStorage.getItem(key);
@@ -44,7 +72,9 @@ export const storage = {
     if (isWeb) {
       const webStorage = getWebStorage();
       if (webStorage) {
-        webStorage.setItem(key, value);
+        // Use tab-specific key for web
+        const tabKey = getTabKey(key);
+        webStorage.setItem(tabKey, value);
         return;
       }
       // Fallback to AsyncStorage
@@ -63,7 +93,9 @@ export const storage = {
     if (isWeb) {
       const webStorage = getWebStorage();
       if (webStorage) {
-        webStorage.removeItem(key);
+        // Use tab-specific key for web
+        const tabKey = getTabKey(key);
+        webStorage.removeItem(tabKey);
         return;
       }
       // Fallback to AsyncStorage

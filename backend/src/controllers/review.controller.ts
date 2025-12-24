@@ -2,6 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { reviewService } from '../services/review.service';
 import { createError } from '../middleware/errorHandler';
 import { AuthRequest } from '../middleware/auth';
+import { io } from '../index';
+import { prisma } from '../utils/db';
 
 export const reviewController = {
   async submitReview(req: AuthRequest, res: Response, next: NextFunction) {
@@ -23,6 +25,27 @@ export const reviewController = {
         providerId,
         rating,
         comment,
+      });
+
+      // Calculate updated provider rating stats
+      const reviews = await prisma.review.findMany({
+        where: {
+          providerId,
+          isVisible: true,
+          isFlagged: false,
+        },
+      });
+
+      const avgRating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : 0;
+      const reviewCount = reviews.length;
+
+      // Emit real-time update to all users viewing this provider
+      io.emit('provider-rating-updated', {
+        providerId,
+        rating: avgRating,
+        reviewCount,
       });
 
       res.status(201).json({
@@ -69,6 +92,27 @@ export const reviewController = {
 
       const { id } = req.params;
       const review = await reviewService.updateReview(id, userId, req.body);
+
+      // Calculate updated provider rating stats
+      const reviews = await prisma.review.findMany({
+        where: {
+          providerId: review.providerId,
+          isVisible: true,
+          isFlagged: false,
+        },
+      });
+
+      const avgRating = reviews.length > 0
+        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+        : 0;
+      const reviewCount = reviews.length;
+
+      // Emit real-time update to all users viewing this provider
+      io.emit('provider-rating-updated', {
+        providerId: review.providerId,
+        rating: avgRating,
+        reviewCount,
+      });
 
       res.json({
         success: true,

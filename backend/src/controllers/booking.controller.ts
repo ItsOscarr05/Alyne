@@ -131,21 +131,25 @@ export const bookingController = {
 
       const booking = await bookingService.acceptBooking(id, userId);
 
-      // Emit real-time update to the client
-      if (booking.clientId) {
+      // Get the full booking object with all relations for socket event
+      // This ensures the client receives the complete booking data
+      const fullBooking = await bookingService.getBookingById(id, userId);
+
+      // Emit real-time update to the client with full booking data
+      if (booking.clientId && fullBooking) {
         io.to(`user:${booking.clientId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
       // Also notify the provider
-      if (booking.providerId) {
+      if (booking.providerId && fullBooking) {
         io.to(`user:${booking.providerId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
@@ -165,21 +169,24 @@ export const bookingController = {
 
       const booking = await bookingService.declineBooking(id, userId);
 
-      // Emit real-time update to the client
-      if (booking.clientId) {
+      // Get the full booking object with all relations for socket event
+      const fullBooking = await bookingService.getBookingById(id, userId);
+
+      // Emit real-time update to the client with full booking data
+      if (booking.clientId && fullBooking) {
         io.to(`user:${booking.clientId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
       // Also notify the provider
-      if (booking.providerId) {
+      if (booking.providerId && fullBooking) {
         io.to(`user:${booking.providerId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
@@ -199,21 +206,24 @@ export const bookingController = {
 
       const booking = await bookingService.cancelBooking(id, userId);
 
-      // Emit real-time update to the client
-      if (booking.clientId) {
+      // Get the full booking object with all relations for socket event
+      const fullBooking = await bookingService.getBookingById(id, userId);
+
+      // Emit real-time update to the client with full booking data
+      if (booking.clientId && fullBooking) {
         io.to(`user:${booking.clientId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
       // Also notify the provider
-      if (booking.providerId) {
+      if (booking.providerId && fullBooking) {
         io.to(`user:${booking.providerId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
@@ -233,21 +243,24 @@ export const bookingController = {
 
       const booking = await bookingService.completeBooking(id, userId);
 
-      // Emit real-time update to the client
-      if (booking.clientId) {
+      // Get the full booking object with all relations for socket event
+      const fullBooking = await bookingService.getBookingById(id, userId);
+
+      // Emit real-time update to the client with full booking data
+      if (booking.clientId && fullBooking) {
         io.to(`user:${booking.clientId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 
       // Also notify the provider
-      if (booking.providerId) {
+      if (booking.providerId && fullBooking) {
         io.to(`user:${booking.providerId}`).emit('booking-updated', {
           bookingId: booking.id,
           status: booking.status,
-          booking,
+          booking: fullBooking,
         });
       }
 

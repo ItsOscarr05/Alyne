@@ -228,6 +228,16 @@ export const useSocket = () => {
     };
   };
 
+  const onProviderRatingUpdate = (callback: (data: { providerId: string; rating: number; reviewCount: number }) => void) => {
+    if (!socket) return () => {};
+
+    socket.on('provider-rating-updated', callback);
+
+    return () => {
+      socket.off('provider-rating-updated', callback);
+    };
+  };
+
   return {
     socket,
     isConnected,
@@ -237,6 +247,7 @@ export const useSocket = () => {
     onMessage,
     onMessagesRead,
     onBookingUpdate,
+    onProviderRatingUpdate,
   };
 };
 

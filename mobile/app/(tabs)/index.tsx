@@ -17,6 +17,7 @@ import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
 import { ProviderDetailModal } from '../../components/ProviderDetailModal';
 import { providerService, DiscoveryFilters } from '../../services/provider';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
@@ -26,6 +27,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { onProviderRatingUpdate } = useSocket();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -220,6 +222,35 @@ export default function DiscoverScreen() {
       saveFilters();
     }
   }, [ratingOption, priceOption, distanceOption, reviewsOption, activeFilter, user]);
+
+  // Listen for real-time provider rating updates
+  useEffect(() => {
+    const unsubscribe = onProviderRatingUpdate((data) => {
+      logger.debug('Provider rating updated via Socket.io', {
+        providerId: data.providerId,
+        rating: data.rating,
+        reviewCount: data.reviewCount,
+      });
+
+      // Update the provider in the providers list
+      setProviders((prevProviders) => {
+        const providerIndex = prevProviders.findIndex((p) => p.id === data.providerId);
+        
+        if (providerIndex !== -1) {
+          const updatedProviders = [...prevProviders];
+          updatedProviders[providerIndex] = {
+            ...updatedProviders[providerIndex],
+            rating: data.rating,
+            reviewCount: data.reviewCount,
+          };
+          return updatedProviders;
+        }
+        return prevProviders;
+      });
+    });
+
+    return unsubscribe;
+  }, [onProviderRatingUpdate]);
 
   const handleProviderPress = (providerId: string) => {
     setSelectedProviderId(providerId);

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { providerService, ProviderDetail, Service, Review } from '../../services/provider';
 import { reviewService } from '../../services/review';
 import { useAuth } from '../../hooks/useAuth';
+import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
@@ -23,6 +24,7 @@ export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const { onProviderRatingUpdate } = useSocket();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>('about');
@@ -39,6 +41,31 @@ export default function ProviderDetailScreen() {
       }
     }, [id])
   );
+
+  // Listen for real-time provider rating updates
+  useEffect(() => {
+    const unsubscribe = onProviderRatingUpdate((data) => {
+      logger.debug('Provider rating updated via Socket.io in detail screen', {
+        providerId: data.providerId,
+        rating: data.rating,
+        reviewCount: data.reviewCount,
+      });
+
+      // Update the provider if it matches the current provider
+      if (provider && provider.id === data.providerId) {
+        setProvider((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            rating: data.rating,
+            reviewCount: data.reviewCount,
+          };
+        });
+      }
+    });
+
+    return unsubscribe;
+  }, [onProviderRatingUpdate, provider]);
 
   const loadProvider = async () => {
     if (!id) return;
