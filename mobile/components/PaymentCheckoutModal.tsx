@@ -17,10 +17,13 @@ import { paymentService } from '../services/payment';
 import { bookingService } from '../services/booking';
 import { plaidService } from '../services/plaid';
 import { useAuth } from '../hooks/useAuth';
+import { usePaymentContext } from '../contexts/PaymentContext';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
+import { formatTime12Hour } from '../utils/timeUtils';
 import Constants from 'expo-constants';
 import { ReceiptModal } from './ReceiptModal';
+import { AlertModal } from './ui/AlertModal';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
 let useStripeNative: any = null;
@@ -114,6 +117,7 @@ function WebPaymentForm({
   amount,
   onSubmitRef,
   hideButton = false,
+  onError,
 }: {
   clientSecret: string;
   booking: any;
@@ -124,6 +128,7 @@ function WebPaymentForm({
   amount: number;
   onSubmitRef?: React.MutableRefObject<(() => Promise<void>) | null>;
   hideButton?: boolean;
+  onError?: (title: string, message: string) => void;
 }) {
   const [processing, setProcessing] = useState(false);
   const [elements, setElements] = useState<any>(null);
@@ -190,10 +195,14 @@ function WebPaymentForm({
       });
 
       if (error) {
-        if (Platform.OS === 'web') {
-          alert(`Payment failed: ${error.message}`);
+        if (onError) {
+          onError('Payment Failed', error.message || 'Your payment could not be processed. Please try again.');
         } else {
-          Alert.alert('Payment Failed', error.message);
+          if (Platform.OS === 'web') {
+            alert(`Payment failed: ${error.message}`);
+          } else {
+            Alert.alert('Payment Failed', error.message);
+          }
         }
         setProcessing(false);
         return;
@@ -227,10 +236,15 @@ function WebPaymentForm({
       logger.error('Error processing payment', error);
       const errorMessage =
         error.response?.data?.message || error.message || 'Failed to process payment';
-      if (Platform.OS === 'web') {
-        alert(`Error: ${errorMessage}`);
+      setProcessing(false); // Reset processing state immediately
+      if (onError) {
+        onError('Payment Error', errorMessage);
       } else {
-        Alert.alert('Error', errorMessage);
+        if (Platform.OS === 'web') {
+          alert(`Error: ${errorMessage}`);
+        } else {
+          Alert.alert('Error', errorMessage);
+        }
       }
     } finally {
       setProcessing(false);
@@ -299,6 +313,7 @@ interface PaymentCheckoutModalProps {
 export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentCheckoutModalProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { startPayment, endPayment, isProcessing: globalIsProcessing, currentBookingId } = usePaymentContext();
 
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -318,12 +333,43 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
   const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
   const [plaidLoading, setPlaidLoading] = useState(false);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [errorModal, setErrorModal] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+  });
 
   // Native Stripe hooks
   const stripeNative = useStripeNative ? useStripeNative() : null;
 
   useEffect(() => {
     if (visible && bookingId) {
+      // Check if another payment is already processing
+      if (globalIsProcessing && currentBookingId !== bookingId) {
+        setErrorModal({
+          visible: true,
+          title: 'Payment Already in Progress',
+          message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
+        });
+        onClose();
+        return;
+      }
+      
+      // Start payment processing
+      if (!startPayment(bookingId)) {
+        setErrorModal({
+          visible: true,
+          title: 'Payment Already in Progress',
+          message: 'A payment is already being processed. Please wait for it to complete before starting a new payment.',
+        });
+        onClose();
+        return;
+      }
+      
       initializePayment();
       // Initialize Stripe for web
       if (Platform.OS === 'web') {
@@ -352,6 +398,9 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       }
     } else {
       // Reset state when modal closes
+      if (!visible) {
+        endPayment(); // End payment processing when modal closes
+      }
       setBooking(null);
       setClientSecret(null);
       setStripeInstance(null);
@@ -366,7 +415,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       setLoading(true);
       setProcessing(false);
     }
-  }, [visible, bookingId]);
+  }, [visible, bookingId, globalIsProcessing, currentBookingId, startPayment, endPayment, onClose]);
 
   const initializePayment = async () => {
     if (!bookingId) return;
@@ -447,6 +496,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       setLoading(false);
     } catch (error: any) {
       logger.error('Error initializing payment', error);
+      endPayment(); // End payment processing on error
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
 
@@ -461,6 +511,16 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
   };
 
   const handlePayment = async () => {
+    // Check if another payment is processing
+    if (globalIsProcessing && currentBookingId !== bookingId) {
+      setErrorModal({
+        visible: true,
+        title: 'Payment Already in Progress',
+        message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
+      });
+      return;
+    }
+    
     if (Platform.OS !== 'web' && stripeNative) {
       try {
         setProcessing(true);
@@ -469,7 +529,11 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         const { error } = await presentPaymentSheet();
 
         if (error) {
-          Alert.alert('Payment Failed', error.message);
+          setErrorModal({
+            visible: true,
+            title: 'Payment Failed',
+            message: error.message || 'Your payment could not be processed. Please try again.',
+          });
           setProcessing(false);
           return;
         }
@@ -489,7 +553,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         handlePaymentSuccess();
       } catch (error: any) {
         console.error('Error processing payment:', error);
-        Alert.alert('Error', error.response?.data?.message || 'Failed to process payment');
+        endPayment(); // End payment processing on error
+        setErrorModal({
+          visible: true,
+          title: 'Payment Error',
+          message: error.response?.data?.message || error.message || 'Failed to process payment',
+        });
       } finally {
         setProcessing(false);
       }
@@ -617,6 +686,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       } catch (error: any) {
         console.error('Error creating Plaid handler:', error);
         logger.error('Error initializing Plaid', error);
+        endPayment(); // End payment processing on error
         setProcessing(false);
         alert(`Failed to initialize payment: ${error.message || 'Unknown error'}`);
       }
@@ -646,6 +716,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         });
       } catch (error: any) {
         console.error('Error in handlePlaidPayment:', error);
+        endPayment(); // End payment processing on error
         setProcessing(false);
         alert(`Failed to start payment: ${error.message || 'Unknown error'}`);
       }
@@ -656,6 +727,16 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
   };
 
   const handleUnifiedPayment = async () => {
+    // Check if another payment is processing
+    if (globalIsProcessing && currentBookingId !== bookingId) {
+      setErrorModal({
+        visible: true,
+        title: 'Payment Already in Progress',
+        message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
+      });
+      return;
+    }
+    
     if (Platform.OS === 'web') {
       setProcessing(true);
 
@@ -668,9 +749,14 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           setPlaidLoading(false);
         } catch (error: any) {
           console.error('Error getting Plaid link token:', error);
+          endPayment(); // End payment processing on error
           setPlaidLoading(false);
           setProcessing(false);
-          alert(`Failed to initialize provider payment: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+          setErrorModal({
+            visible: true,
+            title: 'Payment Initialization Error',
+            message: error.response?.data?.message || error.message || 'Failed to initialize provider payment. Please try again.',
+          });
           return;
         }
       }
@@ -682,8 +768,13 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           // Stripe payment success is handled by handleStripePaymentSuccess
         } catch (error: any) {
           console.error('Stripe payment error:', error);
+          endPayment(); // End payment processing on error
           setProcessing(false);
-          alert(`Platform fee payment failed: ${error.message || 'Unknown error'}`);
+          setErrorModal({
+            visible: true,
+            title: 'Payment Failed',
+            message: error.message || 'Platform fee payment failed. Please try again.',
+          });
           return;
         }
       }
@@ -702,6 +793,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           });
         } catch (error: any) {
           console.error('Error initializing Plaid:', error);
+          endPayment(); // End payment processing on error
           setProcessing(false);
           alert(`Provider payment failed to start: ${error.message || 'Unknown error'}`);
         }
@@ -717,6 +809,9 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
   const stripeSubmitRef = useRef<(() => Promise<void>) | null>(null);
 
   const handlePaymentSuccess = () => {
+    // End payment processing when payment succeeds
+    endPayment();
+    
     if (Platform.OS === 'web') {
       if (
         typeof window !== 'undefined' &&
@@ -801,7 +896,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                           <Text style={styles.summaryLabel}>Date & Time</Text>
                           <Text style={styles.summaryValue}>
                             {new Date(booking.scheduledDate).toLocaleDateString()} at{' '}
-                            {booking.scheduledTime}
+                            {formatTime12Hour(booking.scheduledTime)}
                           </Text>
                         </View>
 
@@ -877,6 +972,10 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                                 amount={paymentAmounts?.platformFee || 0}
                                 onSubmitRef={stripeSubmitRef}
                                 hideButton={true}
+                                onError={(title, message) => {
+                                  setProcessing(false);
+                                  setErrorModal({ visible: true, title, message });
+                                }}
                               />
                             </View>
                           )}
@@ -1000,6 +1099,21 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           setShowReceiptModal(false);
           onClose();
         }}
+      />
+
+      {/* Error Modal */}
+      <AlertModal
+        visible={errorModal.visible}
+        onClose={() => {
+          setErrorModal({ visible: false, title: '', message: '' });
+          // Reset all loading states when error modal is closed
+          setProcessing(false);
+          setPlaidLoading(false);
+        }}
+        title={errorModal.title}
+        message={errorModal.message}
+        type="error"
+        buttonText="Try Again"
       />
     </>
   );

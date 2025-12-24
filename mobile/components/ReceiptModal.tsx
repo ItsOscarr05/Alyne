@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../services/payment';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
+import { formatTime12Hour } from '../utils/timeUtils';
 import { bookingService } from '../services/booking';
 
 interface ReceiptModalProps {
@@ -73,12 +74,7 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
   };
 
   const formatTime = (timeString: string) => {
-    // Convert "14:00" to "2:00 PM"
-    const [hours, minutes] = timeString.split(':');
-    const hour = parseInt(hours, 10);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const displayHour = hour % 12 || 12;
-    return `${displayHour}:${minutes} ${ampm}`;
+    return formatTime12Hour(timeString);
   };
 
   return (

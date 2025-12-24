@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { formatTime12Hour } from '../../utils/timeUtils';
 import { bookingService } from '../../services/booking';
 
 export default function ReceiptScreen() {
@@ -59,7 +60,6 @@ export default function ReceiptScreen() {
   };
 
   const formatTime = (timeString: string) => {
-    const { formatTime12Hour } = require('../../utils/timeUtils');
     return formatTime12Hour(timeString);
   };
 

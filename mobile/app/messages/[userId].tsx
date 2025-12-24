@@ -487,19 +487,17 @@ export default function ChatScreen() {
   if (authLoading || loading) {
     return (
       <View style={styles.container}>
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Loading...</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <View style={styles.headerDivider} />
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
-          </View>
-        </ScrollView>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Loading...</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.headerDivider} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
       </View>
     );
   }
@@ -513,34 +511,32 @@ export default function ChatScreen() {
   if (!user) {
     return (
       <View style={styles.container}>
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Error</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <View style={styles.headerDivider} />
-          <View style={styles.loadingContainer}>
-            <Text style={{ color: '#ef4444', marginBottom: 16 }}>
-              Unable to load user data
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Error</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.headerDivider} />
+        <View style={styles.loadingContainer}>
+          <Text style={{ color: '#ef4444', marginBottom: 16 }}>
+            Unable to load user data
+          </Text>
+          <TouchableOpacity
+            style={{
+              backgroundColor: '#2563eb',
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 8,
+            }}
+            onPress={() => router.replace('/(auth)/login')}
+          >
+            <Text style={{ color: '#ffffff', fontWeight: '600' }}>
+              Go to Login
             </Text>
-            <TouchableOpacity
-              style={{
-                backgroundColor: '#2563eb',
-                paddingHorizontal: 24,
-                paddingVertical: 12,
-                borderRadius: 8,
-              }}
-              onPress={() => router.replace('/(auth)/login')}
-            >
-              <Text style={{ color: '#ffffff', fontWeight: '600' }}>
-                Go to Login
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -551,34 +547,33 @@ export default function ChatScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
+      {/* Fixed Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#1e293b" />
+        </TouchableOpacity>
+        <View style={styles.headerInfo}>
+          <View style={styles.headerAvatar}>
+            <Text style={styles.headerAvatarText}>
+              {otherUser?.firstName[0] || 'U'}
+              {otherUser?.lastName[0] || ''}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.headerTitle}>
+              {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'User'}
+            </Text>
+            <Text style={styles.headerSubtitle}>
+              {isConnected ? 'Online' : 'Offline'}
+            </Text>
+          </View>
+        </View>
+        <View style={{ width: 24 }} />
+      </View>
+      <View style={styles.headerDivider} />
+      
+      {/* Messages List */}
       <FlatList
-        ListHeaderComponent={
-          <>
-            <View style={styles.header}>
-              <TouchableOpacity onPress={() => router.back()}>
-                <Ionicons name="arrow-back" size={24} color="#1e293b" />
-              </TouchableOpacity>
-              <View style={styles.headerInfo}>
-                <View style={styles.headerAvatar}>
-                  <Text style={styles.headerAvatarText}>
-                    {otherUser?.firstName[0] || 'U'}
-                    {otherUser?.lastName[0] || ''}
-                  </Text>
-                </View>
-                <View>
-                  <Text style={styles.headerTitle}>
-                    {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'User'}
-                  </Text>
-                  <Text style={styles.headerSubtitle}>
-                    {isConnected ? 'Online' : 'Offline'}
-                  </Text>
-                </View>
-              </View>
-              <View style={{ width: 24 }} />
-            </View>
-            <View style={styles.headerDivider} />
-          </>
-        }
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
@@ -641,13 +636,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
+    backgroundColor: '#ffffff',
+    zIndex: 10,
   },
   headerDivider: {
     height: 1,
     backgroundColor: '#e2e8f0',
-    marginBottom: 16,
-    width: '95%',
-    alignSelf: 'center',
+    width: '100%',
   },
   content: {
     flex: 1,

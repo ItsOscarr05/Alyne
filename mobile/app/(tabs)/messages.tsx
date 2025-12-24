@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, RefreshControl, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ConversationItem } from '../../components/ConversationItem';
+import { SearchBar } from '../../components/SearchBar';
 import { messageService, Conversation } from '../../services/message';
 import { useSocket } from '../../hooks/useSocket';
 import { useAuth } from '../../hooks/useAuth';
@@ -11,6 +12,11 @@ import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
 
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
@@ -18,6 +24,7 @@ export default function MessagesScreen() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const loadConversations = async () => {
     if (!user) {
@@ -101,6 +108,42 @@ export default function MessagesScreen() {
     router.push(`/messages/${otherUserId}`);
   };
 
+  // Filter conversations based on search query
+  const filteredConversations = useMemo(() => {
+    // Animate layout changes when filtering
+    LayoutAnimation.configureNext({
+      duration: 400,
+      create: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+        springDamping: 0.7,
+      },
+      update: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.scaleY,
+        springDamping: 0.7,
+      },
+      delete: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+        property: LayoutAnimation.Properties.opacity,
+        springDamping: 0.7,
+      },
+    });
+
+    if (!searchQuery.trim()) {
+      return conversations;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    return conversations.filter((conv) => {
+      const firstName = conv.otherUser?.firstName?.toLowerCase() || '';
+      const lastName = conv.otherUser?.lastName?.toLowerCase() || '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      
+      return fullName.includes(query) || firstName.includes(query) || lastName.includes(query);
+    });
+  }, [conversations, searchQuery]);
+
   if (loading && conversations.length === 0) {
     return (
       <View style={styles.container}>
@@ -112,6 +155,13 @@ export default function MessagesScreen() {
                 <Text style={styles.title}>Messages</Text>
               </View>
               <View style={styles.headerDivider} />
+              <View style={styles.searchContainer}>
+                <SearchBar
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search conversations..."
+                />
+              </View>
             </>
           }
           ListEmptyComponent={
@@ -140,6 +190,13 @@ export default function MessagesScreen() {
                 <Text style={styles.title}>Messages</Text>
               </View>
               <View style={styles.headerDivider} />
+              <View style={styles.searchContainer}>
+                <SearchBar
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search conversations..."
+                />
+              </View>
             </>
           }
           ListEmptyComponent={
@@ -163,7 +220,7 @@ export default function MessagesScreen() {
   return (
     <View style={styles.container}>
       <FlatList
-        data={conversations}
+        data={filteredConversations}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <ConversationItem
@@ -177,12 +234,30 @@ export default function MessagesScreen() {
               <Text style={styles.title}>Messages</Text>
             </View>
             <View style={styles.headerDivider} />
+            <View style={styles.searchContainer}>
+              <SearchBar
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholder="Search conversations..."
+              />
+            </View>
           </>
         }
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        ListEmptyComponent={
+          searchQuery.trim() ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={80} color="#94a3b8" />
+              <Text style={styles.emptyTitle}>No conversations found</Text>
+              <Text style={styles.emptyText}>
+                No conversations match &quot;{searchQuery}&quot;
+              </Text>
+            </View>
+          ) : null
         }
       />
     </View>
@@ -238,6 +313,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
+  },
+  searchContainer: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.md,
   },
 });
 

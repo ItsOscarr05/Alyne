@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
+import { useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Conversation } from '../services/message';
 import { theme } from '../theme';
@@ -9,6 +10,26 @@ interface ConversationItemProps {
 }
 
 export function ConversationItem({ conversation, onPress }: ConversationItemProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    // Animate in when component mounts
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 7,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -38,7 +59,13 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
   const isProvider = conversation.otherUser.userType === 'PROVIDER';
 
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ scale: scaleAnim }],
+      }}
+    >
+      <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.avatar}>
         {conversation.otherUser.profilePhoto ? (
           <Image
@@ -79,7 +106,8 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
           <Text style={styles.providerBadgeText}>Provider</Text>
         </View>
       )}
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

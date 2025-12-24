@@ -199,15 +199,13 @@ export default function BookingDetailScreen() {
             <Text style={styles.sectionTitle}>
               {user?.userType === 'CLIENT' ? 'Provider' : 'Client'}
             </Text>
-            {((user?.userType === 'CLIENT' && booking.providerId) ||
-              (user?.userType === 'PROVIDER' && booking.clientId)) && (
+            {/* Only providers can message from booking detail - clients must use provider detail */}
+            {user?.userType === 'PROVIDER' && booking.clientId && (
               <TouchableOpacity
                 style={styles.messageButton}
                 onPress={() => {
-                  const otherUserId =
-                    user?.userType === 'CLIENT' ? booking.providerId : booking.clientId;
-                  if (otherUserId) {
-                    router.push(`/messages/${otherUserId}`);
+                  if (booking.clientId) {
+                    router.push(`/messages/${booking.clientId}`);
                   }
                 }}
               >

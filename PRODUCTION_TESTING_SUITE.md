@@ -230,43 +230,43 @@ PLAID_ENV=sandbox
 
 **Test D1.1: Basic Discovery**
 
-- [ ] Login as client
-- [ ] Navigate to Discover tab
-- [ ] Verify provider cards display
-- [ ] Verify each card shows:
+- [x] Login as client
+- [x] Navigate to Discover tab
+- [x] Verify provider cards display
+- [x] Verify each card shows:
   - Provider name
   - Profile photo (or placeholder)
   - Rating (or "No reviews yet")
   - Price range or "Starting at $X"
   - Specialty tags
-- [ ] Verify cards are tappable
+- [x] Verify cards are tappable
 
 **Test D1.2: Location-Based Discovery**
 
-- [ ] Grant location permissions
-- [ ] Verify providers sorted by distance
-- [ ] Verify distance displayed (if applicable)
-- [ ] Test with location denied
-- [ ] Verify fallback behavior works
+- [x] Grant location permissions
+- [x] Verify providers sorted by distance
+- [x] Verify distance displayed (if applicable)
+- [x] Test with location denied
+- [x] Verify fallback behavior works
 
 **Test D1.3: Search Functionality**
 
-- [ ] Enter search query (e.g., "yoga")
-- [ ] Verify results filter correctly
-- [ ] Clear search
-- [ ] Verify all providers show again
-- [ ] Test with partial matches
-- [ ] Test with special characters
-- [ ] Test with empty search
+- [x] Enter search query (e.g., "yoga")
+- [x] Verify results filter correctly
+- [x] Clear search
+- [x] Verify all providers show again
+- [x] Test with partial matches
+- [x] Test with special characters
+- [x] Test with empty search
 
 **Test D1.4: Filter Functionality**
 
-- [ ] Apply service type filter
-- [ ] Apply price range filter
-- [ ] Apply rating filter
-- [ ] Apply multiple filters simultaneously
-- [ ] Clear filters
-- [ ] Verify filter state persists
+- [x] Apply service type filter
+- [x] Apply price range filter
+- [x] Apply rating filter
+- [x] Apply multiple filters simultaneously
+- [x] Clear filters
+- [x] Verify filter state persists
 
 ### Test Suite D2: Provider Detail Modal
 
@@ -308,11 +308,12 @@ PLAID_ENV=sandbox
 
 **Test D2.4: Availability Display**
 
-- [ ] Verify availability slots are displayed
-- [ ] Verify slots have blue outline
-- [ ] Verify slot sizes are appropriate
-- [ ] Verify slots show correct times
-- [ ] Verify slots are formatted correctly
+- [x] Verify availability slots are displayed
+- [x] Verify slots have blue outline
+- [x] Verify slot sizes are appropriate
+- [x] Verify slots show correct times
+- [x] Verify slots are formatted correctly (12-hour format)
+- [x] Verify unavailable days are removed from display
 
 ---
 
@@ -348,13 +349,15 @@ PLAID_ENV=sandbox
 
 **Test B1.3: Date & Time Selection**
 
-- [ ] Verify calendar displays correctly
-- [ ] Select a date
-- [ ] Verify time slots appear
-- [ ] Select a time slot
-- [ ] Verify selection is saved
-- [ ] Test with past dates (should be disabled)
-- [ ] Test with unavailable dates
+- [x] Verify calendar displays correctly
+- [x] Select a date
+- [x] Verify time slots appear (dynamically generated based on provider availability)
+- [x] Verify time slots displayed in 12-hour format
+- [x] Select a time slot
+- [x] Verify selection is saved
+- [x] Test with past dates (should be disabled)
+- [x] Test with unavailable dates
+- [x] Verify time slots only show for days provider is available
 
 **Test B1.4: Booking Validation**
 
@@ -376,23 +379,23 @@ PLAID_ENV=sandbox
 
 **Test B2.1: Provider Accept Booking**
 
-- [ ] Login as provider
-- [ ] Navigate to Bookings tab
-- [ ] Go to "Pending" tab
-- [ ] Verify pending booking displays
-- [ ] Click "Accept" button
-- [ ] Verify booking status changes to "Confirmed"
-- [ ] Verify booking moves to "Upcoming" tab
-- [ ] Verify client sees update in real-time
+- [x] Login as provider
+- [x] Navigate to Bookings tab
+- [x] Go to "Pending" tab
+- [x] Verify pending booking displays
+- [x] Click "Accept" button
+- [x] Verify booking status changes to "Confirmed"
+- [x] Verify booking moves to "Upcoming" tab
+- [x] Verify client sees update in real-time (no refresh needed)
 
 **Test B2.2: Provider Decline Booking**
 
-- [ ] Login as provider
-- [ ] Navigate to pending booking
-- [ ] Click "Decline" button
-- [ ] Verify booking status changes to "Declined"
-- [ ] Verify booking moves to "Declined" tab
-- [ ] Verify client sees update in real-time
+- [x] Login as provider
+- [x] Navigate to pending booking
+- [x] Click "Decline" button
+- [x] Verify booking status changes to "Declined"
+- [x] Verify booking moves to "Declined" tab
+- [x] Verify client sees update in real-time (no refresh needed)
 
 **Test B2.3: Provider Complete Booking**
 
@@ -468,11 +471,11 @@ PLAID_ENV=sandbox
 
 **Test B4.1: Status Update Real-Time**
 
-- [ ] Open bookings page as client
-- [ ] Have provider accept/decline booking in another session
-- [ ] Verify booking status updates automatically
-- [ ] Verify booking moves to correct tab automatically
-- [ ] Verify no page refresh needed
+- [x] Open bookings page as client
+- [x] Have provider accept/decline booking in another session
+- [x] Verify booking status updates automatically
+- [x] Verify booking moves to correct tab automatically
+- [x] Verify no page refresh needed
 
 **Test B4.2: New Booking Real-Time**
 
@@ -494,25 +497,26 @@ PLAID_ENV=sandbox
 
 **Test P1.1: Payment Intent Initialization**
 
-- [ ] Navigate to payment for confirmed booking
-- [ ] Verify PaymentCheckoutModal opens
-- [ ] Verify modal styling (blue outline, fade animation)
-- [ ] Verify booking summary displays correctly
-- [ ] Verify payment breakdown shows:
+- [x] Navigate to payment for confirmed booking
+- [x] Verify PaymentCheckoutModal opens
+- [x] Verify modal styling (blue outline, fade animation)
+- [x] Verify booking summary displays correctly
+- [x] Verify times displayed in 12-hour format
+- [x] Verify payment breakdown shows:
   - Service Price
   - Platform Fee (Alyne)
   - Total Amount Due
-- [ ] Verify payment breakdown card shows:
+- [x] Verify payment breakdown card shows:
   - Platform Fee (Stripe): $X.XX
   - Provider Payment (Plaid): $X.XX
 
 **Test P1.2: Payment Amounts Calculation**
 
-- [ ] Verify platform fee is calculated correctly (e.g., 10% or configured percentage)
-- [ ] Verify provider amount equals service price
-- [ ] Verify total = provider amount + platform fee
-- [ ] Test with different service prices
-- [ ] Verify amounts display with 2 decimal places
+- [x] Verify platform fee is calculated correctly (7.5%)
+- [x] Verify provider amount equals service price
+- [x] Verify total = provider amount + platform fee
+- [x] Test with different service prices
+- [x] Verify amounts display with 2 decimal places
 
 ### Test Suite P2: Stripe Payment (Platform Fee)
 
@@ -536,10 +540,11 @@ PLAID_ENV=sandbox
 
 **Test P2.3: Stripe Payment Errors**
 
-- [ ] Use declined card: `4000 0000 0000 0002`
-- [ ] Verify error message displays
-- [ ] Verify payment form remains accessible
-- [ ] Verify user can retry payment
+- [x] Use declined card: `4000 0000 0000 0002`
+- [x] Verify error message displays (in AlertModal, not native alert)
+- [x] Verify payment form remains accessible
+- [x] Verify user can retry payment
+- [x] Verify buttons reset from loading state after error
 
 ### Test Suite P3: Plaid Payment (Provider Amount)
 
@@ -584,22 +589,25 @@ PLAID_ENV=sandbox
 
 **Test P4.1: Receipt Display**
 
-- [ ] Complete payment successfully
-- [ ] Verify ReceiptModal opens
-- [ ] Verify receipt shows:
+- [x] Complete payment successfully
+- [x] Verify ReceiptModal opens (as modal, not separate screen)
+- [x] Verify receipt shows:
   - Booking details
   - Payment breakdown
   - Transaction IDs
   - Payment dates
   - Total amounts
+  - Times in 12-hour format
 - [ ] Verify receipt is printable/exportable (if applicable)
 
 **Test P4.2: Payment History**
 
-- [ ] Navigate to payment history (if available)
-- [ ] Verify completed payments display
-- [ ] Verify payment details are accurate
-- [ ] Verify payments are sortable/filterable
+- [x] Navigate to payment history (if available)
+- [x] Verify completed payments display
+- [x] Verify payment details are accurate
+- [x] Verify payments are sortable/filterable
+- [x] Verify filter buttons work even when no entries match
+- [x] Verify times displayed in 12-hour format
 
 ### Test Suite P5: Payment Edge Cases
 
@@ -619,10 +627,14 @@ PLAID_ENV=sandbox
 
 **Test P5.3: Concurrent Payments**
 
-- [ ] Open payment modal for multiple bookings
-- [ ] Attempt to pay simultaneously
-- [ ] Verify only one payment processes at a time
-- [ ] Verify proper error handling
+- [x] Open payment modal for a booking
+- [x] Attempt to open payment modal for another booking while first is processing
+- [x] Verify error message displays: "Payment Already in Progress"
+- [x] Verify only one payment can be processed at a time
+- [x] Verify payment state is properly managed globally
+- [x] Complete first payment
+- [x] Verify can now open payment modal for another booking
+- [x] Verify proper error handling for concurrent attempts
 
 ---
 
@@ -632,22 +644,46 @@ PLAID_ENV=sandbox
 
 **Test M1.1: Conversation Display**
 
-- [ ] Navigate to Messages tab
-- [ ] Verify conversations list displays
-- [ ] Verify each conversation shows:
+- [x] Navigate to Messages tab
+- [x] Verify conversations list displays
+- [x] Verify search bar appears at the top
+- [x] Verify each conversation shows:
   - Other user's name
   - Last message preview
   - Timestamp
   - Unread count badge (if applicable)
   - Provider badge (if applicable)
-- [ ] Verify empty state displays when no conversations
+- [x] Verify empty state displays when no conversations
 
 **Test M1.2: Conversation Navigation**
 
-- [ ] Click on a conversation
-- [ ] Verify chat screen opens
-- [ ] Verify back button works
-- [ ] Verify conversation list refreshes on return
+- [x] Click on a conversation
+- [x] Verify chat screen opens
+- [x] Verify header is fixed at the top of the screen
+- [x] Verify header shows:
+  - Back button
+  - User avatar and name
+  - Online/Offline status
+- [x] Scroll through messages
+- [x] Verify header remains fixed at top
+- [x] Verify back button works
+- [x] Verify conversation list refreshes on return
+
+**Test M1.2.1: Conversation Search**
+
+- [x] Navigate to Messages tab
+- [x] Type in search bar (e.g., provider name)
+- [x] Verify conversations filter in real-time
+- [x] Verify non-matching conversations collapse with smooth animation
+- [x] Verify matching conversations expand with smooth animation
+- [x] Clear search
+- [x] Verify all conversations expand back smoothly
+- [x] Verify search works with:
+  - First name
+  - Last name
+  - Full name
+  - Case-insensitive matching
+- [x] Verify empty state shows when no matches found
 
 **Test M1.3: Real-Time Conversation Updates**
 
@@ -692,37 +728,55 @@ PLAID_ENV=sandbox
 
 **Test M2.5: Empty Chat State**
 
-- [ ] Open new conversation (no messages)
-- [ ] Verify empty state displays
-- [ ] Verify "Start the conversation" message shows
-- [ ] Send first message
-- [ ] Verify empty state disappears
+- [x] Open new conversation (no messages)
+- [x] Verify header is fixed at top of screen
+- [x] Verify empty state displays
+- [x] Verify "Start the conversation" message shows
+- [x] Send first message
+- [x] Verify empty state disappears
+- [x] Verify header remains fixed while scrolling through messages
 
 ### Test Suite M3: Starting New Conversations
 
 **Test M3.1: Message from Booking Card**
 
-- [ ] Navigate to Bookings tab
-- [ ] Find a booking card
-- [ ] Click message button (chat bubble icon)
-- [ ] Verify chat screen opens
-- [ ] Verify correct user is selected
-- [ ] Verify can send message
+- [x] Login as provider
+- [x] Navigate to Bookings tab
+- [x] Find a booking card
+- [x] Verify message button (chat bubble icon) appears for providers
+- [x] Click message button
+- [x] Verify chat screen opens
+- [x] Verify correct user is selected
+- [x] Verify can send message
+- [x] Login as client
+- [x] Navigate to Bookings tab
+- [x] Verify message button does NOT appear on booking cards
+- [x] Verify clients cannot message from booking cards
 
 **Test M3.2: Message from Provider Detail**
 
-- [ ] Open provider detail modal
-- [ ] Click "Message" button
-- [ ] Verify modal closes
-- [ ] Verify chat screen opens
-- [ ] Verify correct provider is selected
+- [x] Login as client
+- [x] Open provider detail modal (from Discover screen)
+- [x] Verify "Message" button appears in footer
+- [x] Click "Message" button
+- [x] Verify modal closes
+- [x] Verify chat screen opens
+- [x] Verify correct provider is selected
+- [x] Verify this is the ONLY way clients can start new conversations
+- [x] Verify clients cannot start conversations from booking cards or booking detail screens
 
 **Test M3.3: Message from Booking Detail**
 
-- [ ] Open booking detail page
-- [ ] Click "Message" button in Provider/Client section
-- [ ] Verify chat screen opens
-- [ ] Verify correct user is selected
+- [x] Login as provider
+- [x] Open booking detail page
+- [x] Verify "Message" button appears in Provider/Client section
+- [x] Click "Message" button
+- [x] Verify chat screen opens
+- [x] Verify correct user is selected
+- [x] Login as client
+- [x] Open booking detail page
+- [x] Verify "Message" button does NOT appear for clients
+- [x] Verify clients cannot message from booking detail screen
 
 **Test M3.4: New Conversation Creation**
 
@@ -771,15 +825,17 @@ PLAID_ENV=sandbox
 
 **Test R1.4: Review Display on Profile**
 
-- [ ] Submit a review
-- [ ] Navigate to provider profile
-- [ ] Go to Reviews tab
-- [ ] Verify review displays:
+- [x] Submit a review
+- [x] Navigate to provider profile
+- [x] Go to Reviews tab
+- [x] Verify review displays:
   - Star rating
   - Comment text
   - Reviewer name (or "Anonymous")
   - Review date
-- [ ] Verify review appears in correct order
+- [x] Verify review appears in correct order
+- [x] Verify provider rating updates in real-time after review submission
+- [x] Verify review count updates in real-time
 
 ### Test Suite R2: Review Editing
 
@@ -944,26 +1000,27 @@ PLAID_ENV=sandbox
 
 **Test RT1.2: Booking Updates**
 
-- [ ] Open bookings page
-- [ ] Have another user change booking status
-- [ ] Verify booking updates in real-time
-- [ ] Verify no page refresh needed
-- [ ] Verify updates are instant
+- [x] Open bookings page
+- [x] Have another user change booking status
+- [x] Verify booking updates in real-time
+- [x] Verify no page refresh needed
+- [x] Verify updates are instant
+- [x] Verify bookings move between tabs automatically (Pending → Upcoming)
 
 **Test RT1.3: Message Updates**
 
-- [ ] Open messages/conversation
-- [ ] Have another user send message
-- [ ] Verify message appears in real-time
-- [ ] Verify unread counts update
-- [ ] Verify conversation list updates
+- [x] Open messages/conversation
+- [x] Have another user send message
+- [x] Verify message appears in real-time
+- [x] Verify unread counts update
+- [x] Verify conversation list updates
 
 **Test RT1.4: Payment Updates**
 
-- [ ] Complete payment
-- [ ] Verify payment status updates in real-time
-- [ ] Verify booking reflects payment status
-- [ ] Verify provider sees payment update
+- [x] Complete payment
+- [x] Verify payment status updates in real-time
+- [x] Verify booking reflects payment status
+- [x] Verify provider sees payment update
 
 ---
 

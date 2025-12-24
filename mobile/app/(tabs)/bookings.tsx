@@ -20,6 +20,7 @@ import { reviewService } from '../../services/review';
 import { paymentService } from '../../services/payment';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
+import { usePaymentContext } from '../../contexts/PaymentContext';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
@@ -34,6 +35,7 @@ export default function BookingsScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { onBookingUpdate } = useSocket();
+  const { isProcessing: paymentProcessing, currentBookingId } = usePaymentContext();
   const modal = useModal();
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -299,14 +301,12 @@ export default function BookingsScreen() {
   };
 
   const handleMessage = (booking: BookingDetail) => {
-    // Determine which user to message
-    // If current user is a client, message the provider
-    // If current user is a provider, message the client
-    const otherUserId = user?.userType === 'CLIENT' ? booking.providerId : booking.clientId;
-    
-    if (otherUserId) {
-      router.push(`/messages/${otherUserId}`);
+    // Only providers can message from bookings screen - clients must use provider detail
+    // Clients should only be able to message through the provider detail modal
+    if (user?.userType === 'PROVIDER' && booking.clientId) {
+      router.push(`/messages/${booking.clientId}`);
     }
+    // For clients, do nothing - they should use provider detail to start conversations
   };
 
   const handleAccept = async (bookingId: string) => {
@@ -408,6 +408,16 @@ export default function BookingsScreen() {
   );
 
   const handlePayment = (bookingId: string) => {
+    // Check if another payment is already processing
+    if (paymentProcessing) {
+      modal.showAlert({
+        title: 'Payment Already in Progress',
+        message: `A payment for another booking is currently being processed. Please wait for it to complete before starting a new payment.${currentBookingId ? ` (Booking ID: ${currentBookingId.substring(0, 8)}...)` : ''}`,
+        type: 'warning',
+      });
+      return;
+    }
+    
     setSelectedBookingIdForPayment(bookingId);
     setPaymentModalVisible(true);
   };
@@ -740,8 +750,8 @@ export default function BookingsScreen() {
                               ? () => handleDecline(booking.id)
                               : undefined
                           }
-                          showMessageButton={true}
-                          onMessagePress={() => handleMessage(booking)}
+                          showMessageButton={user?.userType === 'PROVIDER' ? true : false}
+                          onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
                       </View>
                     );
@@ -870,8 +880,8 @@ export default function BookingsScreen() {
                           onComplete={
                             showCompleteButton ? () => handleComplete(booking.id) : undefined
                           }
-                          showMessageButton={true}
-                          onMessagePress={() => handleMessage(booking)}
+                          showMessageButton={user?.userType === 'PROVIDER' ? true : false}
+                          onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
                       </View>
                     );
@@ -978,8 +988,8 @@ export default function BookingsScreen() {
                           onPress={() => handleBookingPress(booking.id)}
                           showOptions={true}
                           onOptionsPress={() => handleOptionsPress(booking.id)}
-                          showMessageButton={true}
-                          onMessagePress={() => handleMessage(booking)}
+                          showMessageButton={user?.userType === 'PROVIDER' ? true : false}
+                          onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
                       </View>
                     );

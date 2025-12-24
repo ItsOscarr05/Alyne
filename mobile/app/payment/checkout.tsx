@@ -14,9 +14,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { paymentService } from '../../services/payment';
 import { bookingService } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
+import { usePaymentContext } from '../../contexts/PaymentContext';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
+import { ReceiptModal } from '../../components/ReceiptModal';
 import Constants from 'expo-constants';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
@@ -371,6 +373,7 @@ export default function PaymentCheckoutScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const { user } = useAuth();
+  const { startPayment, endPayment, isProcessing: globalIsProcessing, currentBookingId } = usePaymentContext();
   
   // Redirect providers - they don't make payments
   useEffect(() => {
@@ -397,15 +400,39 @@ export default function PaymentCheckoutScreen() {
   const [requiresPlaidPayment, setRequiresPlaidPayment] = useState(false);
   const [stripePaymentComplete, setStripePaymentComplete] = useState(false);
   const [plaidPaymentComplete, setPlaidPaymentComplete] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   
   // Native Stripe hooks
   const stripeNative = useStripeNative ? useStripeNative() : null;
 
   useEffect(() => {
     if (bookingId) {
+      // Check if another payment is already processing
+      if (globalIsProcessing && currentBookingId !== bookingId) {
+        Alert.alert(
+          'Payment Already in Progress',
+          'Another payment is currently being processed. Please wait for it to complete before starting a new payment.'
+        );
+        router.back();
+        return;
+      }
+      
+      // Start payment processing
+      if (!startPayment(bookingId)) {
+        Alert.alert(
+          'Payment Already in Progress',
+          'A payment is already being processed. Please wait for it to complete before starting a new payment.'
+        );
+        router.back();
+        return;
+      }
+      
       initializePayment();
+    } else {
+      // End payment processing when component unmounts or bookingId changes
+      endPayment();
     }
-  }, [bookingId]);
+  }, [bookingId, globalIsProcessing, currentBookingId, startPayment, endPayment, router]);
 
   // Initialize Stripe for web - load modules dynamically
   useEffect(() => {
@@ -655,25 +682,10 @@ export default function PaymentCheckoutScreen() {
   const stripeSubmitRef = useRef<(() => Promise<void>) | null>(null);
 
   const handlePaymentSuccess = () => {
-    if (Platform.OS === 'web') {
-      if (typeof window !== 'undefined' && window.confirm('Payment completed successfully! View receipt?')) {
-        router.replace(`/payment/receipt?bookingId=${bookingId}`);
-      } else {
-        router.replace('/(tabs)/bookings');
-      }
-    } else {
-      Alert.alert('Success', 'Payment completed successfully!', [
-        {
-          text: 'View Receipt',
-          onPress: () => router.replace(`/payment/receipt?bookingId=${bookingId}`),
-        },
-        {
-          text: 'Done',
-          style: 'cancel',
-          onPress: () => router.replace('/(tabs)/bookings'),
-        },
-      ]);
-    }
+    // End payment processing when payment succeeds
+    endPayment();
+    // Show receipt modal instead of navigating
+    setShowReceiptModal(true);
   };
 
   if (loading || !booking) {
@@ -878,6 +890,16 @@ export default function PaymentCheckoutScreen() {
           )}
         </ScrollView>
       </View>
+
+      {/* Receipt Modal */}
+      <ReceiptModal
+        visible={showReceiptModal}
+        bookingId={bookingId || null}
+        onClose={() => {
+          setShowReceiptModal(false);
+          router.replace('/(tabs)/bookings');
+        }}
+      />
     </View>
   );
 }
