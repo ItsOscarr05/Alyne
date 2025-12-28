@@ -1,7 +1,7 @@
 import { prisma } from '../utils/db';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
-import { getCache, setCache, cacheKeys } from '../utils/cache';
+import { getCache, setCache, deleteCache, cacheKeys } from '../utils/cache';
 
 
 interface DiscoveryFilters {
@@ -247,8 +247,8 @@ export const providerService = {
               },
             },
             credentials: {
-              where: {
-                isVerified: true,
+              orderBy: {
+                createdAt: 'asc',
               },
             },
             availability: true,
@@ -387,25 +387,44 @@ export const providerService = {
       where: { userId },
     });
 
+    logger.debug('createOrUpdateProfile called', {
+      userId,
+      hasExistingProfile: !!existingProfile,
+      profileDataKeys: Object.keys(profileData),
+      serviceArea: profileData.serviceArea,
+    });
+
+    let profile;
     if (existingProfile) {
       // Update existing profile
-      return await prisma.providerProfile.update({
+      // Ensure serviceArea is properly formatted as JSON
+      const updateData: any = {
+        bio: profileData.bio,
+        specialties: profileData.specialties || [],
+        isActive: profileData.isActive !== undefined ? profileData.isActive : true,
+      };
+
+      // Only update serviceArea if it's provided
+      if (profileData.serviceArea !== undefined) {
+        updateData.serviceArea = profileData.serviceArea;
+      }
+
+      logger.debug('Updating profile', { userId, updateData });
+
+      profile = await prisma.providerProfile.update({
         where: { userId },
-        data: {
-          bio: profileData.bio,
-          specialties: profileData.specialties || [],
-          serviceArea: profileData.serviceArea,
-          isActive: profileData.isActive !== undefined ? profileData.isActive : true,
-        },
+        data: updateData,
         include: {
           services: true,
           credentials: true,
           availability: true,
         },
       });
+
+      logger.debug('Profile updated', { userId, serviceArea: profile.serviceArea });
     } else {
       // Create new profile
-      return await prisma.providerProfile.create({
+      profile = await prisma.providerProfile.create({
         data: {
           userId,
           bio: profileData.bio,
@@ -421,7 +440,15 @@ export const providerService = {
           availability: true,
         },
       });
+
+      logger.debug('Profile created', { userId, serviceArea: profile.serviceArea });
     }
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return profile;
   },
 
   async createService(userId: string, serviceData: {
@@ -438,7 +465,7 @@ export const providerService = {
       throw createError('Provider profile not found', 404);
     }
 
-    return await prisma.service.create({
+    const service = await prisma.service.create({
       data: {
         providerId: profile.id,
         name: serviceData.name,
@@ -447,6 +474,12 @@ export const providerService = {
         duration: serviceData.duration,
       },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return service;
   },
 
   async updateService(userId: string, serviceId: string, serviceData: {
@@ -476,10 +509,16 @@ export const providerService = {
       throw createError('Service not found', 404);
     }
 
-    return await prisma.service.update({
+    const updated = await prisma.service.update({
       where: { id: serviceId },
       data: serviceData,
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return updated;
   },
 
   async deleteService(userId: string, serviceId: string) {
@@ -503,9 +542,13 @@ export const providerService = {
       throw createError('Service not found', 404);
     }
 
-    return await prisma.service.delete({
+    await prisma.service.delete({
       where: { id: serviceId },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
   },
 
   async createCredential(userId: string, credentialData: {
@@ -523,7 +566,7 @@ export const providerService = {
       throw createError('Provider profile not found', 404);
     }
 
-    return await prisma.credential.create({
+    const credential = await prisma.credential.create({
       data: {
         providerId: profile.id,
         name: credentialData.name,
@@ -533,6 +576,12 @@ export const providerService = {
         documentUrl: credentialData.documentUrl,
       },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return credential;
   },
 
   async updateCredential(userId: string, credentialId: string, credentialData: {
@@ -562,7 +611,7 @@ export const providerService = {
       throw createError('Credential not found', 404);
     }
 
-    return await prisma.credential.update({
+    const updated = await prisma.credential.update({
       where: { id: credentialId },
       data: {
         ...credentialData,
@@ -570,6 +619,12 @@ export const providerService = {
         expiryDate: credentialData.expiryDate ? new Date(credentialData.expiryDate) : undefined,
       },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return updated;
   },
 
   async deleteCredential(userId: string, credentialId: string) {
@@ -593,9 +648,13 @@ export const providerService = {
       throw createError('Credential not found', 404);
     }
 
-    return await prisma.credential.delete({
+    await prisma.credential.delete({
       where: { id: credentialId },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
   },
 
   async createAvailability(userId: string, availabilityData: {
@@ -613,7 +672,7 @@ export const providerService = {
       throw createError('Provider profile not found', 404);
     }
 
-    return await prisma.availabilitySlot.create({
+    const slot = await prisma.availabilitySlot.create({
       data: {
         providerId: profile.id,
         dayOfWeek: availabilityData.dayOfWeek,
@@ -623,6 +682,12 @@ export const providerService = {
         specificDate: availabilityData.specificDate ? new Date(availabilityData.specificDate) : null,
       },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return slot;
   },
 
   async updateAvailability(userId: string, availabilityId: string, availabilityData: {
@@ -652,13 +717,19 @@ export const providerService = {
       throw createError('Availability slot not found', 404);
     }
 
-    return await prisma.availabilitySlot.update({
+    const updated = await prisma.availabilitySlot.update({
       where: { id: availabilityId },
       data: {
         ...availabilityData,
         specificDate: availabilityData.specificDate ? new Date(availabilityData.specificDate) : undefined,
       },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
+
+    return updated;
   },
 
   async deleteAvailability(userId: string, availabilityId: string) {
@@ -682,9 +753,13 @@ export const providerService = {
       throw createError('Availability slot not found', 404);
     }
 
-    return await prisma.availabilitySlot.delete({
+    await prisma.availabilitySlot.delete({
       where: { id: availabilityId },
     });
+
+    // Invalidate provider cache
+    const cacheKey = cacheKeys.provider(userId);
+    await deleteCache(cacheKey);
   },
 };
 

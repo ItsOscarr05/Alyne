@@ -1,26 +1,45 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TextInputProps, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
 
 interface FormFieldProps extends TextInputProps {
   label: string;
   error?: string;
+  required?: boolean;
 }
 
-export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secureTextEntry, ...inputProps }) => {
+export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secureTextEntry, required, ...inputProps }) => {
   const hasError = Boolean(error);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const isPasswordField = secureTextEntry;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}
+        {required && <Text style={styles.requiredAsterisk}> *</Text>}
+      </Text>
       <View style={styles.inputContainer}>
         <TextInput
-          style={[styles.input, hasError && styles.inputError, isPasswordField && styles.inputWithIcon, style]}
+          style={[
+            styles.input,
+            isFocused && styles.inputFocused,
+            hasError && styles.inputError,
+            isPasswordField && styles.inputWithIcon,
+            style
+          ]}
           placeholderTextColor={theme.colors.neutral[500]}
           secureTextEntry={isPasswordField && !isPasswordVisible}
+          onFocus={(e) => {
+            setIsFocused(true);
+            inputProps.onFocus?.(e);
+          }}
+          onBlur={(e) => {
+            setIsFocused(false);
+            inputProps.onBlur?.(e);
+          }}
           {...inputProps}
         />
         {isPasswordField && (
@@ -52,6 +71,9 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
   },
+  requiredAsterisk: {
+    color: theme.colors.semantic.error,
+  },
   inputContainer: {
     position: 'relative',
   },
@@ -64,6 +86,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: theme.colors.white,
     color: theme.colors.neutral[900],
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
+  },
+  inputFocused: {
+    borderColor: theme.colors.primary[500],
+    borderWidth: 2,
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
   },
   inputWithIcon: {
     paddingRight: 50,

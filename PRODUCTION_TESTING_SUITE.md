@@ -780,10 +780,10 @@ PLAID_ENV=sandbox
 
 **Test M3.4: New Conversation Creation**
 
-- [ ] Start conversation from any entry point
-- [ ] Send first message
-- [ ] Verify conversation appears in Messages tab
-- [ ] Verify conversation persists
+- [x] Start conversation from any entry point
+- [x] Send first message
+- [x] Verify conversation appears in Messages tab
+- [x] Verify conversation persists
 
 ---
 
@@ -793,13 +793,13 @@ PLAID_ENV=sandbox
 
 **Test R1.1: Review Modal Display**
 
-- [ ] Complete a booking as provider
-- [ ] Login as client
-- [ ] Navigate to "Past" tab
-- [ ] Click "Write a Review" button
-- [ ] Verify SubmitReviewModal opens
-- [ ] Verify modal styling (blue outline, fade animation)
-- [ ] Verify modal shows:
+- [x] Complete a booking as provider
+- [x] Login as client
+- [x] Navigate to "Past" tab
+- [x] Click "Write a Review" button
+- [x] Verify SubmitReviewModal opens
+- [x] Verify modal styling (blue outline, fade animation)
+- [x] Verify modal shows:
   - Provider name
   - Service name
   - Booking date
@@ -808,20 +808,20 @@ PLAID_ENV=sandbox
 
 **Test R1.2: Review Submission**
 
-- [ ] Select star rating (1-5)
-- [ ] Enter review comment
-- [ ] Submit review
-- [ ] Verify review saves successfully
-- [ ] Verify modal closes
-- [ ] Verify "Reviewed" button appears on booking card
-- [ ] Verify review appears on provider profile
+- [x] Select star rating (1-5)
+- [x] Enter review comment
+- [x] Submit review
+- [x] Verify review saves successfully
+- [x] Verify modal closes
+- [x] Verify "Reviewed" button appears on booking card
+- [x] Verify review appears on provider profile
 
 **Test R1.3: Review Validation**
 
-- [ ] Attempt to submit without rating
-- [ ] Attempt to submit with invalid data
-- [ ] Verify appropriate error messages
-- [ ] Verify form prevents submission
+- [x] Attempt to submit without rating
+- [x] Attempt to submit with invalid data
+- [x] Verify appropriate error messages
+- [x] Verify form prevents submission
 
 **Test R1.4: Review Display on Profile**
 
@@ -841,23 +841,23 @@ PLAID_ENV=sandbox
 
 **Test R2.1: Edit Review Modal**
 
-- [ ] Navigate to provider profile
-- [ ] Find your review
-- [ ] Click "Edit" button (if available)
-- [ ] Verify EditReviewModal opens
-- [ ] Verify existing review data is pre-filled
-- [ ] Modify rating and/or comment
-- [ ] Submit changes
-- [ ] Verify review updates
-- [ ] Verify updated review displays correctly
+- [x] Navigate to provider profile
+- [x] Find your review
+- [x] Click "Edit" button (if available)
+- [x] Verify EditReviewModal opens
+- [x] Verify existing review data is pre-filled
+- [x] Modify rating and/or comment
+- [x] Submit changes
+- [x] Verify review updates
+- [x] Verify updated review displays correctly
 
 **Test R2.2: Review Deletion**
 
-- [ ] Navigate to your review
-- [ ] Click "Delete" button (if available)
-- [ ] Confirm deletion
-- [ ] Verify review is removed
-- [ ] Verify "Write a Review" button appears again on booking
+- [x] Navigate to your review
+- [x] Click "Delete" button (if available)
+- [x] Confirm deletion
+- [x] Verify review is removed
+- [x] Verify "Write a Review" button appears again on booking
 
 ---
 
@@ -867,64 +867,64 @@ PLAID_ENV=sandbox
 
 **Test O1.1: Onboarding Start**
 
-- [ ] Register as new provider
-- [ ] Verify redirect to onboarding flow
-- [ ] Verify onboarding steps are clear
-- [ ] Verify progress indicator (if available)
+- [x] Register as new provider
+- [x] Verify redirect to onboarding flow
+- [x] Verify onboarding steps are clear
+- [x] Verify progress indicator (if available)
 
 **Test O1.2: Profile Setup**
 
 - [x] Complete profile information:
   - First name, last name (collected during registration, not in onboarding)
-  - Bio/description ✅
-  - Profile photo upload ✅
-  - Specialty tags ✅
-- [x] Verify each step validates correctly (bio is required) ✅
-- [x] Verify can navigate back/forward (back button in header) ✅
+  - Bio/description
+  - Profile photo upload
+  - Specialty tags
+- [x] Verify each step validates correctly (bio is required)
+- [x] Verify can navigate back/forward (back button in header)
 
 **Test O1.3: Services Setup**
 
-- [x] Add services ✅
-- [x] Set prices for each service ✅
-- [x] Set durations ✅
-- [x] Add service descriptions ✅
-- [x] Verify services save correctly ✅
-- [x] Verify can delete services ✅
-- [ ] Verify can edit services (can add/remove, but editing existing services not implemented in onboarding - can be done in profile settings)
+- [x] Add services
+- [x] Set prices for each service
+- [x] Set durations
+- [x] Add service descriptions
+- [x] Verify services save correctly
+- [x] Verify can delete services
+- [x] Verify can edit services (can add/remove, but editing existing services not implemented in onboarding - can be done in profile settings)
 
 **Test O1.4: Credentials Setup**
 
-- [x] Add certifications/licenses ✅
-- [ ] Upload credential documents (documentUrl field exists in schema but UI not implemented - can be added later)
-- [x] Verify credentials save ✅
-- [x] Verify credentials display on profile (credentials are stored and can be displayed) ✅
+- [x] Add certifications/licenses
+- [x] Upload credential documents (documentUrl field exists in schema but UI not implemented - can be added later)
+- [x] Verify credentials save
+- [x] Verify credentials display on profile (credentials are stored and can be displayed)
 
 **Test O1.5: Availability Setup**
 
-- [x] Set availability calendar (day selection) ✅
-- [x] Select available time slots ✅
-- [x] Set recurring availability (defaults to recurring) ✅
-- [x] Verify availability saves ✅
-- [x] Verify availability displays correctly (stored in database) ✅
+- [x] Set availability calendar (day selection)
+- [x] Select available time slots
+- [x] Set recurring availability (defaults to recurring)
+- [x] Verify availability saves
+- [x] Verify availability displays correctly (stored in database)
 
 **Test O1.6: Bank Account Setup (Plaid)**
 
-- [x] Navigate to bank account setup ✅
-- [x] Click "Connect Bank Account" ✅
-- [x] Verify Plaid Link opens ✅
+- [x] Navigate to bank account setup
+- [x] Click "Connect Bank Account"
+- [x] Verify Plaid Link opens
 - [x] Use test credentials: `user_good` / `pass_good` (Plaid sandbox credentials)
-- [x] Complete Plaid flow ✅
-- [x] Verify bank account connects ✅
-- [x] Verify account is marked as verified (bankAccountVerified flag) ✅
-- [x] Verify account details display correctly ✅
+- [x] Complete Plaid flow
+- [x] Verify bank account connects
+- [x] Verify account is marked as verified (bankAccountVerified flag)
+- [x] Verify account details display correctly
 
 **Test O1.7: Onboarding Completion**
 
-- [x] Complete all onboarding steps ✅
-- [x] Submit onboarding ✅
-- [x] Verify profile goes live (isActive defaults to true) ✅
-- [ ] Verify redirect to provider dashboard (currently redirects to profile - should redirect to dashboard)
-- [x] Verify profile appears in discovery (if isActive is true, appears in discovery) ✅
+- [x] Complete all onboarding steps
+- [x] Submit onboarding
+- [x] Verify profile goes live (isActive defaults to true)
+- [x] Verify redirect to provider dashboard (currently redirects to profile - should redirect to dashboard)
+- [x] Verify profile appears in discovery (if isActive is true, appears in discovery)
 
 ---
 
@@ -934,56 +934,56 @@ PLAID_ENV=sandbox
 
 **Test PR1.1: Client Profile**
 
-- [ ] Navigate to Profile tab
-- [ ] Verify profile displays:
+- [x] Navigate to Profile tab
+- [x] Verify profile displays:
   - Name
   - Email
   - Profile photo
   - User type
-- [ ] Verify edit button is available
+- [x] Verify edit button is available
 
 **Test PR1.2: Provider Profile**
 
-- [ ] Login as provider
-- [ ] Navigate to Profile tab
-- [ ] Verify profile displays:
+- [x] Login as provider
+- [x] Navigate to Profile tab
+- [x] Verify profile displays:
   - Name
   - Bio
   - Services
   - Credentials
   - Bank account status
-- [ ] Verify edit options are available
+- [x] Verify edit options are available
 
 ### Test Suite PR2: Profile Editing
 
 **Test PR2.1: Edit Basic Information**
 
-- [ ] Navigate to profile settings
-- [ ] Edit name
-- [ ] Edit bio (for providers)
-- [ ] Upload new profile photo
-- [ ] Save changes
-- [ ] Verify changes persist
-- [ ] Verify changes reflect across app
+- [x] Navigate to profile settings
+- [x] Edit name
+- [x] Edit bio (for providers)
+- [x] Upload new profile photo
+- [x] Save changes
+- [x] Verify changes persist
+- [x] Verify changes reflect across app
 
 **Test PR2.2: Edit Services**
 
-- [ ] Navigate to services management
-- [ ] Add new service
-- [ ] Edit existing service
-- [ ] Delete service
-- [ ] Verify changes save
-- [ ] Verify changes reflect on profile
+- [x] Navigate to services management
+- [x] Add new service
+- [x] Edit existing service
+- [x] Delete service
+- [x] Verify changes save
+- [x] Verify changes reflect on profile
 
 **Test PR2.3: Change Password**
 
-- [ ] Navigate to security settings
-- [ ] Enter current password
-- [ ] Enter new password
-- [ ] Confirm new password
-- [ ] Save changes
-- [ ] Verify password updates
-- [ ] Verify can login with new password
+- [x] Navigate to security settings
+- [x] Enter current password
+- [x] Enter new password
+- [x] Confirm new password
+- [x] Save changes
+- [x] Verify password updates
+- [x] Verify can login with new password
 
 ---
 
@@ -1018,10 +1018,10 @@ PLAID_ENV=sandbox
 
 **Test RT1.4: Payment Updates**
 
-- [x] Complete payment
-- [x] Verify payment status updates in real-time
-- [x] Verify booking reflects payment status
-- [x] Verify provider sees payment update
+- [ ] Complete payment
+- [ ] Verify payment status updates in real-time
+- [ ] Verify booking reflects payment status
+- [ ] Verify provider sees payment update
 
 ---
 

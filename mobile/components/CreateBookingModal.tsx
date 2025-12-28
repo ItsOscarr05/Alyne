@@ -70,10 +70,6 @@ export function CreateBookingModal({
     try {
       const data = await providerService.getById(providerId);
       setProvider(data);
-      // Auto-select first service if available
-      if (data.services && data.services.length > 0) {
-        setSelectedService(data.services[0]);
-      }
     } catch (error: any) {
       console.error('Error loading provider:', error);
       modal.showAlert({
@@ -265,7 +261,14 @@ export function CreateBookingModal({
                                 styles.serviceOption,
                                 selectedService?.id === service.id && styles.serviceOptionSelected,
                               ]}
-                              onPress={() => setSelectedService(service)}
+                              onPress={() => {
+                                // Toggle selection: if already selected, deselect; otherwise select
+                                if (selectedService?.id === service.id) {
+                                  setSelectedService(null);
+                                } else {
+                                  setSelectedService(service);
+                                }
+                              }}
                             >
                               <View style={styles.serviceOptionHeader}>
                                 <Text style={styles.serviceOptionName}>{service.name}</Text>

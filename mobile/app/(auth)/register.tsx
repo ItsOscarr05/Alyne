@@ -7,7 +7,6 @@ import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
 import { PasswordRequirements } from '../../components/ui/PasswordRequirements';
-import { FieldRequirement } from '../../components/ui/FieldRequirement';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validatePassword, validateEmail } from '../../utils/passwordValidation';
@@ -19,6 +18,7 @@ export default function RegisterScreen() {
   const [userType, setUserType] = useState<'provider' | 'client' | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -154,13 +154,6 @@ export default function RegisterScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            {!userType && (
-              <FieldRequirement
-                met={false}
-                message="Please select Provider or Client"
-                showWhenEmpty={true}
-              />
-            )}
           </View>
 
           <View style={styles.formCard}>
@@ -172,11 +165,7 @@ export default function RegisterScreen() {
               value={firstName}
               onChangeText={setFirstName}
               autoCapitalize="words"
-            />
-            <FieldRequirement
-              met={firstName.trim().length > 0}
-              message="At least 1 character required"
-              showWhenEmpty={true}
+              required
             />
 
             <View style={styles.fieldSpacer} />
@@ -187,11 +176,7 @@ export default function RegisterScreen() {
               value={lastName}
               onChangeText={setLastName}
               autoCapitalize="words"
-            />
-            <FieldRequirement
-              met={lastName.trim().length > 0}
-              message="At least 1 character required"
-              showWhenEmpty={true}
+              required
             />
 
             <View style={styles.fieldSpacer} />
@@ -203,15 +188,9 @@ export default function RegisterScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              required
               error={email && !validateEmail(email) ? 'Invalid email address' : undefined}
             />
-            {email && (
-              <FieldRequirement
-                met={validateEmail(email)}
-                message="Valid email format required (e.g., user@example.com)"
-                showWhenEmpty={false}
-              />
-            )}
 
             <View style={styles.fieldSpacer} />
 
@@ -220,10 +199,13 @@ export default function RegisterScreen() {
               placeholder="Create a password"
               value={password}
               onChangeText={setPassword}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => setIsPasswordFocused(false)}
               secureTextEntry
+              required
             />
 
-            <PasswordRequirements password={password} />
+            <PasswordRequirements password={password} isFocused={isPasswordFocused} />
 
             <Button
               title="Create Account"

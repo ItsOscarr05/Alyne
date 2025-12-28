@@ -6,7 +6,6 @@ import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
 import { PasswordRequirements } from '../../components/ui/PasswordRequirements';
-import { FieldRequirement } from '../../components/ui/FieldRequirement';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validateEmail, validatePassword } from '../../utils/passwordValidation';
@@ -17,6 +16,7 @@ export default function ResetPasswordScreen() {
   const modal = useModal();
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [isNewPasswordFocused, setIsNewPasswordFocused] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -152,15 +152,9 @@ export default function ResetPasswordScreen() {
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
+                  required
                   error={email && !validateEmail(email) ? 'Invalid email address' : undefined}
                 />
-                {email && (
-                  <FieldRequirement
-                    met={validateEmail(email)}
-                    message="Valid email format required (e.g., user@example.com)"
-                    showWhenEmpty={false}
-                  />
-                )}
 
                 <Button
                   title="Send Reset Link"
@@ -181,11 +175,7 @@ export default function ResetPasswordScreen() {
                   onChangeText={setResetToken}
                   autoCapitalize="characters"
                   maxLength={6}
-                />
-                <FieldRequirement
-                  met={resetToken.trim().length === 6}
-                  message="6-character code from email is required"
-                  showWhenEmpty={true}
+                  required
                 />
 
                 <View style={styles.fieldSpacer} />
@@ -195,10 +185,13 @@ export default function ResetPasswordScreen() {
                   placeholder="Enter your new password"
                   value={newPassword}
                   onChangeText={setNewPassword}
+                  onFocus={() => setIsNewPasswordFocused(true)}
+                  onBlur={() => setIsNewPasswordFocused(false)}
                   secureTextEntry
+                  required
                 />
 
-                <PasswordRequirements password={newPassword} />
+                <PasswordRequirements password={newPassword} isFocused={isNewPasswordFocused} />
 
                 <View style={styles.fieldSpacer} />
 
@@ -208,14 +201,8 @@ export default function ResetPasswordScreen() {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry
+                  required
                 />
-                {newPassword && confirmPassword && (
-                  <FieldRequirement
-                    met={newPassword === confirmPassword}
-                    message="Passwords must match"
-                    showWhenEmpty={false}
-                  />
-                )}
 
                 <Button
                   title="Reset Password"

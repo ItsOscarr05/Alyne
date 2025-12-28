@@ -418,25 +418,14 @@ export default function PaymentCheckoutScreen() {
 
   useEffect(() => {
     if (bookingId) {
-      // Check if another payment is already processing
-      if (globalIsProcessing && currentBookingId !== bookingId) {
-        setAlertModal({
-          visible: true,
-          type: 'warning',
-          title: 'Payment Already in Progress',
-          message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
-        });
-        router.back();
-        return;
-      }
-      
-      // Start payment processing
+      // Start payment processing (will allow retries for the same booking)
       if (!startPayment(bookingId)) {
+        // Only block if a different booking is being processed
         setAlertModal({
           visible: true,
           type: 'warning',
           title: 'Payment Already in Progress',
-          message: 'A payment is already being processed. Please wait for it to complete before starting a new payment.',
+          message: 'Another payment for a different booking is currently being processed. Please wait for it to complete before starting a new payment.',
         });
         router.back();
         return;

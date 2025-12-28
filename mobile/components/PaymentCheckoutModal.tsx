@@ -351,23 +351,13 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
   useEffect(() => {
     if (visible && bookingId) {
-      // Check if another payment is already processing
-      if (globalIsProcessing && currentBookingId !== bookingId) {
-        setErrorModal({
-          visible: true,
-          title: 'Payment Already in Progress',
-          message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
-        });
-        onClose();
-        return;
-      }
-      
-      // Start payment processing
+      // Start payment processing (will allow retries for the same booking)
       if (!startPayment(bookingId)) {
+        // Only block if a different booking is being processed
         setErrorModal({
           visible: true,
           title: 'Payment Already in Progress',
-          message: 'A payment is already being processed. Please wait for it to complete before starting a new payment.',
+          message: 'Another payment for a different booking is currently being processed. Please wait for it to complete before starting a new payment.',
         });
         onClose();
         return;
@@ -878,24 +868,14 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     // End payment processing when payment succeeds
     endPayment();
     
-    if (Platform.OS === 'web') {
-      if (
-        typeof window !== 'undefined' &&
-        window.confirm('Payment completed successfully! View receipt?')
-      ) {
-        setShowReceiptModal(true);
-      } else {
-        onClose();
-      }
-    } else {
-      setErrorModal({
-        visible: true,
-        type: 'success',
-        title: 'Success',
-        message: 'Payment completed successfully!',
-      });
-      setShowReceiptModal(true);
-    }
+    // Show success message and receipt modal
+    setErrorModal({
+      visible: true,
+      type: 'success',
+      title: 'Success',
+      message: 'Payment completed successfully!',
+    });
+    setShowReceiptModal(true);
   };
 
   if (user?.userType === 'PROVIDER') {

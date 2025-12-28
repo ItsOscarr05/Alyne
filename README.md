@@ -139,6 +139,18 @@ Copy-Item .env.example .env
 
 Then fill in your configuration values in the `.env` files.
 
+## 💻 Development Environment
+
+**Important:** This project uses **PowerShell syntax** for all terminal commands. When running commands in the terminal or generating commands for this project, always use PowerShell syntax (not bash/Linux syntax).
+
+- Use `Get-ChildItem` or `dir` instead of `ls`
+- Use `Select-String` instead of `grep`
+- Use `;` instead of `&&` for chaining commands
+- Use `Copy-Item` instead of `cp`
+- Use PowerShell-native syntax for all operations
+
+The `.vscode/settings.json` file is configured to use PowerShell as the default terminal profile.
+
 ## 📚 Documentation
 
 - [Product Requirements Document](./PRD.md)

@@ -23,9 +23,12 @@ import { LocationAutocomplete } from './ui/LocationAutocomplete';
 import { formatTime12Hour, formatTime24Hour } from '../utils/timeUtils';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../hooks/useAuth';
+import { storage } from '../utils/storage';
 import { AlertModal } from './ui/AlertModal';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { Calendar } from 'react-native-calendars';
+
+const USER_KEY = 'user_data';
 
 type Section = 'location' | 'bank' | 'profile' | 'services' | 'credentials' | 'availability';
 
@@ -65,6 +68,8 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
 
   // Original state to track changes
   const [originalState, setOriginalState] = useState<{
+    firstName: string;
+    lastName: string;
     bio: string;
     specialties: string[];
     profilePhoto: string | null;
@@ -96,6 +101,10 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
   } | null>(null);
 
   // Profile state
+  const [firstName, setFirstName] = useState('');
+  const [firstNameFocused, setFirstNameFocused] = useState(false);
+  const [lastName, setLastName] = useState('');
+  const [lastNameFocused, setLastNameFocused] = useState(false);
   const [bio, setBio] = useState('');
   const [bioFocused, setBioFocused] = useState(false);
   const [specialties, setSpecialties] = useState<string[]>([]);
@@ -112,7 +121,7 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
       price: string;
       duration: string;
     }>
-  >([{ name: '', description: '', price: '', duration: '' }]);
+  >([{ name: '', description: '', price: '0.00', duration: '' }]);
 
   // Credential state
   const [credentials, setCredentials] = useState<
@@ -165,12 +174,30 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
   // Load profile data when modal opens
   useEffect(() => {
     if (visible && user?.id) {
-      loadProfileData();
+      // Refresh user to get latest profile photo, then load profile data
+      refreshUser().then(() => {
+        loadProfileData();
+      });
     } else if (!visible) {
       // Reset original state when modal closes
       setOriginalState(null);
     }
   }, [visible, user?.id]);
+
+  // Load Plaid link token when bank section is active
+  useEffect(() => {
+    if (visible && activeSection === 'bank' && !plaidLinkToken && user?.id) {
+      loadPlaidLinkToken();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, activeSection]);
+
+  // Update profile photo when user object changes
+  useEffect(() => {
+    if (visible && user?.profilePhoto) {
+      setProfilePhoto(user.profilePhoto);
+    }
+  }, [visible, user?.profilePhoto]);
 
   // Store original state after data is loaded
   useEffect(() => {
@@ -178,6 +205,8 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
       // Use a small delay to ensure all state updates have completed
       const timer = setTimeout(() => {
         setOriginalState({
+          firstName,
+          lastName,
           bio,
           specialties: [...specialties],
           profilePhoto,
@@ -195,6 +224,8 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
   }, [
     visible,
     loadingProfile,
+    firstName,
+    lastName,
     bio,
     specialties,
     profilePhoto,
@@ -214,16 +245,15 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
     try {
       const profile = await providerService.getById(user.id);
 
+      // Load user name
+      if (user.firstName) setFirstName(user.firstName);
+      if (user.lastName) setLastName(user.lastName);
+
       if (profile) {
         // Load bio and specialties
         if (profile.bio) setBio(profile.bio);
         if (profile.specialties && profile.specialties.length > 0) {
           setSpecialties(profile.specialties);
-        }
-
-        // Load profile photo
-        if (user.profilePhoto) {
-          setProfilePhoto(user.profilePhoto);
         }
 
         // Load service area
@@ -269,13 +299,13 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
             id: service.id,
             name: service.name,
             description: service.description || '',
-            price: service.price.toString(),
+            price: parseFloat(service.price.toString()).toFixed(2),
             duration: service.duration.toString(),
           }));
           setServices(formattedServices);
         } else {
           // If no services, ensure at least one empty service for adding
-          setServices([{ name: '', description: '', price: '', duration: '' }]);
+          setServices([{ name: '', description: '', price: '0.00', duration: '' }]);
         }
 
         // Load credentials
@@ -352,6 +382,112 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
     }
   };
 
+  const loadPlaidLinkToken = async (): Promise<string | null> => {
+    try {
+      setLoading(true);
+      const token = await plaidService.getProviderLinkToken();
+      setPlaidLinkToken(token);
+      return token;
+    } catch (error: any) {
+      logger.error('Error loading Plaid link token', error);
+      setAlertModal({
+        visible: true,
+        type: 'error',
+        title: 'Error',
+        message: 'Failed to initialize bank setup. Please try again.',
+      });
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const initializePlaidLink = (linkToken: string) => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+      setAlertModal({
+        visible: true,
+        type: 'info',
+        title: 'Info',
+        message: 'Bank setup is currently only available on web. You can set this up later.',
+      });
+      return;
+    }
+
+    if ((window as any).Plaid) {
+      createPlaidHandler(linkToken);
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
+      script.async = true;
+      script.onload = () => {
+        if ((window as any).Plaid) {
+          createPlaidHandler(linkToken);
+        } else {
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: 'Failed to load payment system. Please refresh the page.',
+          });
+        }
+      };
+      script.onerror = () => {
+        setAlertModal({
+          visible: true,
+          type: 'error',
+          title: 'Error',
+          message: 'Failed to load payment system. Please check your internet connection.',
+        });
+      };
+      if (typeof document !== 'undefined') {
+        document.body.appendChild(script);
+      }
+    }
+  };
+
+  const createPlaidHandler = (linkToken: string) => {
+    const handler = (window as any).Plaid.create({
+      token: linkToken,
+      onSuccess: async (publicToken: string, metadata: any) => {
+        try {
+          setLoading(true);
+          const result = await plaidService.exchangePublicToken(publicToken);
+          setBankAccountConnected(true);
+          setBankAccountInfo({
+            accountName: result.accountName,
+            accountMask: result.accountMask,
+          });
+          setAlertModal({
+            visible: true,
+            type: 'success',
+            title: 'Success',
+            message: `Your ${result.accountName} account ending in ${result.accountMask} has been connected.`,
+          });
+          // Reload profile data to get updated bank account status
+          loadProfileData();
+        } catch (error: any) {
+          logger.error('Error exchanging Plaid token', error);
+          setAlertModal({
+            visible: true,
+            type: 'error',
+            title: 'Error',
+            message: error.response?.data?.error?.message || 'Failed to connect bank account',
+          });
+        } finally {
+          setLoading(false);
+        }
+      },
+      onExit: (err: any) => {
+        if (err) {
+          logger.error('Plaid exit error', err);
+        }
+        setLoading(false);
+      },
+    });
+
+    handler.open();
+  };
+
   const geocodeCityState = async (cityName: string, stateName: string) => {
     try {
       const results = await Location.geocodeAsync(`${cityName}, ${stateName}, USA`);
@@ -424,8 +560,12 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
     setLoading(true);
     try {
       if (profilePhoto) {
-        await onboardingService.updateUserProfile({ profilePhoto });
-        await refreshUser();
+        const updatedUserResponse = await onboardingService.updateUserProfile({ profilePhoto });
+        // Update storage with the updated user object from the API
+        if (updatedUserResponse?.data) {
+          await storage.setItem(USER_KEY, JSON.stringify(updatedUserResponse.data));
+          await refreshUser();
+        }
       }
 
       const radiusInMiles = parseFloat(serviceRadius) || 15;
@@ -599,6 +739,9 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
   const hasUnsavedChanges = (): boolean => {
     if (!originalState) return false;
 
+    // Compare name
+    if (firstName !== originalState.firstName || lastName !== originalState.lastName) return true;
+
     // Compare bio
     if (bio !== originalState.bio) return true;
 
@@ -648,10 +791,31 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
 
     setLoading(true);
     try {
-      // Save profile photo if changed
-      if (profilePhoto && profilePhoto !== originalState?.profilePhoto) {
-        await onboardingService.updateUserProfile({ profilePhoto });
-        await refreshUser();
+      // Save user profile (name and photo) if changed
+      const nameChanged =
+        firstName !== originalState?.firstName || lastName !== originalState?.lastName;
+      const photoChanged = profilePhoto && profilePhoto !== originalState?.profilePhoto;
+
+      if (nameChanged || photoChanged) {
+        const userProfileData: {
+          firstName?: string;
+          lastName?: string;
+          profilePhoto?: string;
+        } = {};
+        if (nameChanged) {
+          userProfileData.firstName = firstName.trim();
+          userProfileData.lastName = lastName.trim();
+        }
+        if (photoChanged) {
+          userProfileData.profilePhoto = profilePhoto;
+        }
+
+        const updatedUserResponse = await onboardingService.updateUserProfile(userProfileData);
+        // Update storage with the updated user object from the API
+        if (updatedUserResponse?.data) {
+          await storage.setItem(USER_KEY, JSON.stringify(updatedUserResponse.data));
+          await refreshUser();
+        }
       }
 
       // Save profile (bio, specialties, service area)
@@ -659,24 +823,58 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
       const radius = radiusInMiles * 1.60934;
 
       let coords = coordinates;
+      // Only try to geocode if we don't already have valid coordinates
+      // or if city/state are provided and coordinates are invalid (0,0 or null)
       if (city.trim() && state.trim()) {
-        const geocodedCoords = await geocodeCityState(city.trim(), state.trim());
-        if (geocodedCoords) {
-          coords = geocodedCoords;
-          setCoordinates(coords);
+        const hasValidCoords = coords && coords.lat !== 0 && coords.lng !== 0;
+        if (!hasValidCoords) {
+          try {
+            const geocodedCoords = await geocodeCityState(city.trim(), state.trim());
+            if (geocodedCoords) {
+              coords = geocodedCoords;
+              setCoordinates(coords);
+              logger.debug('Geocoded city/state', { city, state, coords });
+            } else {
+              logger.warn(
+                'Geocoding returned null, keeping existing coordinates or will use default',
+                {
+                  city,
+                  state,
+                  existingCoords: coordinates,
+                }
+              );
+            }
+          } catch (geoError: any) {
+            logger.error('Error geocoding city/state', { error: geoError, city, state });
+            // Continue with existing coordinates or default
+          }
+        } else {
+          logger.debug('Using existing valid coordinates', { coords, city, state });
         }
       }
 
+      // Use existing coordinates if available, otherwise default to 0,0
+      // Note: 0,0 is saved but may need manual coordinate entry in future
       const serviceArea = {
         center: coords || { lat: 0, lng: 0 },
         radius,
       };
+
+      logger.debug('Saving profile with location', {
+        bio: bio.substring(0, 50) + '...',
+        specialties,
+        serviceArea,
+        city,
+        state,
+      });
 
       await onboardingService.updateProfile({
         bio,
         specialties,
         serviceArea,
       });
+
+      logger.debug('Profile with location saved successfully');
 
       // Save services
       const validServices = services.filter((s) => s.name.trim() && s.price && s.duration);
@@ -721,92 +919,121 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
         validCount: validCredentials.length,
       });
 
-      const currentCredentialIds = new Set(
-        validCredentials.map((c) => c.id).filter((id): id is string => !!id)
-      );
-      const originalCredentialIds = new Set(
-        (originalState?.credentials || []).map((c) => c.id).filter((id): id is string => !!id)
-      );
-
-      // Delete credentials that were removed
-      for (const originalId of originalCredentialIds) {
-        if (!currentCredentialIds.has(originalId)) {
-          try {
-            await onboardingService.deleteCredential(originalId);
-            logger.debug('Deleted credential', { id: originalId });
-          } catch (deleteError: any) {
-            logger.error('Error deleting credential', {
-              error: deleteError,
-              id: originalId,
-              response: deleteError.response?.data,
-            });
-          }
-        }
-      }
-
       // Track updated credentials with new IDs
-      const updatedCredentials = [...credentials];
+      let updatedCredentials = [...credentials];
 
-      // Update or create credentials
-      for (let i = 0; i < validCredentials.length; i++) {
-        const credential = validCredentials[i];
-        try {
-          // Convert MM-DD-YYYY to YYYY-MM-DD for backend
-          let issueDate: string | undefined = undefined;
-          let expiryDate: string | undefined = undefined;
+      if (validCredentials.length > 0) {
+        const currentCredentialIds = new Set(
+          validCredentials.map((c) => c.id).filter((id): id is string => !!id)
+        );
+        const originalCredentialIds = new Set(
+          (originalState?.credentials || []).map((c) => c.id).filter((id): id is string => !!id)
+        );
 
-          if (credential.issueDate && credential.issueDate.trim()) {
-            const parsed = parseDate(credential.issueDate);
-            if (parsed) {
-              issueDate = parsed.toISOString().split('T')[0]; // YYYY-MM-DD format
+        // Delete credentials that were removed
+        for (const originalId of originalCredentialIds) {
+          if (!currentCredentialIds.has(originalId)) {
+            try {
+              await onboardingService.deleteCredential(originalId);
+              logger.debug('Deleted credential', { id: originalId });
+            } catch (deleteError: any) {
+              logger.error('Error deleting credential', {
+                error: deleteError,
+                id: originalId,
+                response: deleteError.response?.data,
+              });
+              // Continue even if delete fails
             }
           }
-
-          if (credential.expiryDate && credential.expiryDate.trim()) {
-            const parsed = parseDate(credential.expiryDate);
-            if (parsed) {
-              expiryDate = parsed.toISOString().split('T')[0]; // YYYY-MM-DD format
-            }
-          }
-
-          const credentialData = {
-            name: credential.name,
-            issuer: credential.issuer || undefined,
-            issueDate,
-            expiryDate,
-          };
-
-          logger.debug('Saving credential', {
-            id: credential.id,
-            data: credentialData,
-            isUpdate: !!credential.id,
-          });
-
-          if (credential.id) {
-            const result = await onboardingService.updateCredential(credential.id, credentialData);
-            logger.debug('Credential updated successfully', { id: credential.id, result });
-          } else {
-            const result = await onboardingService.createCredential(credentialData);
-            logger.debug('Credential created successfully', { result });
-            // Update the credential in the updatedCredentials array with the new ID
-            const credentialIndex = updatedCredentials.findIndex((c) => c === credential);
-            if (credentialIndex !== -1 && result?.id) {
-              updatedCredentials[credentialIndex] = {
-                ...updatedCredentials[credentialIndex],
-                id: result.id,
-              };
-            }
-          }
-        } catch (credError: any) {
-          logger.error('Error saving credential', {
-            error: credError,
-            credential: credential,
-            response: credError.response?.data,
-            message: credError.message,
-          });
-          // Re-throw to show error to user
-          throw credError;
         }
+
+        // Update or create credentials
+        for (let i = 0; i < validCredentials.length; i++) {
+          const credential = validCredentials[i];
+          try {
+            // Convert MM-DD-YYYY to YYYY-MM-DD for backend
+            let issueDate: string | undefined = undefined;
+            let expiryDate: string | undefined = undefined;
+
+            if (credential.issueDate && credential.issueDate.trim()) {
+              const parsed = parseDate(credential.issueDate);
+              if (parsed && !isNaN(parsed.getTime())) {
+                issueDate = parsed.toISOString().split('T')[0]; // YYYY-MM-DD format
+              } else {
+                logger.warn('Failed to parse issue date', { dateString: credential.issueDate });
+              }
+            }
+
+            if (credential.expiryDate && credential.expiryDate.trim()) {
+              const parsed = parseDate(credential.expiryDate);
+              if (parsed && !isNaN(parsed.getTime())) {
+                expiryDate = parsed.toISOString().split('T')[0]; // YYYY-MM-DD format
+              } else {
+                logger.warn('Failed to parse expiry date', { dateString: credential.expiryDate });
+              }
+            }
+
+            const credentialData = {
+              name: credential.name.trim(),
+              issuer: credential.issuer?.trim() || undefined,
+              issueDate,
+              expiryDate,
+            };
+
+            logger.debug('Saving credential', {
+              id: credential.id,
+              data: credentialData,
+              isUpdate: !!credential.id,
+            });
+
+            let result;
+            if (credential.id) {
+              result = await onboardingService.updateCredential(credential.id, credentialData);
+              logger.debug('Credential updated successfully', { id: credential.id, result });
+            } else {
+              result = await onboardingService.createCredential(credentialData);
+              logger.debug('Credential created successfully', { result });
+              // Update the credential in the updatedCredentials array with the new ID
+              // API returns { success: true, data: credential }, service returns response.data
+              const credentialIndex = updatedCredentials.findIndex((c) => c === credential);
+              if (credentialIndex !== -1) {
+                const newId = result?.data?.id || result?.id;
+                if (newId) {
+                  updatedCredentials[credentialIndex] = {
+                    ...updatedCredentials[credentialIndex],
+                    id: newId,
+                  };
+                  logger.debug('Updated credential with new ID', {
+                    index: credentialIndex,
+                    id: newId,
+                  });
+                } else {
+                  logger.warn('Credential created but no ID in response', { result });
+                }
+              }
+            }
+          } catch (credError: any) {
+            console.error('ERROR SAVING CREDENTIAL:', credError);
+            console.error('Error details:', {
+              message: credError.message,
+              response: credError.response?.data,
+              stack: credError.stack,
+            });
+            logger.error('Error saving credential', {
+              error: credError,
+              credential: credential,
+              response: credError.response?.data,
+              message: credError.message,
+              stack: credError.stack,
+            });
+            // Re-throw to show error to user
+            throw credError;
+          }
+        }
+
+        logger.debug('Credentials saved successfully', { count: validCredentials.length });
+      } else {
+        logger.debug('No valid credentials to save');
       }
 
       // Update credentials state with any new IDs
@@ -851,6 +1078,8 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
 
       // Update original state to reflect saved changes
       setOriginalState({
+        firstName,
+        lastName,
         bio,
         specialties: [...specialties],
         profilePhoto: profilePhoto || null,
@@ -938,7 +1167,7 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
   };
 
   const addService = () => {
-    setServices([...services, { name: '', description: '', price: '', duration: '' }]);
+    setServices([...services, { name: '', description: '', price: '0.00', duration: '' }]);
   };
 
   const removeService = (index: number) => {
@@ -1215,13 +1444,38 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
           </View>
         </View>
       ) : (
-        <View style={styles.bankCardEmpty}>
-          <Ionicons name="card-outline" size={40} color="#cbd5e1" />
-          <Text style={styles.bankCardEmptyTitle}>No bank account connected</Text>
-          <Text style={styles.bankCardEmptyText}>
-            Connect your account to start receiving payments
-          </Text>
-        </View>
+        <>
+          <View style={styles.bankCardEmpty}>
+            <Ionicons name="card-outline" size={40} color="#cbd5e1" />
+            <Text style={styles.bankCardEmptyTitle}>No bank account connected</Text>
+            <Text style={styles.bankCardEmptyText}>
+              Connect your account to start receiving payments
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.plaidButton, loading && styles.buttonDisabled]}
+            onPress={async () => {
+              if (plaidLinkToken) {
+                initializePlaidLink(plaidLinkToken);
+              } else {
+                const token = await loadPlaidLinkToken();
+                if (token) {
+                  initializePlaidLink(token);
+                }
+              }
+            }}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Ionicons name="lock-closed" size={20} color="#ffffff" />
+                <Text style={styles.plaidButtonText}>Connect Bank Account</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </>
       )}
     </ScrollView>
   );
@@ -1230,7 +1484,7 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
     <ScrollView style={styles.sectionContent}>
       <Text style={styles.sectionTitle}>Profile Information</Text>
       <Text style={styles.sectionDescription}>
-        Update your bio, specialties, and profile photo.
+        Update your name, bio, specialties, and profile photo.
       </Text>
 
       <View style={styles.section}>
@@ -1255,6 +1509,34 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
             </View>
           )}
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.label}>Name</Text>
+        <View style={styles.row}>
+          <View style={styles.halfInput}>
+            <TextInput
+              style={[styles.input, firstNameFocused && styles.inputFocused]}
+              placeholder="First name"
+              placeholderTextColor="#94a3b8"
+              value={firstName}
+              onChangeText={setFirstName}
+              onFocus={() => setFirstNameFocused(true)}
+              onBlur={() => setFirstNameFocused(false)}
+            />
+          </View>
+          <View style={styles.halfInput}>
+            <TextInput
+              style={[styles.input, lastNameFocused && styles.inputFocused]}
+              placeholder="Last name"
+              placeholderTextColor="#94a3b8"
+              value={lastName}
+              onChangeText={setLastName}
+              onFocus={() => setLastNameFocused(true)}
+              onBlur={() => setLastNameFocused(false)}
+            />
+          </View>
+        </View>
       </View>
 
       <View style={styles.section}>
@@ -1369,7 +1651,7 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
               <View style={styles.inputWithSuffix}>
                 <TextInput
                   style={[styles.input, styles.inputWithSuffixInput]}
-                  placeholder="60"
+                  placeholder="0"
                   value={service.duration}
                   onChangeText={(value) => updateService(index, 'duration', value)}
                   keyboardType="numeric"
@@ -1960,13 +2242,16 @@ const styles = StyleSheet.create({
   photoButton: {
     backgroundColor: '#ffffff',
     borderWidth: 2,
-    borderColor: '#e2e8f0',
-    borderRadius: 16,
+    borderColor: '#2563eb',
+    borderRadius: 100,
     overflow: 'hidden',
-    minHeight: 200,
+    width: 150,
+    height: 150,
+    alignSelf: 'center',
   },
   photoPlaceholder: {
-    padding: 40,
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
@@ -1978,24 +2263,25 @@ const styles = StyleSheet.create({
   },
   photoPreview: {
     width: '100%',
-    height: 200,
+    height: '100%',
     position: 'relative',
   },
   photoPreviewImage: {
     width: '100%',
     height: '100%',
+    borderRadius: 100,
   },
   photoOverlay: {
     position: 'absolute',
+    top: 0,
     bottom: 0,
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    padding: 16,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    borderRadius: 100,
   },
   photoOverlayText: {
     color: '#ffffff',
@@ -2053,8 +2339,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 2,
+    borderColor: '#2563eb',
   },
   serviceHeader: {
     flexDirection: 'row',
@@ -2139,8 +2425,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderWidth: 2,
+    borderColor: '#2563eb',
   },
   availabilityHeader: {
     flexDirection: 'row',
@@ -2391,5 +2677,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748b',
     textAlign: 'center',
+  },
+  plaidButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2563eb',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+    gap: 10,
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  plaidButtonText: {
+    fontWeight: '600',
+    color: '#ffffff',
+    fontSize: 16,
   },
 });

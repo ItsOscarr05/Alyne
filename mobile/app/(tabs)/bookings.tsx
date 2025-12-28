@@ -427,8 +427,8 @@ export default function BookingsScreen() {
   );
 
   const handlePayment = (bookingId: string) => {
-    // Check if another payment is already processing
-    if (paymentProcessing) {
+    // Check if another payment is already processing (only block if it's a different booking)
+    if (paymentProcessing && currentBookingId !== bookingId) {
       modal.showAlert({
         title: 'Payment Already in Progress',
         message: `A payment for another booking is currently being processed. Please wait for it to complete before starting a new payment.${currentBookingId ? ` (Booking ID: ${currentBookingId.substring(0, 8)}...)` : ''}`,

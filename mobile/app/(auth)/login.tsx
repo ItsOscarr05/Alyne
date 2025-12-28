@@ -6,7 +6,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
-import { FieldRequirement } from '../../components/ui/FieldRequirement';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validateEmail } from '../../utils/passwordValidation';
@@ -94,15 +93,9 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
+              required
               error={email && !validateEmail(email) ? 'Invalid email address' : undefined}
             />
-            {email && (
-              <FieldRequirement
-                met={validateEmail(email)}
-                message="Valid email format required (e.g., user@example.com)"
-                showWhenEmpty={false}
-              />
-            )}
 
             <View style={styles.fieldSpacer} />
 
@@ -112,11 +105,7 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-            />
-            <FieldRequirement
-              met={password.trim().length > 0}
-              message="Password is required"
-              showWhenEmpty={true}
+              required
             />
 
             <Button

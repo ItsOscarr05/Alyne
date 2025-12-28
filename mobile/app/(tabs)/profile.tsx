@@ -8,6 +8,8 @@ import {
   TextInput,
   Modal as RNModal,
   TouchableWithoutFeedback,
+  Platform,
+  Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -21,6 +23,12 @@ import { theme } from '../../theme';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { EditProviderModal } from '../../components/EditProviderModal';
+import * as ImagePicker from 'expo-image-picker';
+import { onboardingService } from '../../services/onboarding';
+import { storage } from '../../utils/storage';
+import { plaidService } from '../../services/plaid';
+
+const USER_KEY = 'user_data';
 
 interface ProviderProfile {
   id: string;
@@ -31,11 +39,12 @@ interface ProviderProfile {
   availability: Array<{ id: string; dayOfWeek: number; startTime: string; endTime: string }>;
   rating?: number;
   reviewCount?: number;
+  bankAccountVerified?: boolean;
 }
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, logout, deleteAccount } = useAuth();
+  const { user, logout, deleteAccount, refreshUser } = useAuth();
   const modal = useModal();
   const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -43,6 +52,8 @@ export default function ProfileScreen() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
+  const [isHoveringPhoto, setIsHoveringPhoto] = useState(false);
 
   useEffect(() => {
     if (user?.userType === 'PROVIDER') {
@@ -65,6 +76,18 @@ export default function ProfileScreen() {
       });
 
       if (profile) {
+        // Check bank account status
+        let bankAccountVerified = false;
+        try {
+          const bankInfo = await plaidService.getBankAccountInfo();
+          if (bankInfo && bankInfo.verified) {
+            bankAccountVerified = true;
+          }
+        } catch (error) {
+          // Bank account not connected or error - that's okay
+          logger.debug('No bank account info', error);
+        }
+
         setProviderProfile({
           id: profile.id,
           bio: profile.bio || null,
@@ -80,6 +103,7 @@ export default function ProfileScreen() {
           availability: Array.isArray(profile.availability) ? profile.availability : [],
           rating: profile.rating || 0,
           reviewCount: profile.reviewCount || 0,
+          bankAccountVerified,
         });
         logger.debug('Provider profile state set', {
           bio: profile.bio,
@@ -105,6 +129,64 @@ export default function ProfileScreen() {
   const handleDeleteAccount = () => {
     setShowDeleteModal(true);
     setDeleteConfirmText('');
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission needed',
+        'We need access to your photos to upload a profile picture.'
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+
+      // If user canceled, return early without setting loading state
+      if (result.canceled) {
+        return;
+      }
+
+      if (result.assets[0]) {
+        // Only set loading state when we actually start uploading
+        setIsUpdatingPhoto(true);
+        
+        const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        
+        // Update profile photo via API
+        const updatedUserResponse = await onboardingService.updateUserProfile({ profilePhoto: base64 });
+        
+        // Update storage with the updated user object from the API
+        if (updatedUserResponse?.data) {
+          await storage.setItem(USER_KEY, JSON.stringify(updatedUserResponse.data));
+          // Refresh user to update the UI
+          await refreshUser();
+        }
+        
+        modal.showAlert({
+          title: 'Success',
+          message: 'Profile photo updated successfully',
+          type: 'success',
+        });
+      }
+    } catch (error: any) {
+      logger.error('Error updating profile photo', error);
+      modal.showAlert({
+        title: 'Error',
+        message: error.response?.data?.message || 'Failed to update profile photo',
+        type: 'error',
+      });
+    } finally {
+      setIsUpdatingPhoto(false);
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -201,20 +283,55 @@ export default function ProfileScreen() {
                 </View>
                 <View style={styles.heroContent}>
                   <View style={styles.heroAvatarContainer}>
-                    <View style={styles.heroAvatar}>
+                    <TouchableOpacity
+                      style={styles.heroAvatar}
+                      onPress={pickImage}
+                      disabled={isUpdatingPhoto}
+                      onMouseEnter={() => Platform.OS === 'web' && setIsHoveringPhoto(true)}
+                      onMouseLeave={() => Platform.OS === 'web' && setIsHoveringPhoto(false)}
+                      activeOpacity={0.8}
+                    >
                       {user.profilePhoto ? (
-                        <Image
-                          source={{ uri: user.profilePhoto }}
-                          style={styles.heroAvatarImage}
-                          contentFit="cover"
-                        />
+                        <>
+                          <Image
+                            source={{ uri: user.profilePhoto }}
+                            style={styles.heroAvatarImage}
+                            contentFit="cover"
+                          />
+                          {(isHoveringPhoto || isUpdatingPhoto) && (
+                            <View style={styles.photoOverlay}>
+                              {isUpdatingPhoto ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                              ) : (
+                                <>
+                                  <Ionicons name="camera" size={24} color="#ffffff" />
+                                  <Text style={styles.photoOverlayText}>Change Photo</Text>
+                                </>
+                              )}
+                            </View>
+                          )}
+                        </>
                       ) : (
-                        <Text style={styles.heroAvatarText}>
-                          {user.firstName[0]}
-                          {user.lastName[0]}
-                        </Text>
+                        <>
+                          <Text style={styles.heroAvatarText}>
+                            {user.firstName[0]}
+                            {user.lastName[0]}
+                          </Text>
+                          {(isHoveringPhoto || isUpdatingPhoto) && (
+                            <View style={styles.photoOverlay}>
+                              {isUpdatingPhoto ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                              ) : (
+                                <>
+                                  <Ionicons name="camera" size={24} color="#ffffff" />
+                                  <Text style={styles.photoOverlayText}>Add Photo</Text>
+                                </>
+                              )}
+                            </View>
+                          )}
+                        </>
                       )}
-                    </View>
+                    </TouchableOpacity>
                     {providerProfile && providerProfile.rating && providerProfile.rating > 0 && (
                       <View style={styles.heroRatingBadge}>
                         <Ionicons name="star" size={14} color="#fbbf24" />
@@ -243,20 +360,55 @@ export default function ProfileScreen() {
                 <View style={styles.profileCard}>
                   <View style={styles.profileHeader}>
                     <View style={styles.avatarWrapper}>
-                      <View style={styles.avatar}>
+                      <TouchableOpacity
+                        style={styles.avatar}
+                        onPress={pickImage}
+                        disabled={isUpdatingPhoto}
+                        onMouseEnter={() => Platform.OS === 'web' && setIsHoveringPhoto(true)}
+                        onMouseLeave={() => Platform.OS === 'web' && setIsHoveringPhoto(false)}
+                        activeOpacity={0.8}
+                      >
                         {user.profilePhoto ? (
-                          <Image
-                            source={{ uri: user.profilePhoto }}
-                            style={styles.avatarImage}
-                            contentFit="cover"
-                          />
+                          <>
+                            <Image
+                              source={{ uri: user.profilePhoto }}
+                              style={styles.avatarImage}
+                              contentFit="cover"
+                            />
+                            {(isHoveringPhoto || isUpdatingPhoto) && (
+                              <View style={styles.photoOverlay}>
+                                {isUpdatingPhoto ? (
+                                  <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                  <>
+                                    <Ionicons name="camera" size={20} color="#ffffff" />
+                                    <Text style={styles.photoOverlayTextSmall}>Change</Text>
+                                  </>
+                                )}
+                              </View>
+                            )}
+                          </>
                         ) : (
-                          <Text style={styles.avatarText}>
-                            {user.firstName[0]}
-                            {user.lastName[0]}
-                          </Text>
+                          <>
+                            <Text style={styles.avatarText}>
+                              {user.firstName[0]}
+                              {user.lastName[0]}
+                            </Text>
+                            {(isHoveringPhoto || isUpdatingPhoto) && (
+                              <View style={styles.photoOverlay}>
+                                {isUpdatingPhoto ? (
+                                  <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                  <>
+                                    <Ionicons name="camera" size={20} color="#ffffff" />
+                                    <Text style={styles.photoOverlayTextSmall}>Add Photo</Text>
+                                  </>
+                                )}
+                              </View>
+                            )}
+                          </>
                         )}
-                      </View>
+                      </TouchableOpacity>
                       <View style={styles.userTypeBadge}>
                         <Ionicons name="person" size={12} color={theme.colors.white} />
                         <Text style={styles.userTypeText}>Client</Text>
@@ -313,6 +465,19 @@ export default function ProfileScreen() {
                         : 'N/A'}
                     </Text>
                     <Text style={styles.quickStatLabel}>Rating</Text>
+                  </View>
+                </View>
+                {/* Bank Account Status */}
+                <View style={styles.bankAccountStatusCard}>
+                  <View style={styles.bankAccountStatusRow}>
+                    <Ionicons
+                      name={providerProfile.bankAccountVerified ? "checkmark-circle" : "close-circle"}
+                      size={20}
+                      color={providerProfile.bankAccountVerified ? "#16a34a" : "#ef4444"}
+                    />
+                    <Text style={styles.bankAccountStatusText}>
+                      Bank Account: {providerProfile.bankAccountVerified ? "Connected" : "Not Connected"}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -435,7 +600,6 @@ export default function ProfileScreen() {
                     style={styles.deleteModalInput}
                     value={deleteConfirmText}
                     onChangeText={setDeleteConfirmText}
-                    placeholder="DELETE"
                     placeholderTextColor={theme.colors.neutral[300]}
                     editable={!isDeleting}
                     autoCapitalize="characters"
@@ -681,6 +845,24 @@ const styles = StyleSheet.create({
   },
   quickStatCardRating: {
     borderColor: '#fbbf24',
+  },
+  bankAccountStatusCard: {
+    marginTop: theme.spacing.md,
+    backgroundColor: theme.colors.white,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.md,
+    borderWidth: 2,
+    borderColor: theme.colors.neutral[200],
+  },
+  bankAccountStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  bankAccountStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.neutral[900],
   },
   quickStatNumber: {
     fontSize: 24,
@@ -948,5 +1130,29 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontWeight: '600',
     color: theme.colors.white,
+  },
+  photoOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 60,
+    gap: 4,
+  },
+  photoOverlayText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  photoOverlayTextSmall: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
 });

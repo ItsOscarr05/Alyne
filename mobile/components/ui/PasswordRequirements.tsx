@@ -1,101 +1,186 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useMemo, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
 import { theme } from '../../theme';
-
-interface PasswordRequirement {
-  id: string;
-  label: string;
-  test: (password: string) => boolean;
-}
-
-const requirements: PasswordRequirement[] = [
-  {
-    id: 'length',
-    label: 'At least 8 characters',
-    test: (password) => password.length >= 8,
-  },
-  {
-    id: 'uppercase',
-    label: 'One uppercase letter',
-    test: (password) => /[A-Z]/.test(password),
-  },
-  {
-    id: 'lowercase',
-    label: 'One lowercase letter',
-    test: (password) => /[a-z]/.test(password),
-  },
-  {
-    id: 'number',
-    label: 'One number',
-    test: (password) => /[0-9]/.test(password),
-  },
-  {
-    id: 'special',
-    label: 'One special character',
-    test: (password) => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
-  },
-];
 
 interface PasswordRequirementsProps {
   password: string;
+  isFocused?: boolean;
 }
 
-export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({ password }) => {
-  const requirementStatuses = useMemo(() => {
-    return requirements.map((req) => ({
-      ...req,
-      met: req.test(password),
-    }));
-  }, [password]);
+type PasswordStrength = 'weak' | 'medium' | 'strong';
 
-  const unmetRequirements = requirementStatuses.filter((req) => !req.met);
-  const nextRequirement = unmetRequirements[0];
+const calculatePasswordStrength = (password: string): PasswordStrength => {
+  if (!password) return 'weak';
+  
+  let score = 0;
+  
+  // Length scoring
+  if (password.length >= 12) score += 2;
+  else if (password.length >= 8) score += 1;
+  
+  // Character variety scoring
+  if (/[a-z]/.test(password)) score += 1; // lowercase
+  if (/[A-Z]/.test(password)) score += 1; // uppercase
+  if (/[0-9]/.test(password)) score += 1; // number
+  if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 1; // special
+  
+  // Determine strength
+  if (score >= 5) return 'strong';
+  if (score >= 3) return 'medium';
+  return 'weak';
+};
 
-  if (!password) {
+export const PasswordRequirements: React.FC<PasswordRequirementsProps> = ({ password, isFocused = false }) => {
+  const strength = useMemo(() => calculatePasswordStrength(password), [password]);
+  
+  // Animated width values for each section (0 to 1, representing percentage)
+  const section1Width = useRef(new Animated.Value(0)).current;
+  const section2Width = useRef(new Animated.Value(0)).current;
+  const section3Width = useRef(new Animated.Value(0)).current;
+  const containerOpacity = useRef(new Animated.Value(0)).current;
+  const labelOpacity = useRef(new Animated.Value(0)).current;
+  const [sectionWidth, setSectionWidth] = useState(100); // Default width
+
+  useEffect(() => {
+    // Animate container visibility
+    Animated.timing(containerOpacity, {
+      toValue: isFocused ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [isFocused, containerOpacity]);
+
+  useEffect(() => {
+    if (!isFocused) return;
+
+    // Calculate target widths based on strength (0 to 1)
+    // Only fill sections if password has content
+    let target1 = 0;
+    let target2 = 0;
+    let target3 = 0;
+
+    if (password.length > 0) {
+      if (strength === 'weak') {
+        target1 = 1; // Fill first section only
+        target2 = 0;
+        target3 = 0;
+      } else if (strength === 'medium') {
+        target1 = 1; // Fill first section
+        target2 = 1; // Fill second section
+        target3 = 0;
+      } else if (strength === 'strong') {
+        target1 = 1; // Fill all sections
+        target2 = 1;
+        target3 = 1;
+      }
+    }
+
+    // Animate sections from left to right (fill) or right to left (empty)
+    const animations = [
+      Animated.timing(section1Width, {
+        toValue: target1,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(section2Width, {
+        toValue: target2,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(section3Width, {
+        toValue: target3,
+        duration: 400,
+        useNativeDriver: false,
+      }),
+      Animated.timing(labelOpacity, {
+        toValue: password.length > 0 ? 1 : 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ];
+
+    Animated.parallel(animations).start();
+  }, [strength, password, isFocused, section1Width, section2Width, section3Width, labelOpacity]);
+
+  if (!isFocused) {
     return null;
   }
 
-  return (
-    <View style={styles.container}>
-      {requirementStatuses.map((requirement) => {
-        const isNext = requirement === nextRequirement;
-        const isMet = requirement.met;
+  // Get colors based on strength
+  const getSection1Color = () => {
+    if (strength === 'weak') return '#ef4444';
+    if (strength === 'medium') return '#f59e0b';
+    return '#10b981';
+  };
 
-        return (
-          <View
-            key={requirement.id}
+  const getSection2Color = () => {
+    if (strength === 'strong') return '#10b981';
+    return '#f59e0b';
+  };
+
+  return (
+    <Animated.View style={[styles.container, { opacity: containerOpacity }]}>
+      <View 
+        style={styles.meterContainer}
+        onLayout={(e) => {
+          const width = e.nativeEvent.layout.width;
+          if (width > 0) {
+            const calculatedWidth = (width - 8) / 3; // Account for 4px gap between sections
+            setSectionWidth(calculatedWidth);
+          }
+        }}
+      >
+        <View style={[styles.section, styles.sectionBase]}>
+          <Animated.View 
             style={[
-              styles.requirementItem,
-              isNext && !isMet && styles.requirementItemNext,
-              isMet && styles.requirementItemMet,
-            ]}
-          >
-            <Ionicons
-              name={isMet ? 'checkmark-circle' : 'ellipse-outline'}
-              size={16}
-              color={
-                isMet
-                  ? theme.colors.semantic.success
-                  : isNext
-                    ? theme.colors.primary[500]
-                    : theme.colors.neutral[500]
+              styles.sectionFill,
+              { 
+                width: section1Width.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, sectionWidth],
+                }),
+                backgroundColor: getSection1Color(),
               }
-            />
-            <Text
-              style={[
-                styles.requirementText,
-                isMet && styles.requirementTextMet,
-                isNext && !isMet && styles.requirementTextNext,
-                { marginLeft: theme.spacing.sm },
-              ]}
-            >
-              {requirement.label}
-            </Text>
-          </View>
-        );
-      })}
-    </View>
+            ]} 
+          />
+        </View>
+        <View style={[styles.section, styles.sectionBase]}>
+          <Animated.View 
+            style={[
+              styles.sectionFill,
+              { 
+                width: section2Width.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, sectionWidth],
+                }),
+                backgroundColor: getSection2Color(),
+              }
+            ]} 
+          />
+        </View>
+        <View style={[styles.section, styles.sectionBase]}>
+          <Animated.View 
+            style={[
+              styles.sectionFill,
+              { 
+                width: section3Width.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, sectionWidth],
+                }),
+                backgroundColor: '#10b981',
+              }
+            ]} 
+          />
+        </View>
+      </View>
+      {password.length > 0 && (
+        <Animated.Text style={[styles.strengthLabel, { opacity: labelOpacity }]}>
+          {strength === 'weak' && 'Weak'}
+          {strength === 'medium' && 'Medium'}
+          {strength === 'strong' && 'Strong'}
+        </Animated.Text>
+      )}
+    </Animated.View>
   );
 };
 
@@ -103,29 +188,31 @@ const styles = StyleSheet.create({
   container: {
     marginTop: theme.spacing.sm,
   },
-  requirementItem: {
+  meterContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xs,
+    gap: 4,
+    height: 6,
+    marginBottom: theme.spacing.xs,
   },
-  requirementItemNext: {
-    backgroundColor: theme.colors.primary[50],
-    paddingHorizontal: theme.spacing.sm,
-    borderRadius: theme.radii.sm,
+  section: {
+    flex: 1,
+    borderRadius: theme.radii.full,
+    overflow: 'hidden',
   },
-  requirementItemMet: {
-    opacity: 0.7,
+  sectionBase: {
+    backgroundColor: theme.colors.neutral[200],
   },
-  requirementText: {
-    fontSize: 13,
-    color: theme.colors.neutral[500],
+  sectionFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    borderRadius: theme.radii.full,
   },
-  requirementTextMet: {
-    color: theme.colors.semantic.success,
-    textDecorationLine: 'line-through',
-  },
-  requirementTextNext: {
-    color: theme.colors.primary[600],
-    fontWeight: '600',
+  strengthLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: theme.colors.neutral[600],
+    textTransform: 'capitalize',
   },
 });
