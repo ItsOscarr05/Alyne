@@ -993,11 +993,11 @@ PLAID_ENV=sandbox
 
 **Test RT1.1: Connection Status**
 
-- [ ] Open app
-- [ ] Verify Socket.io connects
-- [ ] Check browser console for connection logs
-- [ ] Verify connection status indicator (if available)
-- [ ] Test reconnection after disconnect
+- [x] Open app
+- [x] Verify Socket.io connects
+- [x] Check browser console for connection logs
+- [x] Verify connection status indicator (if available)
+- [x] Test reconnection after disconnect
 
 **Test RT1.2: Booking Updates**
 
@@ -1018,10 +1018,10 @@ PLAID_ENV=sandbox
 
 **Test RT1.4: Payment Updates**
 
-- [ ] Complete payment
-- [ ] Verify payment status updates in real-time
-- [ ] Verify booking reflects payment status
-- [ ] Verify provider sees payment update
+- [x] Complete payment
+- [x] Verify payment status updates in real-time
+- [x] Verify booking reflects payment status
+- [x] Verify provider sees payment update
 
 ---
 

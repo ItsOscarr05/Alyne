@@ -23,6 +23,7 @@ import { theme } from '../../theme';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { EditProviderModal } from '../../components/EditProviderModal';
+import { ProviderDetailModal } from '../../components/ProviderDetailModal';
 import * as ImagePicker from 'expo-image-picker';
 import { onboardingService } from '../../services/onboarding';
 import { storage } from '../../utils/storage';
@@ -52,6 +53,10 @@ export default function ProfileScreen() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [editModalInitialSection, setEditModalInitialSection] = useState<'profile' | 'location' | 'services' | 'credentials' | 'availability' | 'bank'>('profile');
+  const [showProviderDetailModal, setShowProviderDetailModal] = useState(false);
+  const [providerDetailInitialTab, setProviderDetailInitialTab] = useState<'about' | 'services' | 'reviews'>('about');
+  const [scrollToAvailability, setScrollToAvailability] = useState(false);
   const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
   const [isHoveringPhoto, setIsHoveringPhoto] = useState(false);
 
@@ -432,7 +437,15 @@ export default function ProfileScreen() {
             {user.userType === 'PROVIDER' && providerProfile && (
               <View style={styles.quickStatsSection}>
                 <View style={styles.quickStatsGrid}>
-                  <View style={[styles.quickStatCard, styles.quickStatCardServices]}>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, styles.quickStatCardServices]}
+                    onPress={() => {
+                      setProviderDetailInitialTab('services');
+                      setScrollToAvailability(false);
+                      setShowProviderDetailModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Ionicons
                       name="briefcase-outline"
                       size={24}
@@ -442,22 +455,46 @@ export default function ProfileScreen() {
                       {providerProfile.services?.length || 0}
                     </Text>
                     <Text style={styles.quickStatLabel}>Services</Text>
-                  </View>
-                  <View style={[styles.quickStatCard, styles.quickStatCardCredentials]}>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, styles.quickStatCardCredentials]}
+                    onPress={() => {
+                      setProviderDetailInitialTab('about');
+                      setScrollToAvailability(false);
+                      setShowProviderDetailModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Ionicons name="ribbon-outline" size={24} color="#9333EA" />
                     <Text style={styles.quickStatNumber}>
                       {providerProfile.credentials?.length || 0}
                     </Text>
                     <Text style={styles.quickStatLabel}>Credentials</Text>
-                  </View>
-                  <View style={[styles.quickStatCard, styles.quickStatCardAvailability]}>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, styles.quickStatCardAvailability]}
+                    onPress={() => {
+                      setProviderDetailInitialTab('about');
+                      setScrollToAvailability(true);
+                      setShowProviderDetailModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Ionicons name="calendar-outline" size={24} color="#16A34A" />
                     <Text style={styles.quickStatNumber}>
                       {providerProfile.availability?.length || 0}
                     </Text>
                     <Text style={styles.quickStatLabel}>Days Available</Text>
-                  </View>
-                  <View style={[styles.quickStatCard, styles.quickStatCardRating]}>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, styles.quickStatCardRating]}
+                    onPress={() => {
+                      setProviderDetailInitialTab('reviews');
+                      setScrollToAvailability(false);
+                      setShowProviderDetailModal(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
                     <Ionicons name="star-outline" size={24} color="#fbbf24" />
                     <Text style={styles.quickStatNumber}>
                       {providerProfile.rating && providerProfile.rating > 0
@@ -465,7 +502,7 @@ export default function ProfileScreen() {
                         : 'N/A'}
                     </Text>
                     <Text style={styles.quickStatLabel}>Rating</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
                 {/* Bank Account Status */}
                 <View style={styles.bankAccountStatusCard}>
@@ -658,6 +695,21 @@ export default function ProfileScreen() {
             setShowEditModal(false);
             loadProviderProfile();
           }}
+          initialSection={editModalInitialSection}
+        />
+      )}
+
+      {/* Provider Detail Modal */}
+      {user?.userType === 'PROVIDER' && user?.id && (
+        <ProviderDetailModal
+          visible={showProviderDetailModal}
+          providerId={user.id}
+          onClose={() => {
+            setShowProviderDetailModal(false);
+            setScrollToAvailability(false);
+          }}
+          initialTab={providerDetailInitialTab}
+          scrollToAvailability={scrollToAvailability}
         />
       )}
     </View>
@@ -1009,6 +1061,8 @@ const styles = StyleSheet.create({
   },
   specialtyTag: {
     backgroundColor: theme.colors.primary[50],
+    borderWidth: 1,
+    borderColor: theme.colors.primary[500],
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.sm,

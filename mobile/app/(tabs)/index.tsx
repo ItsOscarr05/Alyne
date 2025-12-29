@@ -5,7 +5,6 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
-  Modal as RNModal,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
@@ -39,6 +38,7 @@ export default function DiscoverScreen() {
   const [dropdownFilter, setDropdownFilter] = useState<
     'rating' | 'price' | 'distance' | 'reviews' | null
   >(null);
+  const [buttonLayouts, setButtonLayouts] = useState<Record<string, { x: number; width: number }>>({});
 
   // Filter option states
   const [ratingOption, setRatingOption] = useState<number | null>(null); // 1-5 stars
@@ -296,6 +296,14 @@ export default function DiscoverScreen() {
     }
   };
 
+  const handleButtonLayout = (filter: string, event: any) => {
+    const { x, width } = event.nativeEvent.layout;
+    setButtonLayouts((prev) => ({
+      ...prev,
+      [filter]: { x, width },
+    }));
+  };
+
   const handleOptionSelect = (option: any) => {
     if (dropdownFilter === 'rating') {
       setRatingOption(option);
@@ -369,6 +377,7 @@ export default function DiscoverScreen() {
                   (activeFilter === 'rating' || ratingOption !== null) && styles.filterPillActive,
                 ]}
                 onPress={() => handleFilterPress('rating')}
+                onLayout={(e) => handleButtonLayout('rating', e)}
                 activeOpacity={0.8}
               >
                 <Text
@@ -382,7 +391,7 @@ export default function DiscoverScreen() {
                   {ratingOption !== null ? `${ratingOption}★+` : 'Rating'}
                 </Text>
                 <Ionicons
-                  name="chevron-down"
+                  name={showDropdown && dropdownFilter === 'rating' ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color={
                     activeFilter === 'rating' || ratingOption !== null
@@ -397,6 +406,7 @@ export default function DiscoverScreen() {
                   (activeFilter === 'price' || priceOption !== null) && styles.filterPillActive,
                 ]}
                 onPress={() => handleFilterPress('price')}
+                onLayout={(e) => handleButtonLayout('price', e)}
                 activeOpacity={0.8}
               >
                 <Text
@@ -410,7 +420,7 @@ export default function DiscoverScreen() {
                   {priceOption !== null ? `Price (${priceOption === 'asc' ? '↑' : '↓'})` : 'Price'}
                 </Text>
                 <Ionicons
-                  name="chevron-down"
+                  name={showDropdown && dropdownFilter === 'price' ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color={
                     activeFilter === 'price' || priceOption !== null
@@ -426,6 +436,7 @@ export default function DiscoverScreen() {
                     styles.filterPillActive,
                 ]}
                 onPress={() => handleFilterPress('distance')}
+                onLayout={(e) => handleButtonLayout('distance', e)}
                 activeOpacity={0.8}
               >
                 <Text
@@ -441,7 +452,7 @@ export default function DiscoverScreen() {
                     : 'Distance'}
                 </Text>
                 <Ionicons
-                  name="chevron-down"
+                  name={showDropdown && dropdownFilter === 'distance' ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color={
                     activeFilter === 'distance' || distanceOption !== null
@@ -456,6 +467,7 @@ export default function DiscoverScreen() {
                   (activeFilter === 'reviews' || reviewsOption !== null) && styles.filterPillActive,
                 ]}
                 onPress={() => handleFilterPress('reviews')}
+                onLayout={(e) => handleButtonLayout('reviews', e)}
                 activeOpacity={0.8}
               >
                 <Text
@@ -471,7 +483,7 @@ export default function DiscoverScreen() {
                     : 'Reviews'}
                 </Text>
                 <Ionicons
-                  name="chevron-down"
+                  name={showDropdown && dropdownFilter === 'reviews' ? 'chevron-up' : 'chevron-down'}
                   size={14}
                   color={
                     activeFilter === 'reviews' || reviewsOption !== null
@@ -480,6 +492,159 @@ export default function DiscoverScreen() {
                   }
                 />
               </TouchableOpacity>
+              
+              {/* Dropdown Menu */}
+              {showDropdown && dropdownFilter && buttonLayouts[dropdownFilter] && (
+                <View
+                  style={[
+                    styles.dropdownContainer,
+                    {
+                      left: buttonLayouts[dropdownFilter].x,
+                      width: buttonLayouts[dropdownFilter].width,
+                    },
+                  ]}
+                >
+                {dropdownFilter === 'rating' && (
+                  <>
+                    {[1, 2, 3, 4, 5].map((stars) => (
+                      <TouchableOpacity
+                        key={stars}
+                        style={[
+                          styles.dropdownOption,
+                          ratingOption === stars && styles.dropdownOptionActive,
+                        ]}
+                        onPress={() => handleOptionSelect(stars)}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownOptionText,
+                            ratingOption === stars && styles.dropdownOptionTextActive,
+                          ]}
+                        >
+                          {stars} star{stars > 1 ? 's' : ''} & above
+                        </Text>
+                        {ratingOption === stars && (
+                          <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+
+                {dropdownFilter === 'price' && (
+                  <>
+                    <TouchableOpacity
+                      style={[
+                        styles.dropdownOption,
+                        priceOption === 'asc' && styles.dropdownOptionActive,
+                      ]}
+                      onPress={() => handleOptionSelect('asc')}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          priceOption === 'asc' && styles.dropdownOptionTextActive,
+                        ]}
+                      >
+                        Ascending
+                      </Text>
+                      {priceOption === 'asc' && (
+                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.dropdownOption,
+                        priceOption === 'desc' && styles.dropdownOptionActive,
+                      ]}
+                      onPress={() => handleOptionSelect('desc')}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          priceOption === 'desc' && styles.dropdownOptionTextActive,
+                        ]}
+                      >
+                        Descending
+                      </Text>
+                      {priceOption === 'desc' && (
+                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                      )}
+                    </TouchableOpacity>
+                  </>
+                )}
+
+                {dropdownFilter === 'distance' && (
+                  <>
+                    {[1, 5, 10, 15, 20].map((miles) => (
+                      <TouchableOpacity
+                        key={miles}
+                        style={[
+                          styles.dropdownOption,
+                          distanceOption === miles && styles.dropdownOptionActive,
+                        ]}
+                        onPress={() => handleOptionSelect(miles)}
+                      >
+                        <Text
+                          style={[
+                            styles.dropdownOptionText,
+                            distanceOption === miles && styles.dropdownOptionTextActive,
+                          ]}
+                        >
+                          {miles === 20 ? '≥ 20 Miles' : `≤ ${miles} Miles`}
+                        </Text>
+                        {distanceOption === miles && (
+                          <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </>
+                )}
+
+                {dropdownFilter === 'reviews' && (
+                  <>
+                    <TouchableOpacity
+                      style={[
+                        styles.dropdownOption,
+                        reviewsOption === 'highest' && styles.dropdownOptionActive,
+                      ]}
+                      onPress={() => handleOptionSelect('highest')}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          reviewsOption === 'highest' && styles.dropdownOptionTextActive,
+                        ]}
+                      >
+                        Highest
+                      </Text>
+                      {reviewsOption === 'highest' && (
+                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                      )}
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.dropdownOption,
+                        reviewsOption === 'lowest' && styles.dropdownOptionActive,
+                      ]}
+                      onPress={() => handleOptionSelect('lowest')}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          reviewsOption === 'lowest' && styles.dropdownOptionTextActive,
+                        ]}
+                      >
+                        Lowest
+                      </Text>
+                      {reviewsOption === 'lowest' && (
+                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                      )}
+                    </TouchableOpacity>
+                  </>
+                )}
+                </View>
+              )}
             </View>
             {(ratingOption !== null ||
               priceOption !== null ||
@@ -495,6 +660,18 @@ export default function DiscoverScreen() {
               </TouchableOpacity>
             )}
           </View>
+          
+          {/* Overlay for closing dropdown */}
+          {showDropdown && (
+            <TouchableOpacity
+              style={styles.dropdownOverlay}
+              activeOpacity={1}
+              onPress={() => {
+                setShowDropdown(false);
+                setDropdownFilter(null);
+              }}
+            />
+          )}
         </View>
 
         {isLoading ? (
@@ -544,167 +721,6 @@ export default function DiscoverScreen() {
         }}
       />
 
-      {/* Filter Dropdown Modal */}
-      <RNModal
-        visible={showDropdown}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => {
-          setShowDropdown(false);
-          setDropdownFilter(null);
-        }}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => {
-            setShowDropdown(false);
-            setDropdownFilter(null);
-          }}
-        >
-          <View style={styles.dropdownContainer}>
-            {dropdownFilter === 'rating' && (
-              <>
-                {[1, 2, 3, 4, 5].map((stars) => (
-                  <TouchableOpacity
-                    key={stars}
-                    style={[
-                      styles.dropdownOption,
-                      ratingOption === stars && styles.dropdownOptionActive,
-                    ]}
-                    onPress={() => handleOptionSelect(stars)}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownOptionText,
-                        ratingOption === stars && styles.dropdownOptionTextActive,
-                      ]}
-                    >
-                      {stars} star{stars > 1 ? 's' : ''} & above
-                    </Text>
-                    {ratingOption === stars && (
-                      <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </>
-            )}
-
-            {dropdownFilter === 'price' && (
-              <>
-                <TouchableOpacity
-                  style={[
-                    styles.dropdownOption,
-                    priceOption === 'asc' && styles.dropdownOptionActive,
-                  ]}
-                  onPress={() => handleOptionSelect('asc')}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      priceOption === 'asc' && styles.dropdownOptionTextActive,
-                    ]}
-                  >
-                    Ascending
-                  </Text>
-                  {priceOption === 'asc' && (
-                    <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.dropdownOption,
-                    priceOption === 'desc' && styles.dropdownOptionActive,
-                  ]}
-                  onPress={() => handleOptionSelect('desc')}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      priceOption === 'desc' && styles.dropdownOptionTextActive,
-                    ]}
-                  >
-                    Descending
-                  </Text>
-                  {priceOption === 'desc' && (
-                    <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-
-            {dropdownFilter === 'distance' && (
-              <>
-                {[1, 5, 10, 15, 20].map((miles) => (
-                  <TouchableOpacity
-                    key={miles}
-                    style={[
-                      styles.dropdownOption,
-                      distanceOption === miles && styles.dropdownOptionActive,
-                    ]}
-                    onPress={() => handleOptionSelect(miles)}
-                  >
-                    <Text
-                      style={[
-                        styles.dropdownOptionText,
-                        distanceOption === miles && styles.dropdownOptionTextActive,
-                      ]}
-                    >
-                      {miles === 20 ? '≥ 20 Miles' : `≤ ${miles} Miles`}
-                    </Text>
-                    {distanceOption === miles && (
-                      <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </>
-            )}
-
-            {dropdownFilter === 'reviews' && (
-              <>
-                <TouchableOpacity
-                  style={[
-                    styles.dropdownOption,
-                    reviewsOption === 'highest' && styles.dropdownOptionActive,
-                  ]}
-                  onPress={() => handleOptionSelect('highest')}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      reviewsOption === 'highest' && styles.dropdownOptionTextActive,
-                    ]}
-                  >
-                    Highest
-                  </Text>
-                  {reviewsOption === 'highest' && (
-                    <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.dropdownOption,
-                    reviewsOption === 'lowest' && styles.dropdownOptionActive,
-                  ]}
-                  onPress={() => handleOptionSelect('lowest')}
-                >
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      reviewsOption === 'lowest' && styles.dropdownOptionTextActive,
-                    ]}
-                  >
-                    Lowest
-                  </Text>
-                  {reviewsOption === 'lowest' && (
-                    <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
-                  )}
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        </TouchableOpacity>
-      </RNModal>
 
       {/* Alert Modal */}
       <AlertModal
@@ -748,9 +764,13 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: theme.spacing.xl,
     paddingTop: theme.spacing.lg,
+    overflow: 'visible',
   },
   filtersContainer: {
     marginBottom: theme.spacing.lg,
+    position: 'relative',
+    zIndex: 10,
+    overflow: 'visible',
   },
   filterRow: {
     flexDirection: 'row',
@@ -763,6 +783,8 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     flexWrap: 'wrap',
     flex: 1,
+    position: 'relative',
+    zIndex: 10,
   },
   filterPill: {
     flexDirection: 'row',
@@ -812,19 +834,27 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.neutral[500],
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  dropdownOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: -1000, // Extend beyond container to cover content below
+    backgroundColor: 'transparent',
+    zIndex: 1,
   },
   dropdownContainer: {
+    position: 'absolute',
+    top: 40, // Position below the filter buttons
     backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.sm,
-    minWidth: 200,
-    maxWidth: 300,
     ...theme.shadows.card,
+    zIndex: 1000,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+    elevation: 10, // For Android
+    minWidth: 150,
   },
   dropdownOption: {
     flexDirection: 'row',

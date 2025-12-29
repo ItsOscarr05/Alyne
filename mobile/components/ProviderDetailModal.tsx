@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { providerService, ProviderDetail, Service, Review } from '../services/provider';
 import { reviewService } from '../services/review';
@@ -29,15 +30,22 @@ interface ProviderDetailModalProps {
   visible: boolean;
   providerId: string | null;
   onClose: () => void;
+  initialTab?: 'about' | 'services' | 'reviews';
+  scrollToAvailability?: boolean;
 }
 
-export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDetailModalProps) {
+export function ProviderDetailModal({ visible, providerId, onClose, initialTab = 'about', scrollToAvailability = false }: ProviderDetailModalProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { onProviderRatingUpdate } = useSocket();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>('about');
+  const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>(initialTab);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const availabilitySectionRef = useRef<View>(null);
+  const [availabilityYPosition, setAvailabilityYPosition] = useState<number | null>(null);
+  const scrollAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const currentScrollYRef = useRef(0);
   const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
   const [isEditReviewModalVisible, setIsEditReviewModalVisible] = useState(false);
   const [selectedReview, setSelectedReview] = useState<{
@@ -73,13 +81,73 @@ export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDe
   useEffect(() => {
     if (visible && providerId) {
       loadProvider();
+      // Set the active tab when modal opens
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
     } else {
       // Reset state when modal closes
       setProvider(null);
       setIsLoading(true);
-      setActiveTab('about');
+      setActiveTab(initialTab);
+      setAvailabilityYPosition(null);
     }
-  }, [visible, providerId]);
+  }, [visible, providerId, initialTab]);
+
+  // Scroll to availability section when needed
+  useEffect(() => {
+    if (visible && scrollToAvailability && activeTab === 'about' && provider && scrollViewRef.current) {
+      // Wait for the availability section to be measured
+      if (availabilityYPosition === null) {
+        return;
+      }
+      
+      // Use requestAnimationFrame for smoother animation timing
+      const frameId = requestAnimationFrame(() => {
+        // Add a small delay to ensure the content is fully rendered and measured
+        const timeoutId = setTimeout(() => {
+          if (scrollViewRef.current && availabilityYPosition !== null) {
+            const targetY = Math.max(0, availabilityYPosition - 150);
+            const startY = currentScrollYRef.current;
+            
+            // Stop any existing animation
+            scrollAnimationRef.current?.stop();
+            
+            // Create animated value starting from current position
+            const animatedValue = new Animated.Value(startY);
+            
+            // Create listener to update scroll position
+            const listenerId = animatedValue.addListener(({ value }) => {
+              scrollViewRef.current?.scrollTo({
+                y: value,
+                animated: false, // We're manually animating
+              });
+            });
+            
+            // Animate to target position over 800ms with easing
+            scrollAnimationRef.current = Animated.timing(animatedValue, {
+              toValue: targetY,
+              duration: 800, // 800ms animation duration
+              useNativeDriver: false, // scrollTo doesn't support native driver
+            });
+            
+            scrollAnimationRef.current.start(({ finished }) => {
+              if (finished) {
+                animatedValue.removeListener(listenerId);
+              }
+            });
+          }
+        }, 400); // Delay to ensure layout and measurement are complete
+        
+        return () => clearTimeout(timeoutId);
+      });
+      
+      return () => {
+        cancelAnimationFrame(frameId);
+        scrollAnimationRef.current?.stop();
+      };
+    }
+  }, [visible, scrollToAvailability, activeTab, provider, availabilityYPosition]);
 
   // Listen for real-time provider rating updates
   useEffect(() => {
@@ -242,7 +310,15 @@ export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDe
                 </View>
               ) : (
                 <>
-                  <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+                  <ScrollView 
+                    ref={scrollViewRef}
+                    style={styles.scrollView} 
+                    showsVerticalScrollIndicator={false}
+                    onScroll={(event) => {
+                      currentScrollYRef.current = event.nativeEvent.contentOffset.y;
+                    }}
+                    scrollEventThrottle={16}
+                  >
                     {/* Profile Header */}
                     <View style={styles.profileHeader}>
                       <View style={styles.profileHeaderRow}>
@@ -394,7 +470,22 @@ export function ProviderDetailModal({ visible, providerId, onClose }: ProviderDe
                               return (
                                 <>
                                   <View style={styles.sectionDivider} />
-                                  <View style={styles.section}>
+                                  <View 
+                                    ref={availabilitySectionRef}
+                                    style={styles.section}
+                                    onLayout={(event) => {
+                                      // Use requestAnimationFrame to ensure layout is complete before measuring
+                                      requestAnimationFrame(() => {
+                                        // Measure the availability section's position
+                                        // The 'y' parameter is relative to the ScrollView's content container
+                                        // which is exactly what we need for scrollTo
+                                        availabilitySectionRef.current?.measure((x, y, width, height, pageX, pageY) => {
+                                          // 'y' is the position relative to the ScrollView content, perfect for scrollTo
+                                          setAvailabilityYPosition(y);
+                                        });
+                                      });
+                                    }}
+                                  >
                                     <Text style={styles.sectionTitle}>Availability</Text>
                                     <View style={styles.availabilityDaysRow}>
                                       {availableDays.map((day) => (

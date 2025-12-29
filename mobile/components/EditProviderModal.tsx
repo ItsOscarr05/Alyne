@@ -36,11 +36,12 @@ interface EditProviderModalProps {
   visible: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  initialSection?: Section;
 }
 
-export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderModalProps) {
+export function EditProviderModal({ visible, onClose, onSuccess, initialSection = 'profile' }: EditProviderModalProps) {
   const { user, refreshUser } = useAuth();
-  const [activeSection, setActiveSection] = useState<Section>('profile');
+  const [activeSection, setActiveSection] = useState<Section>(initialSection);
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [alertModal, setAlertModal] = useState<{
@@ -178,11 +179,15 @@ export function EditProviderModal({ visible, onClose, onSuccess }: EditProviderM
       refreshUser().then(() => {
         loadProfileData();
       });
+      // Set the active section when modal opens
+      if (initialSection) {
+        setActiveSection(initialSection);
+      }
     } else if (!visible) {
       // Reset original state when modal closes
       setOriginalState(null);
     }
-  }, [visible, user?.id]);
+  }, [visible, user?.id, initialSection]);
 
   // Load Plaid link token when bank section is active
   useEffect(() => {
