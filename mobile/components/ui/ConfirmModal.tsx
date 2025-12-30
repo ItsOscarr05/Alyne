@@ -5,7 +5,7 @@ import { Modal } from './Modal';
 import { theme } from '../../theme';
 import { Button } from './Button';
 
-export type ConfirmType = 'danger' | 'warning' | 'info';
+export type ConfirmType = 'danger' | 'warning' | 'info' | 'success';
 
 interface ConfirmModalProps {
   visible: boolean;
@@ -42,24 +42,43 @@ export function ConfirmModal({
     onClose();
   };
 
-  const getIcon = () => {
+  const getIconConfig = () => {
     switch (type) {
       case 'danger':
-        return { name: 'alert-circle' as const, color: theme.colors.semantic.error };
+        return { 
+          name: 'alert-circle' as const, 
+          color: theme.colors.semantic.error,
+          bgColor: '#FEE2E2',
+        };
       case 'warning':
-        return { name: 'warning' as const, color: theme.colors.semantic.warning };
+        return { 
+          name: 'warning' as const, 
+          color: theme.colors.semantic.warning,
+          bgColor: '#FEF3C7',
+        };
+      case 'success':
+        return { 
+          name: 'checkmark-circle' as const, 
+          color: theme.colors.semantic.success,
+          bgColor: '#D1FAE5',
+        };
       default:
-        return { name: 'help-circle' as const, color: theme.colors.semantic.info };
+        return { 
+          name: 'information-circle' as const, 
+          color: theme.colors.primary[500],
+          bgColor: theme.colors.primary[50],
+        };
     }
   };
 
-  const icon = getIcon();
+  const iconConfig = getIconConfig();
+  const isCompleteAction = confirmText.toLowerCase().includes('complete');
 
   return (
     <Modal visible={visible} onClose={onClose} dismissible>
       <View style={styles.container}>
-        <View style={styles.iconContainer}>
-          <Ionicons name={icon.name} size={48} color={icon.color} />
+        <View style={[styles.iconContainer, { backgroundColor: iconConfig.bgColor }]}>
+          <Ionicons name={iconConfig.name} size={56} color={iconConfig.color} />
         </View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
@@ -68,13 +87,17 @@ export function ConfirmModal({
             title={cancelText}
             onPress={handleCancel}
             variant="secondary"
-            style={[styles.button, styles.cancelButton]}
+            style={styles.button}
           />
           <Button
             title={confirmText}
             onPress={handleConfirm}
-            variant={type === 'danger' ? 'primary' : 'primary'}
-            style={[styles.button, type === 'danger' && styles.dangerButton]}
+            variant="primary"
+            style={[
+              styles.button, 
+              type === 'danger' && styles.dangerButton,
+              (type === 'success' || isCompleteAction) && styles.successButton,
+            ]}
           />
         </View>
       </View>
@@ -84,38 +107,50 @@ export function ConfirmModal({
 
 const styles = StyleSheet.create({
   container: {
-    padding: theme.spacing.xl,
+    padding: theme.spacing['2xl'],
     alignItems: 'center',
+    minWidth: 320,
+    maxWidth: 400,
   },
   iconContainer: {
-    marginBottom: theme.spacing.lg,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xl,
   },
   title: {
     ...theme.typography.h2,
+    fontSize: 22,
+    fontWeight: '700',
     color: theme.colors.neutral[900],
     textAlign: 'center',
     marginBottom: theme.spacing.md,
   },
   message: {
     ...theme.typography.body,
-    color: theme.colors.neutral[700],
+    fontSize: 15,
+    color: theme.colors.neutral[600],
     textAlign: 'center',
-    marginBottom: theme.spacing.xl,
+    marginBottom: theme.spacing['2xl'],
     lineHeight: 22,
+    paddingHorizontal: theme.spacing.sm,
   },
   buttonContainer: {
     flexDirection: 'row',
     width: '100%',
     gap: theme.spacing.md,
+    justifyContent: 'center',
   },
   button: {
-    flex: 1,
-  },
-  cancelButton: {
-    backgroundColor: theme.colors.neutral[200],
+    minWidth: 120,
   },
   dangerButton: {
     backgroundColor: theme.colors.semantic.error,
+  },
+  successButton: {
+    backgroundColor: theme.colors.semantic.success,
   },
 });
 

@@ -1,6 +1,7 @@
-import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import React, { useRef } from 'react';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, ViewStyle, TextStyle, Animated } from 'react-native';
 import { theme } from '../../theme';
+import { ANIMATION_DURATIONS } from '../../utils/animations';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -24,6 +25,31 @@ export const Button: React.FC<ButtonProps> = ({
   textStyle,
 }) => {
   const isDisabled = disabled || loading;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    if (!isDisabled) {
+      Animated.timing(scaleAnim, {
+        toValue: 0.97,
+        duration: ANIMATION_DURATIONS.FAST,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 1,
+      duration: ANIMATION_DURATIONS.FAST,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePress = () => {
+    if (!isDisabled) {
+      onPress();
+    }
+  };
 
   const variantStyle =
     variant === 'secondary'
@@ -36,18 +62,22 @@ export const Button: React.FC<ButtonProps> = ({
     variant === 'secondary' || variant === 'ghost' ? styles.textDark : styles.textLight;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      style={[styles.base, variantStyle, isDisabled && styles.disabled, style]}
-      onPress={onPress}
-      disabled={isDisabled}
-    >
-      {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? theme.colors.white : theme.colors.primary[500]} />
-      ) : (
-        <Text style={[styles.textBase, textVariantStyle, textStyle]}>{title}</Text>
-      )}
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        activeOpacity={1}
+        style={[styles.base, variantStyle, isDisabled && styles.disabled, style]}
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={isDisabled}
+      >
+        {loading ? (
+          <ActivityIndicator color={variant === 'primary' ? theme.colors.white : theme.colors.primary[500]} />
+        ) : (
+          <Text style={[styles.textBase, textVariantStyle, textStyle]}>{title}</Text>
+        )}
+      </TouchableOpacity>
+    </Animated.View>
   );
 };
 

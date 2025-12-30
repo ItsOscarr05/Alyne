@@ -39,10 +39,27 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Enhance network errors with better detection
+    if (!error.response) {
+      // No response means network error
+      if (error.code === 'ERR_NETWORK' || error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+        error.isNetworkError = true;
+        error.networkError = true;
+      }
+    }
+    
     if (error.response?.status === 401) {
       // TODO: Handle unauthorized - redirect to login
       logger.warn('Unauthorized - redirecting to login');
     }
+    
+    logger.error('API Error', {
+      message: error.message,
+      code: error.code,
+      status: error.response?.status,
+      isNetworkError: error.isNetworkError,
+    });
+    
     return Promise.reject(error);
   }
 );

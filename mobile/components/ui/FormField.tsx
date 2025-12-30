@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TextInputProps, TouchableOpacity, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, StyleSheet, TextInputProps, TouchableOpacity, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
+import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
 
 interface FormFieldProps extends TextInputProps {
   label: string;
@@ -14,6 +15,32 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const isPasswordField = secureTextEntry;
+  const borderWidthAnim = useRef(new Animated.Value(1)).current;
+
+  // Animate border on focus/blur
+  useEffect(() => {
+    if (hasError) return; // Don't animate if there's an error (error state takes priority)
+
+    Animated.timing(borderWidthAnim, {
+      toValue: isFocused ? 2 : 1,
+      duration: ANIMATION_DURATIONS.FAST,
+      easing: ANIMATION_EASING.easeInOut,
+      useNativeDriver: false, // borderWidth can't use native driver
+    }).start();
+  }, [isFocused, hasError, borderWidthAnim]);
+
+  // Reset animations when error changes
+  useEffect(() => {
+    if (hasError) {
+      borderWidthAnim.setValue(1);
+    }
+  }, [hasError, borderWidthAnim]);
+
+  const borderColor = hasError 
+    ? theme.colors.semantic.error 
+    : isFocused 
+    ? theme.colors.primary[500] 
+    : theme.colors.neutral[200];
 
   return (
     <View style={styles.container}>
@@ -22,10 +49,20 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
         {required && <Text style={styles.requiredAsterisk}> *</Text>}
       </Text>
       <View style={styles.inputContainer}>
+        <Animated.View
+          style={[
+            styles.animatedBorder,
+            {
+              borderWidth: borderWidthAnim,
+              borderColor,
+            },
+          ]}
+          pointerEvents="none"
+        />
         <TextInput
           style={[
             styles.input,
-            isFocused && styles.inputFocused,
+            !hasError && { borderWidth: 0 }, // Remove default border when no error (animated border handles it)
             hasError && styles.inputError,
             isPasswordField && styles.inputWithIcon,
             style
@@ -77,6 +114,15 @@ const styles = StyleSheet.create({
   inputContainer: {
     position: 'relative',
   },
+  animatedBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: theme.radii.md,
+    pointerEvents: 'none',
+  },
   input: {
     borderWidth: 1,
     borderColor: theme.colors.neutral[200],
@@ -86,13 +132,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: theme.colors.white,
     color: theme.colors.neutral[900],
-    ...(Platform.OS === 'web' && {
-      outlineStyle: 'none',
-    }),
-  },
-  inputFocused: {
-    borderColor: theme.colors.primary[500],
-    borderWidth: 2,
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),

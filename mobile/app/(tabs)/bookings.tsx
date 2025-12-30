@@ -15,6 +15,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { BookingCard, BookingCardData } from '../../components/BookingCard';
+import { AnimatedCardWrapper } from '../../components/AnimatedCardWrapper';
+import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
+import { AnimatedLoadingState } from '../../components/AnimatedLoadingState';
 import { bookingService, BookingDetail } from '../../services/booking';
 import { reviewService } from '../../services/review';
 import { paymentService } from '../../services/payment';
@@ -374,7 +377,7 @@ export default function BookingsScreen() {
       title: 'Mark as Completed',
       message:
         'Are you sure you want to mark this booking as completed? The client will be able to leave a review.',
-      type: 'info',
+      type: 'success',
       confirmText: 'Complete',
       onConfirm: async () => {
         await completeBookingAction(bookingId);
@@ -533,9 +536,10 @@ export default function BookingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
-          </View>
+          <AnimatedLoadingState 
+            visible={isLoading}
+            style={styles.loadingContainer}
+          />
         </ScrollView>
       </View>
     );
@@ -610,41 +614,41 @@ export default function BookingsScreen() {
           </View>
           <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
             {activeTab === 'pending' ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="time-outline" size={160} color="#3B82F6" />
+              <AnimatedEmptyState style={styles.emptyState}>
+                <Ionicons name="time-outline" size={160} color="#FBBF24" />
                 <Text style={styles.emptyTitle}>No pending bookings</Text>
                 <Text style={styles.emptyText}>
                   {user?.userType === 'PROVIDER'
                     ? 'When clients request sessions, they will appear here'
                     : 'When you request a session, it will appear here'}
                 </Text>
-              </View>
+              </AnimatedEmptyState>
             ) : activeTab === 'upcoming' ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="calendar-outline" size={160} color="#3B82F6" />
+              <AnimatedEmptyState style={styles.emptyState}>
+                <Ionicons name="calendar-outline" size={160} color="#A855F7" />
                 <Text style={styles.emptyTitle}>No upcoming bookings</Text>
                 <Text style={styles.emptyText}>
                   When you schedule a session, it will appear here.
                 </Text>
-              </View>
+              </AnimatedEmptyState>
             ) : activeTab === 'declined' ? (
-              <View style={styles.emptyState}>
-                <Ionicons name="close-circle-outline" size={160} color="#3B82F6" />
+              <AnimatedEmptyState style={styles.emptyState}>
+                <Ionicons name="close-circle-outline" size={160} color="#EF4444" />
                 <Text style={styles.emptyTitle}>No declined bookings</Text>
                 <Text style={styles.emptyText}>
                   {user?.userType === 'PROVIDER'
                     ? 'Bookings that you declined will appear here.'
                     : 'Bookings that were declined by the provider will appear here.'}
                 </Text>
-              </View>
+              </AnimatedEmptyState>
             ) : (
-              <View style={styles.emptyState}>
-                <Ionicons name="checkmark-circle-outline" size={160} color="#3B82F6" />
+              <AnimatedEmptyState style={styles.emptyState}>
+                <Ionicons name="checkmark-circle-outline" size={160} color={theme.colors.semantic.success} />
                 <Text style={styles.emptyTitle}>No completed bookings yet</Text>
                 <Text style={styles.emptyText}>
                   Completed and cancelled sessions will appear here.
                 </Text>
-              </View>
+              </AnimatedEmptyState>
             )}
           </Animated.View>
         </ScrollView>
@@ -722,18 +726,18 @@ export default function BookingsScreen() {
           {activeTab === 'pending' ? (
             <View style={styles.section}>
               {pendingBookings.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="time-outline" size={160} color="#3B82F6" />
+                <AnimatedEmptyState style={styles.emptyState}>
+                  <Ionicons name="time-outline" size={160} color="#FBBF24" />
                   <Text style={styles.emptyTitle}>No pending bookings</Text>
                   <Text style={styles.emptyText}>
                     {user?.userType === 'PROVIDER'
                       ? 'When clients request sessions, they will appear here'
                       : 'When you request a session, it will appear here'}
                   </Text>
-                </View>
+                </AnimatedEmptyState>
               ) : (
                 <>
-                  {getPaginatedBookings(pendingBookings, 'pending').map((booking) => {
+                  {getPaginatedBookings(pendingBookings, 'pending').map((booking, index) => {
                     const bookingCardData: BookingCardData = {
                       id: booking.id,
                       providerId: booking.providerId,
@@ -755,7 +759,7 @@ export default function BookingsScreen() {
                     };
 
                     return (
-                      <View key={booking.id}>
+                      <AnimatedCardWrapper key={booking.id} index={index}>
                         <BookingCard
                           booking={bookingCardData}
                           onPress={() => handleBookingPress(booking.id)}
@@ -772,7 +776,7 @@ export default function BookingsScreen() {
                           showMessageButton={user?.userType === 'PROVIDER' ? true : false}
                           onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
-                      </View>
+                      </AnimatedCardWrapper>
                     );
                   })}
                   {getTotalPages(pendingBookings) > 1 && (
@@ -838,16 +842,16 @@ export default function BookingsScreen() {
           ) : activeTab === 'upcoming' ? (
             <View style={styles.section}>
               {upcomingBookings.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="calendar-outline" size={160} color="#3B82F6" />
+                <AnimatedEmptyState style={styles.emptyState}>
+                  <Ionicons name="calendar-outline" size={160} color="#A855F7" />
                   <Text style={styles.emptyTitle}>No upcoming bookings</Text>
                   <Text style={styles.emptyText}>
                     When you schedule a session, it will appear here.
                   </Text>
-                </View>
+                </AnimatedEmptyState>
               ) : (
                 <>
-                  {getPaginatedBookings(upcomingBookings, 'upcoming').map((booking) => {
+                  {getPaginatedBookings(upcomingBookings, 'upcoming').map((booking, index) => {
                     const bookingCardData: BookingCardData = {
                       id: booking.id,
                       providerId: booking.providerId,
@@ -891,7 +895,7 @@ export default function BookingsScreen() {
                       ) : undefined;
 
                     return (
-                      <View key={booking.id}>
+                      <AnimatedCardWrapper key={booking.id} index={index}>
                         <BookingCard
                           booking={bookingCardData}
                           onPress={() => handleBookingPress(booking.id)}
@@ -902,7 +906,7 @@ export default function BookingsScreen() {
                           showMessageButton={user?.userType === 'PROVIDER' ? true : false}
                           onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
-                      </View>
+                      </AnimatedCardWrapper>
                     );
                   })}
                   {getTotalPages(upcomingBookings) > 1 && (
@@ -968,18 +972,18 @@ export default function BookingsScreen() {
           ) : activeTab === 'declined' ? (
             <View style={styles.section}>
               {declinedBookings.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="close-circle-outline" size={160} color="#3B82F6" />
+                <AnimatedEmptyState style={styles.emptyState}>
+                  <Ionicons name="close-circle-outline" size={160} color="#EF4444" />
                   <Text style={styles.emptyTitle}>No declined bookings</Text>
                   <Text style={styles.emptyText}>
                     {user?.userType === 'PROVIDER'
                       ? 'Bookings that you declined will appear here.'
                       : 'Bookings that were declined by the provider will appear here.'}
                   </Text>
-                </View>
+                </AnimatedEmptyState>
               ) : (
                 <>
-                  {getPaginatedBookings(declinedBookings, 'declined').map((booking) => {
+                  {getPaginatedBookings(declinedBookings, 'declined').map((booking, index) => {
                     const bookingCardData: BookingCardData = {
                       id: booking.id,
                       providerId: booking.providerId,
@@ -1001,7 +1005,7 @@ export default function BookingsScreen() {
                     };
 
                     return (
-                      <View key={booking.id}>
+                      <AnimatedCardWrapper key={booking.id} index={index}>
                         <BookingCard
                           booking={bookingCardData}
                           onPress={() => handleBookingPress(booking.id)}
@@ -1010,7 +1014,7 @@ export default function BookingsScreen() {
                           showMessageButton={user?.userType === 'PROVIDER' ? true : false}
                           onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
-                      </View>
+                      </AnimatedCardWrapper>
                     );
                   })}
                   {getTotalPages(declinedBookings) > 1 && (
@@ -1076,16 +1080,16 @@ export default function BookingsScreen() {
           ) : (
             <View style={styles.section}>
               {pastBookings.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Ionicons name="checkmark-circle-outline" size={160} color="#3B82F6" />
+                <AnimatedEmptyState style={styles.emptyState}>
+                  <Ionicons name="checkmark-circle-outline" size={160} color={theme.colors.semantic.success} />
                   <Text style={styles.emptyTitle}>No completed bookings yet</Text>
                   <Text style={styles.emptyText}>
                     Completed and cancelled sessions will appear here.
                   </Text>
-                </View>
+                </AnimatedEmptyState>
               ) : (
                 <>
-                  {getPaginatedBookings(pastBookings, 'past').map((booking) => {
+                  {getPaginatedBookings(pastBookings, 'past').map((booking, index) => {
                     const bookingCardData: BookingCardData = {
                       id: booking.id,
                       providerId: booking.providerId,
@@ -1127,7 +1131,7 @@ export default function BookingsScreen() {
                     ) : undefined;
 
                     return (
-                      <View key={booking.id}>
+                      <AnimatedCardWrapper key={booking.id} index={index}>
                         <BookingCard
                           booking={bookingCardData}
                           onPress={() => handleBookingPress(booking.id)}
@@ -1135,7 +1139,7 @@ export default function BookingsScreen() {
                           showOptions={true}
                           onOptionsPress={() => handleOptionsPress(booking.id)}
                         />
-                      </View>
+                      </AnimatedCardWrapper>
                     );
                   })}
                   {getTotalPages(pastBookings) > 1 && (

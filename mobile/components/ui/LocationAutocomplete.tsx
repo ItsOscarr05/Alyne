@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, StyleSheet, Platform, Animated } from 'react-native';
 import { theme } from '../../theme';
+import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
 
 interface LocationAutocompleteProps {
   city: string;
@@ -21,32 +22,79 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 }) => {
   const [cityFocused, setCityFocused] = useState(false);
   const [stateFocused, setStateFocused] = useState(false);
+  const cityBorderWidthAnim = useRef(new Animated.Value(1)).current;
+  const stateBorderWidthAnim = useRef(new Animated.Value(1)).current;
+
+  // Animate city border on focus/blur
+  useEffect(() => {
+    Animated.timing(cityBorderWidthAnim, {
+      toValue: cityFocused ? 2 : 1,
+      duration: ANIMATION_DURATIONS.FAST,
+      easing: ANIMATION_EASING.easeInOut,
+      useNativeDriver: false,
+    }).start();
+  }, [cityFocused, cityBorderWidthAnim]);
+
+  // Animate state border on focus/blur
+  useEffect(() => {
+    Animated.timing(stateBorderWidthAnim, {
+      toValue: stateFocused ? 2 : 1,
+      duration: ANIMATION_DURATIONS.FAST,
+      easing: ANIMATION_EASING.easeInOut,
+      useNativeDriver: false,
+    }).start();
+  }, [stateFocused, stateBorderWidthAnim]);
+
+  const cityBorderColor = cityFocused ? '#2563eb' : '#1e293b';
+  const stateBorderColor = stateFocused ? '#2563eb' : '#1e293b';
   
   return (
     <View style={styles.container}>
       <View style={[styles.inputContainer, { marginBottom: theme.spacing.lg }]}>
         <Text style={styles.label}>City</Text>
+        <Animated.View
+          style={[
+            styles.animatedBorder,
+            {
+              borderWidth: cityBorderWidthAnim,
+              borderColor: cityBorderColor,
+            },
+          ]}
+          pointerEvents="none"
+        />
         <TextInput
-          style={[styles.input, cityFocused && styles.inputFocused]}
+          style={[styles.input, { borderWidth: 0 }]}
           placeholder={cityPlaceholder}
           value={city}
           onChangeText={onCityChange}
           onFocus={() => setCityFocused(true)}
           onBlur={() => setCityFocused(false)}
           autoCapitalize="words"
+          placeholderTextColor={theme.colors.neutral[500]}
         />
       </View>
 
       <View style={styles.inputContainer}>
         <Text style={styles.label}>State</Text>
+        <Animated.View
+          style={[
+            styles.animatedBorder,
+            {
+              borderWidth: stateBorderWidthAnim,
+              borderColor: stateBorderColor,
+            },
+          ]}
+          pointerEvents="none"
+        />
         <TextInput
-          style={[styles.input, stateFocused && styles.inputFocused]}
+          style={[styles.input, { borderWidth: 0 }]}
           placeholder={statePlaceholder}
           value={state}
           onChangeText={onStateChange}
           onFocus={() => setStateFocused(true)}
           onBlur={() => setStateFocused(false)}
-          autoCapitalize="words"
+          autoCapitalize="characters"
+          placeholderTextColor={theme.colors.neutral[500]}
         />
       </View>
     </View>
@@ -59,6 +107,15 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     position: 'relative',
+  },
+  animatedBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: theme.radii.md,
+    pointerEvents: 'none',
   },
   label: {
     fontSize: 14,
@@ -78,9 +135,5 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),
-  },
-  inputFocused: {
-    borderColor: '#2563eb',
-    borderWidth: 2,
   },
 });

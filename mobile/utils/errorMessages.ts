@@ -3,16 +3,52 @@
  * Converts technical errors into messages users can understand
  */
 
-export const getUserFriendlyError = (error: any): string => {
-  // Network errors
+/**
+ * Check if an error is a network/connection error
+ */
+export const isNetworkError = (error: any): boolean => {
+  // Axios network error codes
+  if (
+    error?.code === 'ERR_NETWORK' ||
+    error?.code === 'ECONNABORTED' ||
+    error?.code === 'ETIMEDOUT' ||
+    error?.code === 'ENOTFOUND' ||
+    error?.code === 'ECONNREFUSED' ||
+    error?.code === 'NETWORK_ERROR'
+  ) {
+    return true;
+  }
+  
+  // Error message patterns
   if (
     error?.message?.includes('Network') ||
     error?.message?.includes('network') ||
     error?.message?.includes('timeout') ||
     error?.message?.includes('Failed to fetch') ||
-    error?.code === 'NETWORK_ERROR' ||
-    (typeof navigator !== 'undefined' && !navigator.onLine)
+    error?.message?.includes('fetch failed') ||
+    error?.message?.includes('Network request failed') ||
+    error?.message?.includes('Unable to resolve host') ||
+    error?.message?.includes('Connection refused')
   ) {
+    return true;
+  }
+  
+  // No response from server (network issue)
+  if (error?.request && !error?.response) {
+    return true;
+  }
+  
+  // Web navigator offline
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return true;
+  }
+  
+  return false;
+};
+
+export const getUserFriendlyError = (error: any): string => {
+  // Network errors
+  if (isNetworkError(error)) {
     return 'Unable to connect to the server. Please check your internet connection and try again.';
   }
 
@@ -101,6 +137,9 @@ const cleanErrorMessage = (message: string): string => {
  * Get error title based on error type
  */
 export const getErrorTitle = (error: any): string => {
+  if (isNetworkError(error)) {
+    return 'No Connection';
+  }
   if (error?.response?.status === 401) {
     return 'Session Expired';
   }

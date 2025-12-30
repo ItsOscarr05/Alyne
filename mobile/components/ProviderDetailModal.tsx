@@ -25,6 +25,8 @@ import { CreateBookingModal } from './CreateBookingModal';
 import { EditReviewModal } from './EditReviewModal';
 import { AlertModal } from './ui/AlertModal';
 import { ConfirmModal } from './ui/ConfirmModal';
+import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../utils/animations';
+import { AnimatedLoadingState } from './AnimatedLoadingState';
 
 interface ProviderDetailModalProps {
   visible: boolean;
@@ -46,6 +48,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   const [availabilityYPosition, setAvailabilityYPosition] = useState<number | null>(null);
   const scrollAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   const currentScrollYRef = useRef(0);
+  const tabOpacityAnim = useRef(new Animated.Value(1)).current;
   const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
   const [isEditReviewModalVisible, setIsEditReviewModalVisible] = useState(false);
   const [selectedReview, setSelectedReview] = useState<{
@@ -148,6 +151,29 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
       };
     }
   }, [visible, scrollToAvailability, activeTab, provider, availabilityYPosition]);
+
+  // Animate tab switch with cross-fade
+  const prevTabRef = useRef<'about' | 'services' | 'reviews'>(activeTab);
+  useEffect(() => {
+    if (prevTabRef.current !== activeTab && provider) {
+      // Cross-fade: fade out, then fade in
+      Animated.sequence([
+        Animated.timing(tabOpacityAnim, {
+          toValue: 0,
+          duration: ANIMATION_DURATIONS.FAST / 2,
+          easing: ANIMATION_EASING.easeIn,
+          useNativeDriver: true,
+        }),
+        Animated.timing(tabOpacityAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.FAST / 2,
+          easing: ANIMATION_EASING.easeOut,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      prevTabRef.current = activeTab;
+    }
+  }, [activeTab, provider, tabOpacityAnim]);
 
   // Listen for real-time provider rating updates
   useEffect(() => {
@@ -301,9 +327,10 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
               </TouchableOpacity>
 
               {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#2563eb" />
-                </View>
+                <AnimatedLoadingState 
+                  visible={isLoading}
+                  style={styles.loadingContainer}
+                />
               ) : !provider ? (
                 <View style={styles.loadingContainer}>
                   <Text style={styles.errorText}>Provider not found</Text>
@@ -403,8 +430,9 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
 
                     {/* Tab Content */}
                     <View style={styles.tabContent}>
-                      {activeTab === 'about' && (
-                        <View>
+                      <Animated.View style={{ opacity: tabOpacityAnim, flex: 1 }}>
+                        {activeTab === 'about' && (
+                          <View>
                           {provider.bio && (
                             <View style={styles.section}>
                               <Text style={styles.sectionTitle}>About</Text>
@@ -661,7 +689,9 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                               );
                             })()
                           ) : (
-                            <Text style={styles.emptyText}>No services available</Text>
+                            <AnimatedEmptyState>
+                              <Text style={styles.emptyText}>No services available</Text>
+                            </AnimatedEmptyState>
                           )}
                         </View>
                       )}
@@ -763,10 +793,13 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                               ))}
                             </View>
                           ) : (
-                            <Text style={styles.emptyText}>No reviews yet</Text>
+                            <View style={styles.emptyTextContainer}>
+                              <Text style={styles.emptyText}>No reviews yet</Text>
+                            </View>
                           )}
                         </View>
                       )}
+                      </Animated.View>
                     </View>
                   </ScrollView>
 
@@ -1260,11 +1293,14 @@ const styles = StyleSheet.create({
     marginTop: 12,
     flex: 1,
   },
+  emptyTextContainer: {
+    padding: theme.spacing.xl,
+    alignItems: 'center',
+  },
   emptyText: {
     fontSize: 14,
     color: theme.colors.neutral[500],
     textAlign: 'center',
-    padding: theme.spacing.xl,
   },
   footer: {
     flexDirection: 'row',

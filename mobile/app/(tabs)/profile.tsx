@@ -15,7 +15,7 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
@@ -65,6 +65,7 @@ export default function ProfileScreen() {
       loadProviderProfile();
     }
   }, [user]);
+
 
   const loadProviderProfile = async () => {
     if (!user?.id) return;

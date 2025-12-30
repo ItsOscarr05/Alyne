@@ -5,23 +5,29 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { SearchBar } from '../../components/SearchBar';
 import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
 import { ProviderDetailModal } from '../../components/ProviderDetailModal';
+import { AnimatedCardWrapper } from '../../components/AnimatedCardWrapper';
 import { providerService, DiscoveryFilters } from '../../services/provider';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
-import { getUserFriendlyError } from '../../utils/errorMessages';
+import { getUserFriendlyError, isNetworkError, getErrorTitle } from '../../utils/errorMessages';
 import { theme } from '../../theme';
 import { mockProviders } from '../../data/mockProviders';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { NetworkErrorModal } from '../../components/ui/NetworkErrorModal';
+import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
+import { AnimatedLoadingState } from '../../components/AnimatedLoadingState';
+import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
 
 export default function DiscoverScreen() {
   const router = useRouter();
@@ -59,8 +65,58 @@ export default function DiscoverScreen() {
     title: '',
     message: '',
   });
+  const [networkErrorModal, setNetworkErrorModal] = useState<{
+    visible: boolean;
+    message: string;
+  }>({
+    visible: false,
+    message: '',
+  });
+  const dropdownOpacity = useRef(new Animated.Value(0)).current;
+  const dropdownTranslateY = useRef(new Animated.Value(-10)).current;
 
   const FILTER_STORAGE_KEY = 'discover_filters';
+
+  // Animate dropdown
+  useEffect(() => {
+    if (showDropdown) {
+      // Reset values
+      dropdownOpacity.setValue(0);
+      dropdownTranslateY.setValue(-10);
+      
+      // Animate in
+      Animated.parallel([
+        Animated.timing(dropdownOpacity, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.easeOut,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dropdownTranslateY, {
+          toValue: 0,
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.easeOut,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Animate out
+      Animated.parallel([
+        Animated.timing(dropdownOpacity, {
+          toValue: 0,
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.easeIn,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dropdownTranslateY, {
+          toValue: -10,
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.easeIn,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [showDropdown, dropdownOpacity, dropdownTranslateY]);
 
   const requestLocationPermission = async () => {
     try {
@@ -198,23 +254,24 @@ export default function DiscoverScreen() {
       setProviders(results);
     } catch (error: any) {
       logger.error('Error loading providers', error);
-      // Fallback to mock data if API fails
-      if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-        setAlertModal({
+      
+      // Check if it's a network error
+      if (isNetworkError(error)) {
+        setNetworkErrorModal({
           visible: true,
-          type: 'warning',
-          title: 'Connection Error',
-          message: 'Unable to connect to server. Using demo data.',
+          message: getUserFriendlyError(error),
         });
-        // Use mock data as fallback
-        setProviders(mockProviders);
+        // Don't set providers - show empty state instead
+        setProviders([]);
       } else {
+        // Other errors - show generic error modal
         setAlertModal({
           visible: true,
           type: 'error',
-          title: 'Error',
-          message: 'Failed to load providers',
+          title: getErrorTitle(error),
+          message: getUserFriendlyError(error),
         });
+        setProviders([]);
       }
     } finally {
       setIsLoading(false);
@@ -495,12 +552,14 @@ export default function DiscoverScreen() {
               
               {/* Dropdown Menu */}
               {showDropdown && dropdownFilter && buttonLayouts[dropdownFilter] && (
-                <View
+                <Animated.View
                   style={[
                     styles.dropdownContainer,
                     {
                       left: buttonLayouts[dropdownFilter].x,
                       width: buttonLayouts[dropdownFilter].width,
+                      opacity: dropdownOpacity,
+                      transform: [{ translateY: dropdownTranslateY }],
                     },
                   ]}
                 >
@@ -643,7 +702,7 @@ export default function DiscoverScreen() {
                     </TouchableOpacity>
                   </>
                 )}
-                </View>
+                </Animated.View>
               )}
             </View>
             {(ratingOption !== null ||
@@ -675,24 +734,26 @@ export default function DiscoverScreen() {
         </View>
 
         {isLoading ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color="#2563eb" />
-            <Text style={styles.emptyText}>Loading providers...</Text>
-          </View>
+          <AnimatedLoadingState 
+            visible={isLoading}
+            message="Loading providers..."
+            style={styles.emptyState}
+            textStyle={styles.emptyText}
+          />
         ) : providers.length === 0 ? (
-          <View style={styles.emptyState}>
+          <AnimatedEmptyState style={styles.emptyState}>
             <Text style={styles.emptyText}>No providers found</Text>
             <Text style={styles.emptySubtext}>Try adjusting your search</Text>
-          </View>
+          </AnimatedEmptyState>
         ) : (
           <FlatList
             data={providers}
             keyExtractor={(item) => item.id}
             numColumns={2}
             renderItem={({ item, index }) => (
-              <View style={styles.cardWrapper}>
+              <AnimatedCardWrapper index={index} style={styles.cardWrapper}>
                 <ProviderCard provider={item} onPress={() => handleProviderPress(item.id)} />
-              </View>
+              </AnimatedCardWrapper>
             )}
             ListHeaderComponent={
               <>
@@ -721,6 +782,16 @@ export default function DiscoverScreen() {
         }}
       />
 
+      {/* Network Error Modal */}
+      <NetworkErrorModal
+        visible={networkErrorModal.visible}
+        onClose={() => setNetworkErrorModal({ visible: false, message: '' })}
+        onRetry={() => {
+          setNetworkErrorModal({ visible: false, message: '' });
+          loadProviders();
+        }}
+        message={networkErrorModal.message}
+      />
 
       {/* Alert Modal */}
       <AlertModal

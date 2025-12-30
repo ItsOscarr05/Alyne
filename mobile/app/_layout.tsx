@@ -1,7 +1,7 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
+import { Platform, Animated } from 'react-native';
 import Constants from 'expo-constants';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { PaymentProvider } from '../contexts/PaymentContext';
@@ -29,6 +29,27 @@ export default function RootLayout() {
           <Stack
             screenOptions={{
               headerShown: false,
+              cardStyleInterpolator: ({ current }) => {
+                return {
+                  cardStyle: {
+                    opacity: current.progress,
+                  },
+                };
+              },
+              transitionSpec: {
+                open: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                  },
+                },
+                close: {
+                  animation: 'timing',
+                  config: {
+                    duration: 300,
+                  },
+                },
+              },
             }}
           >
             <Stack.Screen name="(auth)" />

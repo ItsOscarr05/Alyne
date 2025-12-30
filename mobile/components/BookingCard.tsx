@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import { formatTime12Hour } from '../utils/timeUtils';
+import { ANIMATION_DURATIONS } from '../utils/animations';
 
 export interface BookingCardData {
   id: string;
@@ -44,6 +45,24 @@ export function BookingCard({
   onMessagePress,
   showMessageButton = false,
 }: BookingCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.98,
+      duration: ANIMATION_DURATIONS.FAST,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 1,
+      duration: ANIMATION_DURATIONS.FAST,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
@@ -116,11 +135,14 @@ export function BookingCard({
   };
 
   return (
-    <TouchableOpacity
-      style={[styles.card, { borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={[styles.card, { borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
       <View style={styles.header}>
         <View style={styles.providerInfo}>
           <View style={styles.avatar}>
@@ -294,7 +316,8 @@ export function BookingCard({
           <Text style={styles.notesText}>{booking.notes}</Text>
         </View>
       )}
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

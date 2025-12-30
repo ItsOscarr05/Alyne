@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Modal as RNModal,
   View,
@@ -6,8 +6,10 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Platform,
+  Animated,
 } from 'react-native';
 import { theme } from '../../theme';
+import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
 
 interface ModalProps {
   visible: boolean;
@@ -17,20 +19,73 @@ interface ModalProps {
 }
 
 export function Modal({ visible, onClose, children, dismissible = true }: ModalProps) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Reset values
+      fadeAnim.setValue(0);
+      scaleAnim.setValue(0.95);
+      
+      // Animate in
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.NORMAL,
+          easing: ANIMATION_EASING.easeOut,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.NORMAL,
+          easing: ANIMATION_EASING.easeOut,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Animate out
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.easeIn,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: ANIMATION_DURATIONS.FAST,
+          easing: ANIMATION_EASING.easeIn,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [visible, fadeAnim, scaleAnim]);
+
   return (
     <RNModal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
     >
       <TouchableWithoutFeedback onPress={dismissible ? onClose : undefined}>
-        <View style={styles.overlay}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={styles.content}>{children}</View>
+            <Animated.View
+              style={[
+                styles.content,
+                {
+                  opacity: fadeAnim,
+                  transform: [{ scale: scaleAnim }],
+                },
+              ]}
+            >
+              {children}
+            </Animated.View>
           </TouchableWithoutFeedback>
-        </View>
+        </Animated.View>
       </TouchableWithoutFeedback>
     </RNModal>
   );

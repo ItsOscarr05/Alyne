@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
+import { useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { ANIMATION_DURATIONS } from '../utils/animations';
 
 export interface ProviderCardData {
   id: string;
@@ -21,6 +23,24 @@ interface ProviderCardProps {
 }
 
 export function ProviderCard({ provider, onPress }: ProviderCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 0.98,
+      duration: ANIMATION_DURATIONS.FAST,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.timing(scaleAnim, {
+      toValue: 1,
+      duration: ANIMATION_DURATIONS.FAST,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const formatDistance = (miles: number) => {
     if (miles < 1) {
       return `${Math.round(miles * 10) / 10} mi`;
@@ -56,8 +76,15 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
   };
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.content}>
+    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+      <TouchableOpacity
+        style={styles.card}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={1}
+      >
+        <View style={styles.content}>
         {/* Header Row: Avatar, Name, Distance */}
         <View style={styles.headerRow}>
           <View style={styles.avatarContainer}>
@@ -135,7 +162,8 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 

@@ -4,6 +4,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { ConversationItem } from '../../components/ConversationItem';
 import { SearchBar } from '../../components/SearchBar';
+import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
 import { messageService, Conversation } from '../../services/message';
 import { useSocket } from '../../hooks/useSocket';
 import { useAuth } from '../../hooks/useAuth';

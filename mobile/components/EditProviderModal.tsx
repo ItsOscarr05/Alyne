@@ -27,6 +27,9 @@ import { storage } from '../utils/storage';
 import { AlertModal } from './ui/AlertModal';
 import { ConfirmModal } from './ui/ConfirmModal';
 import { Calendar } from 'react-native-calendars';
+import { Animated } from 'react-native';
+import { useRef } from 'react';
+import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../utils/animations';
 
 const USER_KEY = 'user_data';
 
@@ -42,6 +45,8 @@ interface EditProviderModalProps {
 export function EditProviderModal({ visible, onClose, onSuccess, initialSection = 'profile' }: EditProviderModalProps) {
   const { user, refreshUser } = useAuth();
   const [activeSection, setActiveSection] = useState<Section>(initialSection);
+  const sectionOpacityAnim = useRef(new Animated.Value(1)).current;
+  const prevSectionRef = useRef<Section>(initialSection);
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [alertModal, setAlertModal] = useState<{
@@ -188,6 +193,28 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
       setOriginalState(null);
     }
   }, [visible, user?.id, initialSection]);
+
+  // Animate section switch with cross-fade
+  useEffect(() => {
+    if (prevSectionRef.current !== activeSection && !loadingProfile) {
+      // Cross-fade: fade out, then fade in
+      Animated.sequence([
+        Animated.timing(sectionOpacityAnim, {
+          toValue: 0,
+          duration: ANIMATION_DURATIONS.FAST / 2,
+          easing: ANIMATION_EASING.easeIn,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sectionOpacityAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATIONS.FAST / 2,
+          easing: ANIMATION_EASING.easeOut,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      prevSectionRef.current = activeSection;
+    }
+  }, [activeSection, loadingProfile, sectionOpacityAnim]);
 
   // Load Plaid link token when bank section is active
   useEffect(() => {
@@ -1849,7 +1876,9 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
 
                 {/* Content */}
                 <View style={styles.contentWrapper}>
-                  {renderSection()}
+                  <Animated.View style={{ opacity: sectionOpacityAnim, flex: 1 }}>
+                    {renderSection()}
+                  </Animated.View>
 
                   {/* Universal Save Button */}
                   <View style={styles.universalSaveContainer}>
