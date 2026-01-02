@@ -162,7 +162,13 @@ export default function SettingsScreen() {
 
           <TouchableOpacity
             style={styles.settingItem}
-            onPress={() => router.push('/settings/edit-profile')}
+            onPress={() => {
+              if (user?.userType === 'PROVIDER') {
+                router.push('/provider/edit-profile');
+              } else {
+                router.push('/settings/edit-profile');
+              }
+            }}
           >
             <View style={styles.settingInfo}>
               <Ionicons name="person-outline" size={22} color={theme.colors.neutral[900]} />

@@ -333,6 +333,20 @@ export default function BookingDetailScreen() {
             </Text>
           </View>
         </View>
+
+        {/* Action Buttons - Reschedule (Client only, for PENDING/CONFIRMED bookings) */}
+        {user?.userType === 'CLIENT' &&
+          (booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.rescheduleButton}
+                onPress={() => router.push({ pathname: '/booking/reschedule', params: { id } })}
+              >
+                <Ionicons name="calendar-outline" size={20} color="#2563eb" />
+                <Text style={styles.rescheduleButtonText}>Reschedule Booking</Text>
+              </TouchableOpacity>
+            </View>
+          )}
       </ScrollView>
 
       {/* Alert Modal */}
@@ -439,6 +453,23 @@ const styles = StyleSheet.create({
   },
   messageButtonText: {
     fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
+  rescheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 2,
+    borderColor: '#2563eb',
+    gap: 10,
+  },
+  rescheduleButtonText: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#2563eb',
   },

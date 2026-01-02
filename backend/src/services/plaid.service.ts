@@ -411,6 +411,15 @@ export const plaidService = {
    */
   async createPaymentInitiationLinkToken(userId: string, bookingId: string) {
     try {
+      // Check if Plaid credentials are configured
+      if (!process.env.PLAID_CLIENT_ID || !process.env.PLAID_SECRET) {
+        logger.error('Plaid credentials not configured', {
+          hasClientId: !!process.env.PLAID_CLIENT_ID,
+          hasSecret: !!process.env.PLAID_SECRET,
+        });
+        throw createError('Plaid integration not configured. Please contact support.', 503);
+      }
+
       const request = {
         user: {
           client_user_id: userId,
@@ -419,16 +428,27 @@ export const plaidService = {
         products: ['payment_initiation'], // Only payment initiation for client payments
         country_codes: ['US'],
         language: 'en',
-        payment_initiation: {
-          payment_id: `payment_${bookingId}_${Date.now()}`, // Unique payment ID
-        },
+        // Note: payment_initiation object is optional - payment is created after link flow completes
       };
 
       const response = await plaidClient.linkTokenCreate(request);
       return response.data.link_token;
     } catch (error: any) {
-      logger.error('Error creating Plaid payment initiation link token', error);
-      throw createError('Failed to create Plaid link token for payment', 500);
+      logger.error('Error creating Plaid payment initiation link token', {
+        error: error.message,
+        statusCode: error.statusCode,
+        response: error.response?.data,
+        stack: error.stack,
+      });
+      
+      // If it's already a created error, re-throw it
+      if (error.statusCode) {
+        throw error;
+      }
+      
+      // Provide more specific error message
+      const errorMessage = error.response?.data?.error_message || error.message || 'Failed to create Plaid link token for payment';
+      throw createError(errorMessage, 500);
     }
   },
 };

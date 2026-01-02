@@ -39,6 +39,16 @@ const updateBookingSchema = z.object({
   }),
 });
 
+const rescheduleBookingSchema = z.object({
+  params: z.object({
+    id: z.string(),
+  }),
+  body: z.object({
+    scheduledDate: z.string(), // ISO date string or YYYY-MM-DD
+    scheduledTime: z.string(), // "14:00" format
+  }),
+});
+
 const getBookingSchema = z.object({
   params: z.object({
     id: z.string(),
@@ -91,6 +101,18 @@ router.post(
   '/:id/complete',
   validateRequest(getBookingSchema),
   bookingController.complete
+);
+
+router.patch(
+  '/:id/reschedule',
+  validateRequest(rescheduleBookingSchema),
+  bookingController.reschedule
+);
+
+router.delete(
+  '/:id',
+  validateRequest(getBookingSchema),
+  bookingController.delete
 );
 
 export { router as bookingRoutes };

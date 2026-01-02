@@ -1155,7 +1155,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         title={errorModal.title}
         message={errorModal.message}
         type={errorModal.type}
-        buttonText="Try Again"
+        buttonText={errorModal.type === 'success' ? 'OK' : 'Try Again'}
       />
     </>
   );

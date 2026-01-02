@@ -76,29 +76,31 @@ export function ConfirmModal({
 
   return (
     <Modal visible={visible} onClose={onClose} dismissible>
-      <View style={styles.container}>
-        <View style={[styles.iconContainer, { backgroundColor: iconConfig.bgColor }]}>
-          <Ionicons name={iconConfig.name} size={56} color={iconConfig.color} />
-        </View>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.message}>{message}</Text>
-        <View style={styles.buttonContainer}>
-          <Button
-            title={cancelText}
-            onPress={handleCancel}
-            variant="secondary"
-            style={styles.button}
-          />
-          <Button
-            title={confirmText}
-            onPress={handleConfirm}
-            variant="primary"
-            style={[
-              styles.button, 
-              type === 'danger' && styles.dangerButton,
-              (type === 'success' || isCompleteAction) && styles.successButton,
-            ]}
-          />
+      <View style={styles.borderWrapper}>
+        <View style={styles.container}>
+          <View style={[styles.iconContainer, { backgroundColor: iconConfig.bgColor }]}>
+            <Ionicons name={iconConfig.name} size={56} color={iconConfig.color} />
+          </View>
+          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.message}>{message}</Text>
+          <View style={styles.buttonContainer}>
+            <Button
+              title={cancelText}
+              onPress={handleCancel}
+              variant="secondary"
+              style={styles.button}
+            />
+            <Button
+              title={confirmText}
+              onPress={handleConfirm}
+              variant="primary"
+              style={[
+                styles.button, 
+                type === 'danger' && styles.dangerButton,
+                (type === 'success' || isCompleteAction) && styles.successButton,
+              ]}
+            />
+          </View>
         </View>
       </View>
     </Modal>
@@ -106,6 +108,12 @@ export function ConfirmModal({
 }
 
 const styles = StyleSheet.create({
+  borderWrapper: {
+    borderWidth: 2,
+    borderColor: '#2563eb',
+    borderRadius: theme.radii.lg,
+    width: '100%',
+  },
   container: {
     padding: theme.spacing['2xl'],
     alignItems: 'center',

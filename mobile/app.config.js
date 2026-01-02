@@ -44,6 +44,9 @@ export default {
     extra: {
       API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
       STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY || process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+      eas: {
+        projectId: '84def064-6507-421d-babd-c078f78c09cb',
+      },
     },
     // Debug: Log the key during config load
     // Note: This will only show in build logs, not runtime

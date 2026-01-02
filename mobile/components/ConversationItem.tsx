@@ -57,6 +57,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 
   const userName = `${conversation.otherUser.firstName} ${conversation.otherUser.lastName}`;
   const isProvider = conversation.otherUser.userType === 'PROVIDER';
+  const isClient = conversation.otherUser.userType === 'CLIENT';
 
   return (
     <Animated.View
@@ -104,6 +105,12 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
         <View style={styles.providerBadge}>
           <Ionicons name="checkmark-circle" size={14} color={theme.colors.semantic.success} />
           <Text style={styles.providerBadgeText}>Provider</Text>
+        </View>
+      )}
+      {isClient && (
+        <View style={styles.clientBadge}>
+          <Ionicons name="person" size={14} color={theme.colors.primary[500]} />
+          <Text style={styles.clientBadgeText}>Client</Text>
         </View>
       )}
       </TouchableOpacity>
@@ -204,6 +211,21 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '500',
     color: theme.colors.semantic.success,
+  },
+  clientBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radii.full,
+    backgroundColor: theme.colors.primary[50],
+  },
+  clientBadgeText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: theme.colors.primary[500],
   },
 });
 

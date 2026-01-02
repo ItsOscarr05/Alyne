@@ -22,7 +22,6 @@ import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
-import { EditProviderModal } from '../../components/EditProviderModal';
 import { ProviderDetailModal } from '../../components/ProviderDetailModal';
 import * as ImagePicker from 'expo-image-picker';
 import { onboardingService } from '../../services/onboarding';
@@ -41,6 +40,7 @@ interface ProviderProfile {
   rating?: number;
   reviewCount?: number;
   bankAccountVerified?: boolean;
+  bankAccountMask?: string | null;
 }
 
 export default function ProfileScreen() {
@@ -52,8 +52,6 @@ export default function ProfileScreen() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editModalInitialSection, setEditModalInitialSection] = useState<'profile' | 'location' | 'services' | 'credentials' | 'availability' | 'bank'>('profile');
   const [showProviderDetailModal, setShowProviderDetailModal] = useState(false);
   const [providerDetailInitialTab, setProviderDetailInitialTab] = useState<'about' | 'services' | 'reviews'>('about');
   const [scrollToAvailability, setScrollToAvailability] = useState(false);
@@ -84,10 +82,16 @@ export default function ProfileScreen() {
       if (profile) {
         // Check bank account status
         let bankAccountVerified = false;
+        let bankAccountMask: string | null = null;
         try {
           const bankInfo = await plaidService.getBankAccountInfo();
           if (bankInfo && bankInfo.verified) {
             bankAccountVerified = true;
+            // Extract last 4 characters from plaidAccountId if available (not ideal, but shows something)
+            // TODO: Store accountMask in backend when bank account is linked
+            if (bankInfo.plaidAccountId && bankInfo.plaidAccountId.length >= 4) {
+              bankAccountMask = bankInfo.plaidAccountId.slice(-4);
+            }
           }
         } catch (error) {
           // Bank account not connected or error - that's okay
@@ -110,6 +114,7 @@ export default function ProfileScreen() {
           rating: profile.rating || 0,
           reviewCount: profile.reviewCount || 0,
           bankAccountVerified,
+          bankAccountMask,
         });
         logger.debug('Provider profile state set', {
           bio: profile.bio,
@@ -248,19 +253,6 @@ export default function ProfileScreen() {
           <Text style={styles.title}>
             {user?.userType === 'PROVIDER' ? 'Provider Profile' : 'Profile'}
           </Text>
-          <TouchableOpacity
-            style={styles.headerEditButton}
-            onPress={() => {
-              if (user?.userType === 'PROVIDER') {
-                setShowEditModal(true);
-              } else {
-                router.push('/settings/edit-profile');
-              }
-            }}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="pencil-outline" size={20} color={theme.colors.primary[500]} />
-          </TouchableOpacity>
         </View>
         <View style={styles.headerDivider} />
         {user && (
@@ -514,7 +506,9 @@ export default function ProfileScreen() {
                       color={providerProfile.bankAccountVerified ? "#16a34a" : "#ef4444"}
                     />
                     <Text style={styles.bankAccountStatusText}>
-                      Bank Account: {providerProfile.bankAccountVerified ? "Connected" : "Not Connected"}
+                      Bank Account: {providerProfile.bankAccountVerified 
+                        ? (providerProfile.bankAccountMask ? `Connected (****${providerProfile.bankAccountMask})` : "Connected")
+                        : "Not Connected"}
                     </Text>
                   </View>
                 </View>
@@ -569,7 +563,7 @@ export default function ProfileScreen() {
           {user?.userType === 'PROVIDER' && (
             <TouchableOpacity
               style={styles.menuItem}
-              onPress={() => setShowEditModal(true)}
+              onPress={() => router.push('/provider/edit-profile')}
             >
               <Ionicons name="person-outline" size={20} color={theme.colors.primary[500]} />
               <Text style={styles.menuText}>
@@ -687,18 +681,6 @@ export default function ProfileScreen() {
         />
       )}
 
-      {/* Edit Provider Modal */}
-      {user?.userType === 'PROVIDER' && (
-        <EditProviderModal
-          visible={showEditModal}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={() => {
-            setShowEditModal(false);
-            loadProviderProfile();
-          }}
-          initialSection={editModalInitialSection}
-        />
-      )}
 
       {/* Provider Detail Modal */}
       {user?.userType === 'PROVIDER' && user?.id && (

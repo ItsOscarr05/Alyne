@@ -33,6 +33,9 @@ import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { PaymentCheckoutModal } from '../../components/PaymentCheckoutModal';
 import { SubmitReviewModal } from '../../components/SubmitReviewModal';
 import { mockBookings } from '../../data/mockBookings';
+import { storage } from '../../utils/storage';
+
+const HIDDEN_BOOKINGS_KEY = 'hidden_bookings';
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -126,6 +129,24 @@ export default function BookingsScreen() {
     setRefreshing(true);
     loadBookings();
   };
+
+  // Load hidden bookings from storage
+  useEffect(() => {
+    const loadHiddenBookings = async () => {
+      if (user?.id) {
+        try {
+          const stored = await storage.getItem(`${HIDDEN_BOOKINGS_KEY}_${user.id}`);
+          if (stored) {
+            const hiddenIds = JSON.parse(stored);
+            setHiddenBookings(new Set(hiddenIds));
+          }
+        } catch (error) {
+          logger.error('Error loading hidden bookings', error);
+        }
+      }
+    };
+    loadHiddenBookings();
+  }, [user?.id]);
 
   useEffect(() => {
     // Only load bookings when user is available and auth is not loading
@@ -449,23 +470,83 @@ export default function BookingsScreen() {
     setOptionsMenuVisible(true);
   };
 
-  const handleRemoveFromHistory = () => {
-    if (!selectedBookingId) return;
+  // Helper function to create BookingCardData
+  const createBookingCardData = (booking: BookingDetail): BookingCardData => {
+    // For providers, show client info; for clients, show provider info
+    const displayName = user?.userType === 'PROVIDER'
+      ? (booking.client
+          ? `${booking.client.firstName} ${booking.client.lastName}`
+          : 'Unknown Client')
+      : (booking.provider
+          ? `${booking.provider.firstName} ${booking.provider.lastName}`
+          : 'Unknown Provider');
+    
+    const displayPhoto = user?.userType === 'PROVIDER'
+      ? booking.client?.profilePhoto
+      : booking.provider?.profilePhoto;
+
+    return {
+      id: booking.id,
+      providerId: booking.providerId,
+      providerName: displayName,
+      providerPhoto: displayPhoto || undefined,
+      serviceName: booking.service?.name || 'Service',
+      status: booking.status,
+      scheduledDate: booking.scheduledDate,
+      scheduledTime: booking.scheduledTime,
+      price: booking.price,
+      location: booking.location
+        ? typeof booking.location === 'string'
+          ? booking.location
+          : booking.location.address
+        : undefined,
+      notes: booking.notes || undefined,
+    };
+  };
+
+  const handleRemoveFromHistory = async () => {
+    if (!selectedBookingId || !user?.id) return;
     setOptionsMenuVisible(false);
     modal.showConfirm({
       title: 'Remove from History',
       message:
-        'Are you sure you want to remove this booking from your history? This action cannot be undone.',
+        'Are you sure you want to permanently delete this booking from your history? This action cannot be undone.',
       type: 'warning',
-      confirmText: 'Remove',
-      onConfirm: () => {
-        setHiddenBookings((prev) => new Set(prev).add(selectedBookingId));
-        setSelectedBookingId(null);
-        modal.showAlert({
-          title: 'Removed',
-          message: 'Booking has been removed from your history.',
-          type: 'success',
-        });
+      confirmText: 'Delete',
+      onConfirm: async () => {
+        try {
+          await bookingService.delete(selectedBookingId);
+          
+          // Remove from local state
+          setBookings((prev) => prev.filter((b) => b.id !== selectedBookingId));
+          
+          // Also remove from hidden bookings set (cleanup)
+          const newHiddenBookings = new Set(hiddenBookings);
+          newHiddenBookings.delete(selectedBookingId);
+          setHiddenBookings(newHiddenBookings);
+          
+          // Clean up storage
+          try {
+            await storage.setItem(`${HIDDEN_BOOKINGS_KEY}_${user.id}`, JSON.stringify(Array.from(newHiddenBookings)));
+          } catch (error) {
+            logger.error('Error saving hidden bookings', error);
+          }
+          
+          setSelectedBookingId(null);
+          modal.showAlert({
+            title: 'Deleted',
+            message: 'Booking has been permanently deleted from your history.',
+            type: 'success',
+          });
+        } catch (error: any) {
+          logger.error('Error deleting booking', error);
+          const errorMessage = getUserFriendlyError(error);
+          modal.showAlert({
+            title: 'Error',
+            message: errorMessage || 'Failed to delete booking. Please try again.',
+            type: 'error',
+          });
+        }
       },
       onCancel: () => {
         setSelectedBookingId(null);
@@ -738,25 +819,7 @@ export default function BookingsScreen() {
               ) : (
                 <>
                   {getPaginatedBookings(pendingBookings, 'pending').map((booking, index) => {
-                    const bookingCardData: BookingCardData = {
-                      id: booking.id,
-                      providerId: booking.providerId,
-                      providerName: booking.provider
-                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                        : 'Unknown Provider',
-                      providerPhoto: booking.provider?.profilePhoto || undefined,
-                      serviceName: booking.service?.name || 'Service',
-                      status: booking.status,
-                      scheduledDate: booking.scheduledDate,
-                      scheduledTime: booking.scheduledTime,
-                      price: booking.price,
-                      location: booking.location
-                        ? typeof booking.location === 'string'
-                          ? booking.location
-                          : booking.location.address
-                        : undefined,
-                      notes: booking.notes || undefined,
-                    };
+                    const bookingCardData = createBookingCardData(booking);
 
                     return (
                       <AnimatedCardWrapper key={booking.id} index={index}>
@@ -852,25 +915,7 @@ export default function BookingsScreen() {
               ) : (
                 <>
                   {getPaginatedBookings(upcomingBookings, 'upcoming').map((booking, index) => {
-                    const bookingCardData: BookingCardData = {
-                      id: booking.id,
-                      providerId: booking.providerId,
-                      providerName: booking.provider
-                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                        : 'Unknown Provider',
-                      providerPhoto: booking.provider?.profilePhoto || undefined,
-                      serviceName: booking.service?.name || 'Service',
-                      status: booking.status,
-                      scheduledDate: booking.scheduledDate,
-                      scheduledTime: booking.scheduledTime,
-                      price: booking.price,
-                      location: booking.location
-                        ? typeof booking.location === 'string'
-                          ? booking.location
-                          : booking.location.address
-                        : undefined,
-                      notes: booking.notes || undefined,
-                    };
+                    const bookingCardData = createBookingCardData(booking);
 
                     const showCompleteButton =
                       user?.userType === 'PROVIDER' && booking.status === 'CONFIRMED';
@@ -984,25 +1029,7 @@ export default function BookingsScreen() {
               ) : (
                 <>
                   {getPaginatedBookings(declinedBookings, 'declined').map((booking, index) => {
-                    const bookingCardData: BookingCardData = {
-                      id: booking.id,
-                      providerId: booking.providerId,
-                      providerName: booking.provider
-                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                        : 'Unknown Provider',
-                      providerPhoto: booking.provider?.profilePhoto || undefined,
-                      serviceName: booking.service?.name || 'Service',
-                      status: booking.status,
-                      scheduledDate: booking.scheduledDate,
-                      scheduledTime: booking.scheduledTime,
-                      price: booking.price,
-                      location: booking.location
-                        ? typeof booking.location === 'string'
-                          ? booking.location
-                          : booking.location.address
-                        : undefined,
-                      notes: booking.notes || undefined,
-                    };
+                    const bookingCardData = createBookingCardData(booking);
 
                     return (
                       <AnimatedCardWrapper key={booking.id} index={index}>
@@ -1090,25 +1117,7 @@ export default function BookingsScreen() {
               ) : (
                 <>
                   {getPaginatedBookings(pastBookings, 'past').map((booking, index) => {
-                    const bookingCardData: BookingCardData = {
-                      id: booking.id,
-                      providerId: booking.providerId,
-                      providerName: booking.provider
-                        ? `${booking.provider.firstName} ${booking.provider.lastName}`
-                        : 'Unknown Provider',
-                      providerPhoto: booking.provider?.profilePhoto || undefined,
-                      serviceName: booking.service?.name || 'Service',
-                      status: booking.status,
-                      scheduledDate: booking.scheduledDate,
-                      scheduledTime: booking.scheduledTime,
-                      price: booking.price,
-                      location: booking.location
-                        ? typeof booking.location === 'string'
-                          ? booking.location
-                          : booking.location.address
-                        : undefined,
-                      notes: booking.notes || undefined,
-                    };
+                    const bookingCardData = createBookingCardData(booking);
 
                     const hasReview = reviewedBookings.has(booking.id);
                     const canReview =

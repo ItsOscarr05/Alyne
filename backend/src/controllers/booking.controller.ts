@@ -272,5 +272,100 @@ export const bookingController = {
       next(error);
     }
   },
+
+  async reschedule(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const { id } = req.params;
+      const { scheduledDate, scheduledTime } = req.body;
+
+      if (!scheduledDate || !scheduledTime) {
+        return next(createError('scheduledDate and scheduledTime are required', 400));
+      }
+
+      // Get booking before rescheduling to capture previous date/time
+      const previousBooking = await bookingService.getBookingById(id, userId);
+      if (!previousBooking) {
+        return next(createError('Booking not found', 404));
+      }
+
+      const previousDate = previousBooking.scheduledDate;
+      const previousTime = previousBooking.scheduledTime;
+
+      const booking = await bookingService.rescheduleBooking(id, userId, scheduledDate, scheduledTime);
+
+      // Get full booking for socket event
+      const fullBooking = await bookingService.getBookingById(id, userId);
+
+      // Emit real-time update to provider
+      if (booking.providerId && fullBooking) {
+        io.to(`user:${booking.providerId}`).emit('booking-rescheduled', {
+          bookingId: booking.id,
+          previousDate: previousDate,
+          previousTime: previousTime,
+          newDate: scheduledDate,
+          newTime: scheduledTime,
+          booking: fullBooking,
+        });
+        // Also emit booking-updated for consistency
+        io.to(`user:${booking.providerId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking: fullBooking,
+        });
+      }
+
+      // Also notify the client
+      if (booking.clientId && fullBooking) {
+        io.to(`user:${booking.clientId}`).emit('booking-updated', {
+          bookingId: booking.id,
+          status: booking.status,
+          booking: fullBooking,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: fullBooking,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  async delete(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({ success: false, message: 'Unauthorized' });
+      }
+
+      const { id } = req.params;
+      const booking = await bookingService.deleteBooking(id, userId);
+
+      // Emit real-time update to notify the other party (client or provider)
+      if (booking.clientId) {
+        io.to(`user:${booking.clientId}`).emit('booking-deleted', {
+          bookingId: booking.id,
+        });
+      }
+      if (booking.providerId) {
+        io.to(`user:${booking.providerId}`).emit('booking-deleted', {
+          bookingId: booking.id,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: { message: 'Booking deleted successfully' },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
 

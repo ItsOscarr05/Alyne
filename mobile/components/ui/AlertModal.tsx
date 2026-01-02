@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Modal } from './Modal';
@@ -26,6 +26,19 @@ export function AlertModal({
   buttonText = 'OK',
   onButtonPress,
 }: AlertModalProps) {
+  // Auto-close success modals after 2.5 seconds
+  useEffect(() => {
+    if (visible && type === 'success') {
+      const timer = setTimeout(() => {
+        if (onButtonPress) {
+          onButtonPress();
+        }
+        onClose();
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, type, onClose, onButtonPress]);
+
   const handleButtonPress = () => {
     if (onButtonPress) {
       onButtonPress();
@@ -47,6 +60,7 @@ export function AlertModal({
   };
 
   const icon = getIcon();
+  const isSuccess = type === 'success';
 
   return (
     <Modal visible={visible} onClose={onClose}>
@@ -56,14 +70,16 @@ export function AlertModal({
         </View>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.message}>{message}</Text>
-        <View style={styles.buttonContainer}>
-          <Button
-            title={buttonText}
-            onPress={handleButtonPress}
-            variant="primary"
-            style={styles.button}
-          />
-        </View>
+        {!isSuccess && (
+          <View style={styles.buttonContainer}>
+            <Button
+              title={buttonText}
+              onPress={handleButtonPress}
+              variant="primary"
+              style={styles.button}
+            />
+          </View>
+        )}
       </View>
     </Modal>
   );

@@ -111,5 +111,23 @@ export const bookingService = {
     );
     return response.data.data;
   },
+
+  async reschedule(bookingId: string, scheduledDate: string, scheduledTime: string) {
+    const response = await apiClient.patch<{ success: boolean; data: BookingDetail }>(
+      `/bookings/${bookingId}/reschedule`,
+      {
+        scheduledDate,
+        scheduledTime,
+      }
+    );
+    return response.data.data;
+  },
+
+  async delete(bookingId: string) {
+    const response = await apiClient.delete<{ success: boolean; data: { message: string } }>(
+      `/bookings/${bookingId}`
+    );
+    return response.data.data;
+  },
 };
 
