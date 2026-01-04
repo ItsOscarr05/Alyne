@@ -19,12 +19,14 @@ import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { generateTimeSlots, getDayOfWeek, formatTime12Hour } from '../../utils/timeUtils';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function CreateBookingScreen() {
   const { providerId } = useLocalSearchParams<{ providerId: string }>();
   const router = useRouter();
   const { user } = useAuth();
   const modal = useModal();
+  const themeHook = useTheme();
   
   // Redirect providers - they can't create bookings
   useEffect(() => {
@@ -181,42 +183,42 @@ export default function CreateBookingScreen() {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Book Session</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Book Session</Text>
           <View style={styles.backButton} />
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-        </View>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={themeHook.colors.primary} />
+          </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {/* Header (scrolls with content) */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Book Session</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Book Session</Text>
           <View style={styles.backButton} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
         {/* Provider Info */}
-        <View style={styles.providerCard}>
-          <Text style={styles.providerName}>{provider.name}</Text>
+        <View style={[styles.providerCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.providerName, { color: themeHook.colors.text }]}>{provider.name}</Text>
           {selectedService && (
-            <Text style={styles.serviceName}>{selectedService.name}</Text>
+            <Text style={[styles.serviceName, { color: themeHook.colors.textSecondary }]}>{selectedService.name}</Text>
           )}
         </View>
 
         {/* Service Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Service</Text>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select Service</Text>
           {(() => {
             // Remove potential duplicates (e.g., from seeding or syncing)
             const seenIds = new Set<string>();
@@ -237,18 +239,19 @@ export default function CreateBookingScreen() {
                 key={service.id}
                 style={[
                   styles.serviceOption,
-                  selectedService?.id === service.id && styles.serviceOptionSelected,
+                  { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+                  selectedService?.id === service.id && { borderColor: themeHook.colors.primary, backgroundColor: themeHook.colors.primaryLight },
                 ]}
                 onPress={() => setSelectedService(service)}
               >
                 <View style={styles.serviceOptionContent}>
-                  <Text style={styles.serviceOptionName}>{service.name}</Text>
-                  <Text style={styles.serviceOptionDetails}>
+                  <Text style={[styles.serviceOptionName, { color: themeHook.colors.text }]}>{service.name}</Text>
+                  <Text style={[styles.serviceOptionDetails, { color: themeHook.colors.textSecondary }]}>
                     {service.duration} min • ${service.price}/session
                   </Text>
                 </View>
                 {selectedService?.id === service.id && (
-                  <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
+                  <Ionicons name="checkmark-circle" size={24} color={themeHook.colors.primary} />
                 )}
               </TouchableOpacity>
             ));
@@ -257,21 +260,30 @@ export default function CreateBookingScreen() {
 
         {/* Date Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Date</Text>
-          <View style={styles.calendarContainer}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select Date</Text>
+          <View style={[styles.calendarContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
             <Calendar
               onDayPress={(day) => setSelectedDate(day.dateString)}
               markedDates={{
                 [selectedDate]: {
                   selected: true,
-                  selectedColor: '#2563eb',
+                  selectedColor: themeHook.colors.primary,
                 },
               }}
               minDate={new Date().toISOString().split('T')[0]}
               theme={{
-                todayTextColor: '#2563eb',
-                arrowColor: '#2563eb',
-                selectedDayBackgroundColor: '#2563eb',
+                todayTextColor: themeHook.colors.primary,
+                arrowColor: themeHook.colors.primary,
+                selectedDayBackgroundColor: themeHook.colors.primary,
+                backgroundColor: themeHook.colors.surface,
+                calendarBackground: themeHook.colors.surface,
+                textSectionTitleColor: themeHook.colors.text,
+                dayTextColor: themeHook.colors.text,
+                monthTextColor: themeHook.colors.text,
+                textDayFontWeight: '400',
+                textMonthFontWeight: '600',
+                textDayHeaderFontWeight: '600',
+                textDisabledColor: themeHook.colors.textTertiary,
               }}
             />
           </View>
@@ -280,21 +292,23 @@ export default function CreateBookingScreen() {
         {/* Time Selection */}
         {selectedDate && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Time</Text>
+            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select Time</Text>
             <View style={styles.timeSlots}>
               {timeSlots.map((time) => (
                 <TouchableOpacity
                   key={time}
                   style={[
                     styles.timeSlot,
-                    selectedTime === time && styles.timeSlotSelected,
+                    { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+                    selectedTime === time && { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary },
                   ]}
                   onPress={() => setSelectedTime(time)}
                 >
                   <Text
                     style={[
                       styles.timeSlotText,
-                      selectedTime === time && styles.timeSlotTextSelected,
+                      { color: themeHook.colors.text },
+                      selectedTime === time && { color: themeHook.colors.white },
                     ]}
                   >
                     {formatTime12Hour(time)}
@@ -307,11 +321,11 @@ export default function CreateBookingScreen() {
 
         {/* Notes */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Additional Notes (Optional)</Text>
           <TextInput
-            style={styles.notesInput}
+            style={[styles.notesInput, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
             placeholder="Add any special requirements or notes..."
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={notes}
             onChangeText={setNotes}
             multiline
@@ -322,15 +336,15 @@ export default function CreateBookingScreen() {
 
         {/* Booking Summary */}
         {selectedService && selectedDate && selectedTime && (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>Booking Summary</Text>
+          <View style={[styles.summaryCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+            <Text style={[styles.summaryTitle, { color: themeHook.colors.text }]}>Booking Summary</Text>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Service:</Text>
-              <Text style={styles.summaryValue}>{selectedService.name}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{selectedService.name}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Date:</Text>
-              <Text style={styles.summaryValue}>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Date:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                 {(() => {
                   // Parse date string (YYYY-MM-DD) without timezone conversion
                   const [year, month, day] = selectedDate.split('-').map(Number);
@@ -345,16 +359,16 @@ export default function CreateBookingScreen() {
               </Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Time:</Text>
-              <Text style={styles.summaryValue}>{formatTime12Hour(selectedTime)}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Time:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{formatTime12Hour(selectedTime)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Duration:</Text>
-              <Text style={styles.summaryValue}>{selectedService.duration} minutes</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Duration:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{selectedService.duration} minutes</Text>
             </View>
-            <View style={[styles.summaryRow, styles.summaryTotal]}>
-              <Text style={styles.summaryLabel}>Total:</Text>
-              <Text style={styles.summaryTotalValue}>
+            <View style={[styles.summaryRow, styles.summaryTotal, { borderTopColor: themeHook.colors.border }]}>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Total:</Text>
+              <Text style={[styles.summaryTotalValue, { color: themeHook.colors.primary }]}>
                 ${selectedService.price}/session
               </Text>
             </View>
@@ -363,12 +377,13 @@ export default function CreateBookingScreen() {
       </ScrollView>
 
       {/* Submit Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
         <TouchableOpacity
           style={[
             styles.submitButton,
+            { backgroundColor: themeHook.colors.primary },
             (!selectedService || !selectedDate || !selectedTime || isSubmitting) &&
-              styles.submitButtonDisabled,
+              { backgroundColor: themeHook.colors.buttonDisabledBackground },
           ]}
           onPress={() => {
             console.log('Button pressed!');
@@ -377,7 +392,7 @@ export default function CreateBookingScreen() {
           disabled={!selectedService || !selectedDate || !selectedTime || isSubmitting}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={themeHook.colors.white} />
           ) : (
             <Text style={styles.submitButtonText}>
               {!selectedService || !selectedDate || !selectedTime
@@ -407,7 +422,6 @@ export default function CreateBookingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -419,7 +433,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -432,7 +445,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   scrollView: {
     flex: 1,
@@ -446,12 +458,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   providerCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 18,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#2563eb',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -461,12 +471,10 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   serviceName: {
     fontSize: 14,
-    color: '#64748b',
   },
   section: {
     marginBottom: 32,
@@ -474,31 +482,24 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
   },
   calendarContainer: {
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#2563eb',
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
   },
   serviceOption: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     paddingVertical: 16,
     paddingHorizontal: 18,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#000000',
   },
   serviceOptionSelected: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
   },
   serviceOptionContent: {
     flex: 1,
@@ -506,12 +507,10 @@ const styles = StyleSheet.create({
   serviceOptionName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   serviceOptionDetails: {
     fontSize: 14,
-    color: '#64748b',
   },
   timeSlots: {
     flexDirection: 'row',
@@ -522,45 +521,33 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    backgroundColor: '#ffffff',
     borderWidth: 2,
-    borderColor: '#000000',
   },
   timeSlotSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
   },
   timeSlotText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   timeSlotTextSelected: {
-    color: '#ffffff',
   },
   notesInput: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     minHeight: 100,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     fontSize: 14,
-    color: '#1e293b',
     lineHeight: 20,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 20,
     marginTop: 8,
     borderWidth: 2,
-    borderColor: '#2563eb',
   },
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
   },
   summaryRow: {
@@ -570,38 +557,30 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   summaryTotal: {
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   summaryTotalValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#2563eb',
   },
   footer: {
     padding: 24,
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
   submitButtonDisabled: {
-    backgroundColor: '#cbd5e1',
   },
   submitButtonText: {
     color: '#ffffff',

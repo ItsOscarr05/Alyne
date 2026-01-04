@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { formatTime12Hour } from '../utils/timeUtils';
 import { ANIMATION_DURATIONS } from '../utils/animations';
 
@@ -45,6 +46,7 @@ export function BookingCard({
   onMessagePress,
   showMessageButton = false,
 }: BookingCardProps) {
+  const themeHook = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -137,7 +139,7 @@ export function BookingCard({
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
-        style={[styles.card, { borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
+        style={[styles.card, { backgroundColor: themeHook.colors.surface, borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -145,7 +147,7 @@ export function BookingCard({
       >
       <View style={styles.header}>
         <View style={styles.providerInfo}>
-          <View style={styles.avatar}>
+          <View style={[styles.avatar, { backgroundColor: themeHook.colors.primary }]}>
             {booking.providerPhoto ? (
               <Image
                 source={{ uri: booking.providerPhoto }}
@@ -153,7 +155,7 @@ export function BookingCard({
                 contentFit="cover"
               />
             ) : (
-              <Text style={styles.avatarText}>
+              <Text style={[styles.avatarText, { color: themeHook.colors.white }]}>
                 {booking.providerName
                   .split(' ')
                   .map((n) => n[0])
@@ -162,8 +164,8 @@ export function BookingCard({
             )}
           </View>
           <View style={styles.providerDetails}>
-            <Text style={styles.providerName}>{booking.providerName}</Text>
-            <Text style={styles.serviceName}>{booking.serviceName}</Text>
+            <Text style={[styles.providerName, { color: themeHook.colors.text }]}>{booking.providerName}</Text>
+            <Text style={[styles.serviceName, { color: themeHook.colors.textSecondary }]}>{booking.serviceName}</Text>
           </View>
         </View>
         <View style={styles.headerRight}>
@@ -184,7 +186,7 @@ export function BookingCard({
                 }}
                 activeOpacity={0.7}
               >
-                <Ionicons name="ellipsis-vertical" size={20} color="#64748b" />
+                <Ionicons name="ellipsis-vertical" size={20} color={themeHook.colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -195,16 +197,16 @@ export function BookingCard({
         {!actionButton && (
           <>
             <View style={styles.detailRow}>
-              <Ionicons name="calendar-outline" size={16} color="#64748b" />
-              <Text style={styles.detailText}>
+              <Ionicons name="calendar-outline" size={16} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>
                 {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
               </Text>
             </View>
 
             {booking.location && (
               <View style={styles.detailRow}>
-                <Ionicons name="location-outline" size={16} color="#64748b" />
-                <Text style={styles.detailText}>{formatAddress(booking.location)}</Text>
+                <Ionicons name="location-outline" size={16} color={themeHook.colors.textTertiary} />
+                <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>{formatAddress(booking.location)}</Text>
               </View>
             )}
           </>
@@ -213,8 +215,8 @@ export function BookingCard({
         {!actionButton && (
           <View style={[styles.detailRow, styles.priceRow]}>
             <View style={styles.detailRow}>
-              <Ionicons name="cash-outline" size={16} color="#64748b" />
-              <Text style={styles.detailText}>${booking.price}/session</Text>
+              <Ionicons name="cash-outline" size={16} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>${booking.price}/session</Text>
             </View>
             {(onAccept || onDecline || onComplete || (showMessageButton && onMessagePress)) && (
               <View style={styles.actionButtonsContainer}>
@@ -247,14 +249,14 @@ export function BookingCard({
                 )}
                 {showMessageButton && onMessagePress && (
                   <TouchableOpacity
-                    style={styles.messageButton}
+                    style={[styles.messageButton, { backgroundColor: themeHook.colors.primary + '20', borderColor: themeHook.colors.primary }]}
                     onPress={(e) => {
                       e.stopPropagation();
                       onMessagePress();
                     }}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="chatbubble-outline" size={18} color="#2563eb" />
+                    <Ionicons name="chatbubble-outline" size={18} color={themeHook.colors.primary} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -266,21 +268,21 @@ export function BookingCard({
       {actionButton && (
         <View style={styles.details}>
           <View style={styles.detailRow}>
-            <Ionicons name="calendar-outline" size={16} color="#64748b" />
-            <Text style={styles.detailText}>
+            <Ionicons name="calendar-outline" size={16} color={themeHook.colors.textTertiary} />
+            <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>
               {formatDate(booking.scheduledDate)} at {formatTime(booking.scheduledTime)}
             </Text>
           </View>
           {booking.location && (
             <View style={styles.detailRow}>
-              <Ionicons name="location-outline" size={16} color="#64748b" />
-              <Text style={styles.detailText}>{formatAddress(booking.location)}</Text>
+              <Ionicons name="location-outline" size={16} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>{formatAddress(booking.location)}</Text>
             </View>
           )}
           <View style={[styles.detailRow, styles.priceRow]}>
             <View style={styles.detailRow}>
-              <Ionicons name="cash-outline" size={16} color="#64748b" />
-              <Text style={styles.detailText}>${booking.price}/session</Text>
+              <Ionicons name="cash-outline" size={16} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>${booking.price}/session</Text>
             </View>
             <View style={styles.actionButtonsContainer}>
               {actionButton}
@@ -311,9 +313,9 @@ export function BookingCard({
       )}
 
       {booking.notes && (
-        <View style={styles.notesContainer}>
-          <Text style={styles.notesLabel}>Notes:</Text>
-          <Text style={styles.notesText}>{booking.notes}</Text>
+        <View style={[styles.notesContainer, { borderTopColor: themeHook.colors.border }]}>
+          <Text style={[styles.notesLabel, { color: themeHook.colors.textSecondary }]}>Notes:</Text>
+          <Text style={[styles.notesText, { color: themeHook.colors.text }]}>{booking.notes}</Text>
         </View>
       )}
       </TouchableOpacity>
@@ -323,7 +325,6 @@ export function BookingCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -362,7 +363,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
@@ -374,7 +374,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.white,
   },
   providerDetails: {
     flex: 1,
@@ -382,12 +381,10 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   serviceName: {
     fontSize: 14,
-    color: '#64748b',
   },
   statusBadge: {
     paddingHorizontal: 10,
@@ -412,23 +409,19 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 14,
-    color: '#64748b',
   },
   notesContainer: {
     marginTop: 8,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
   },
   notesLabel: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
     marginBottom: 4,
   },
   notesText: {
     fontSize: 14,
-    color: '#1e293b',
     lineHeight: 20,
   },
   bottomRow: {
@@ -484,10 +477,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#2563eb20',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#2563eb',
   },
 });

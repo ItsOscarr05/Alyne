@@ -16,11 +16,13 @@ import { formatTime12Hour } from '../../utils/timeUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const themeHook = useTheme();
   const { onBookingUpdate } = useSocket();
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,16 +114,16 @@ export default function BookingDetailScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
-        return '#10b981';
+        return themeHook.colors.success;
       case 'PENDING':
-        return '#f59e0b';
+        return themeHook.colors.warning;
       case 'COMPLETED':
-        return '#2563eb';
+        return themeHook.colors.primary;
       case 'CANCELLED':
       case 'DECLINED':
-        return '#ef4444';
+        return themeHook.colors.error;
       default:
-        return '#64748b';
+        return themeHook.colors.textTertiary;
     }
   };
 
@@ -135,14 +137,14 @@ export default function BookingDetailScreen() {
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Booking Details</Text>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Booking Details</Text>
             <View style={styles.backButton} />
           </View>
-          <View style={styles.headerDivider} />
+          <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
+            <ActivityIndicator size="large" color={themeHook.colors.primary} />
           </View>
         </ScrollView>
       </View>
@@ -162,7 +164,7 @@ export default function BookingDetailScreen() {
           </View>
           <View style={styles.headerDivider} />
           <View style={styles.loadingContainer}>
-            <Text style={styles.errorText}>Booking not found</Text>
+            <Text style={[styles.errorText, { color: themeHook.colors.textSecondary }]}>Booking not found</Text>
           </View>
         </ScrollView>
       </View>
@@ -170,7 +172,7 @@ export default function BookingDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -181,7 +183,7 @@ export default function BookingDetailScreen() {
         </View>
         <View style={styles.headerDivider} />
         {/* Status Badge */}
-        <View style={styles.statusBadge}>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
           <View style={[styles.statusDot, { backgroundColor: getStatusColor(booking.status) }]} />
           <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
             {getStatusLabel(booking.status)}
@@ -190,20 +192,20 @@ export default function BookingDetailScreen() {
 
         {/* Service Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Service</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.serviceName}>{booking.service?.name || 'Service'}</Text>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Service</Text>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+            <Text style={[styles.serviceName, { color: themeHook.colors.text }]}>{booking.service?.name || 'Service'}</Text>
             {booking.service?.description && (
-              <Text style={styles.serviceDescription}>{booking.service.description}</Text>
+              <Text style={[styles.serviceDescription, { color: themeHook.colors.textSecondary }]}>{booking.service.description}</Text>
             )}
             <View style={styles.serviceMeta}>
               <View style={styles.metaItem}>
-                <Ionicons name="time-outline" size={16} color="#64748b" />
-                <Text style={styles.metaText}>{booking.service?.duration || 0} minutes</Text>
+                <Ionicons name="time-outline" size={16} color={themeHook.colors.textTertiary} />
+                <Text style={[styles.metaText, { color: themeHook.colors.textSecondary }]}>{booking.service?.duration || 0} minutes</Text>
               </View>
               <View style={styles.metaItem}>
-                <Ionicons name="cash-outline" size={16} color="#64748b" />
-                <Text style={styles.metaText}>${booking.price}/session</Text>
+                <Ionicons name="cash-outline" size={16} color={themeHook.colors.textTertiary} />
+                <Text style={[styles.metaText, { color: themeHook.colors.textSecondary }]}>${booking.price}/session</Text>
               </View>
             </View>
           </View>
@@ -212,63 +214,63 @@ export default function BookingDetailScreen() {
         {/* Provider/Client Info */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>
               {user?.userType === 'CLIENT' ? 'Provider' : 'Client'}
             </Text>
             {/* Only providers can message from booking detail - clients must use provider detail */}
             {user?.userType === 'PROVIDER' && booking.clientId && (
               <TouchableOpacity
-                style={styles.messageButton}
+                style={[styles.messageButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                 onPress={() => {
                   if (booking.clientId) {
                     router.push(`/messages/${booking.clientId}`);
                   }
                 }}
               >
-                <Ionicons name="chatbubble-outline" size={18} color="#2563eb" />
-                <Text style={styles.messageButtonText}>Message</Text>
+                <Ionicons name="chatbubble-outline" size={18} color={themeHook.colors.primary} />
+                <Text style={[styles.messageButtonText, { color: themeHook.colors.primary }]}>Message</Text>
               </TouchableOpacity>
             )}
           </View>
-          <View style={styles.infoCard}>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
             {user?.userType === 'CLIENT' && booking.provider ? (
               <>
-                <Text style={styles.name}>
+                <Text style={[styles.name, { color: themeHook.colors.text }]}>
                   {booking.provider.firstName} {booking.provider.lastName}
                 </Text>
                 {booking.provider.email && (
-                  <Text style={styles.email}>{booking.provider.email}</Text>
+                  <Text style={[styles.email, { color: themeHook.colors.textSecondary }]}>{booking.provider.email}</Text>
                 )}
               </>
             ) : booking.client ? (
               <>
-                <Text style={styles.name}>
+                <Text style={[styles.name, { color: themeHook.colors.text }]}>
                   {booking.client.firstName} {booking.client.lastName}
                 </Text>
-                {booking.client.email && <Text style={styles.email}>{booking.client.email}</Text>}
+                {booking.client.email && <Text style={[styles.email, { color: themeHook.colors.textSecondary }]}>{booking.client.email}</Text>}
               </>
             ) : (
-              <Text style={styles.name}>Unknown</Text>
+              <Text style={[styles.name, { color: themeHook.colors.text }]}>Unknown</Text>
             )}
           </View>
         </View>
 
         {/* Schedule */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Schedule</Text>
-          <View style={styles.infoCard}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Schedule</Text>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
             <View style={styles.scheduleRow}>
-              <Ionicons name="calendar-outline" size={20} color="#2563eb" />
-              <Text style={styles.scheduleText}>{formatDate(booking.scheduledDate)}</Text>
+              <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
+              <Text style={[styles.scheduleText, { color: themeHook.colors.text }]}>{formatDate(booking.scheduledDate)}</Text>
             </View>
             <View style={styles.scheduleRow}>
-              <Ionicons name="time-outline" size={20} color="#2563eb" />
-              <Text style={styles.scheduleText}>{formatTime12Hour(booking.scheduledTime)}</Text>
+              <Ionicons name="time-outline" size={20} color={themeHook.colors.primary} />
+              <Text style={[styles.scheduleText, { color: themeHook.colors.text }]}>{formatTime12Hour(booking.scheduledTime)}</Text>
             </View>
             {booking.location && (
               <View style={styles.scheduleRow}>
-                <Ionicons name="location-outline" size={20} color="#2563eb" />
-                <Text style={styles.scheduleText}>
+                <Ionicons name="location-outline" size={20} color={themeHook.colors.primary} />
+                <Text style={[styles.scheduleText, { color: themeHook.colors.text }]}>
                   {typeof booking.location === 'string'
                     ? booking.location
                     : booking.location.address || 'Location TBD'}
@@ -281,9 +283,9 @@ export default function BookingDetailScreen() {
         {/* Notes */}
         {booking.notes && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Notes</Text>
-            <View style={styles.infoCard}>
-              <Text style={styles.notesText}>{booking.notes}</Text>
+            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Notes</Text>
+            <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+              <Text style={[styles.notesText, { color: themeHook.colors.text }]}>{booking.notes}</Text>
             </View>
           </View>
         )}
@@ -299,22 +301,22 @@ export default function BookingDetailScreen() {
 
             return (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Payment</Text>
-                <View style={styles.infoCard}>
+                <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Payment</Text>
+                <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Status:</Text>
+                    <Text style={[styles.paymentLabel, { color: themeHook.colors.textSecondary }]}>Status:</Text>
                     <Text
                       style={[
                         styles.paymentStatus,
-                        { color: booking.payment.status === 'completed' ? '#10b981' : '#f59e0b' },
+                        { color: booking.payment.status === 'completed' ? themeHook.colors.success : themeHook.colors.warning },
                       ]}
                     >
                       {booking.payment.status === 'completed' ? 'Paid' : 'Pending'}
                     </Text>
                   </View>
                   <View style={styles.paymentRow}>
-                    <Text style={styles.paymentLabel}>Amount:</Text>
-                    <Text style={styles.paymentAmount}>${providerAmount.toFixed(2)}</Text>
+                    <Text style={[styles.paymentLabel, { color: themeHook.colors.textSecondary }]}>Amount:</Text>
+                    <Text style={[styles.paymentAmount, { color: themeHook.colors.text }]}>${providerAmount.toFixed(2)}</Text>
                   </View>
                 </View>
               </View>
@@ -323,12 +325,12 @@ export default function BookingDetailScreen() {
 
         {/* Booking ID */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Booking Information</Text>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoLabel}>Booking ID</Text>
-            <Text style={styles.infoValue}>{booking.id}</Text>
-            <Text style={styles.infoLabel}>Created</Text>
-            <Text style={styles.infoValue}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Booking Information</Text>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+            <Text style={[styles.infoLabel, { color: themeHook.colors.textSecondary }]}>Booking ID</Text>
+            <Text style={[styles.infoValue, { color: themeHook.colors.text }]}>{booking.id}</Text>
+            <Text style={[styles.infoLabel, { color: themeHook.colors.textSecondary }]}>Created</Text>
+            <Text style={[styles.infoValue, { color: themeHook.colors.text }]}>
               {booking.createdAt ? formatDate(booking.createdAt) : 'N/A'}
             </Text>
           </View>
@@ -339,11 +341,11 @@ export default function BookingDetailScreen() {
           (booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
             <View style={styles.section}>
               <TouchableOpacity
-                style={styles.rescheduleButton}
+                style={[styles.rescheduleButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                 onPress={() => router.push({ pathname: '/booking/reschedule', params: { id } })}
               >
-                <Ionicons name="calendar-outline" size={20} color="#2563eb" />
-                <Text style={styles.rescheduleButtonText}>Reschedule Booking</Text>
+                <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
+                <Text style={[styles.rescheduleButtonText, { color: themeHook.colors.primary }]}>Reschedule Booking</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -364,7 +366,6 @@ export default function BookingDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -376,7 +377,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -389,7 +389,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   scrollView: {
     flex: 1,
@@ -404,13 +403,11 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#ef4444',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#ecfeff',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 999,
@@ -438,7 +435,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   messageButton: {
     flexDirection: 'row',
@@ -447,38 +443,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: '#2563eb',
   },
   messageButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#2563eb',
   },
   rescheduleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderWidth: 2,
-    borderColor: '#2563eb',
     gap: 10,
   },
   rescheduleButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#2563eb',
   },
   infoCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -488,12 +476,10 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 8,
   },
   serviceDescription: {
     fontSize: 14,
-    color: '#64748b',
     marginBottom: 12,
     lineHeight: 20,
   },
@@ -508,17 +494,14 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 14,
-    color: '#64748b',
   },
   name: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   email: {
     fontSize: 14,
-    color: '#64748b',
   },
   scheduleRow: {
     flexDirection: 'row',
@@ -528,12 +511,10 @@ const styles = StyleSheet.create({
   },
   scheduleText: {
     fontSize: 16,
-    color: '#1e293b',
     flex: 1,
   },
   notesText: {
     fontSize: 14,
-    color: '#64748b',
     lineHeight: 20,
   },
   paymentRow: {
@@ -544,7 +525,6 @@ const styles = StyleSheet.create({
   },
   paymentLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   paymentStatus: {
     fontSize: 14,
@@ -553,17 +533,14 @@ const styles = StyleSheet.create({
   paymentAmount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1e293b',
   },
   infoLabel: {
     fontSize: 12,
-    color: '#94a3b8',
     marginTop: 8,
     marginBottom: 4,
   },
   infoValue: {
     fontSize: 14,
-    color: '#1e293b',
     fontFamily: 'monospace',
   },
 });

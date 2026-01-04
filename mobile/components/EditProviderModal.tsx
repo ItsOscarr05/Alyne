@@ -30,6 +30,7 @@ import { Calendar } from 'react-native-calendars';
 import { Animated } from 'react-native';
 import { useRef } from 'react';
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../utils/animations';
+import { useTheme } from '../contexts/ThemeContext';
 
 const USER_KEY = 'user_data';
 
@@ -44,6 +45,7 @@ interface EditProviderModalProps {
 
 export function EditProviderModal({ visible, onClose, onSuccess, initialSection = 'profile' }: EditProviderModalProps) {
   const { user, refreshUser } = useAuth();
+  const themeHook = useTheme();
   const [activeSection, setActiveSection] = useState<Section>(initialSection);
   const sectionOpacityAnim = useRef(new Animated.Value(1)).current;
   const prevSectionRef = useRef<Section>(initialSection);
@@ -1398,8 +1400,8 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
     if (loadingProfile) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
-          <Text style={styles.loadingText}>Loading profile...</Text>
+          <ActivityIndicator size="large" color={themeHook.colors.primary} />
+          <Text style={[styles.loadingText, { color: themeHook.colors.text }]}>Loading profile...</Text>
         </View>
       );
     }
@@ -1456,36 +1458,36 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
 
   const renderBankSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Bank Account</Text>
-      <Text style={styles.sectionDescription}>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Bank Account</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
         Connect your bank account to receive payments from clients.
       </Text>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <View style={styles.bankCardConnected}>
+        <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? '#064e3b' : '#f0fdf4', borderColor: themeHook.colors.success }]}>
           <View style={styles.bankCardHeader}>
-            <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
+            <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
             <View style={styles.bankInfo}>
-              <Text style={styles.bankAccountName}>{bankAccountInfo.accountName}</Text>
-              <Text style={styles.bankAccountMask}>•••• {bankAccountInfo.accountMask}</Text>
+              <Text style={[styles.bankAccountName, { color: themeHook.colors.text }]}>{bankAccountInfo.accountName}</Text>
+              <Text style={[styles.bankAccountMask, { color: themeHook.colors.textSecondary }]}>•••• {bankAccountInfo.accountMask}</Text>
             </View>
           </View>
-          <View style={styles.bankCardFooter}>
-            <Ionicons name="lock-closed" size={14} color="#64748b" />
-            <Text style={styles.bankCardFooterText}>Securely connected</Text>
+          <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
+            <Ionicons name="lock-closed" size={14} color={themeHook.colors.textSecondary} />
+            <Text style={[styles.bankCardFooterText, { color: themeHook.colors.textSecondary }]}>Securely connected</Text>
           </View>
         </View>
       ) : (
         <>
-          <View style={styles.bankCardEmpty}>
-            <Ionicons name="card-outline" size={40} color="#cbd5e1" />
-            <Text style={styles.bankCardEmptyTitle}>No bank account connected</Text>
-            <Text style={styles.bankCardEmptyText}>
+          <View style={[styles.bankCardEmpty, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+            <Ionicons name="card-outline" size={40} color={themeHook.colors.textTertiary} />
+            <Text style={[styles.bankCardEmptyTitle, { color: themeHook.colors.text }]}>No bank account connected</Text>
+            <Text style={[styles.bankCardEmptyText, { color: themeHook.colors.textSecondary }]}>
               Connect your account to start receiving payments
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.plaidButton, loading && styles.buttonDisabled]}
+            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
             onPress={async () => {
               if (plaidLinkToken) {
                 initializePlaidLink(plaidLinkToken);
@@ -1499,11 +1501,11 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={themeHook.colors.white} />
             ) : (
               <>
-                <Ionicons name="lock-closed" size={20} color="#ffffff" />
-                <Text style={styles.plaidButtonText}>Connect Bank Account</Text>
+                <Ionicons name="lock-closed" size={20} color={themeHook.colors.white} />
+                <Text style={[styles.plaidButtonText, { color: themeHook.colors.white }]}>Connect Bank Account</Text>
               </>
             )}
           </TouchableOpacity>
@@ -1596,12 +1598,12 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Specialties</Text>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>Specialties</Text>
         <View style={styles.specialtyInputContainer}>
           <TextInput
-            style={[styles.specialtyInput, specialtyInputFocused && styles.inputFocused]}
+            style={[styles.specialtyInput, { backgroundColor: themeHook.colors.surface, borderColor: specialtyInputFocused ? themeHook.colors.primary : themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, specialtyInputFocused && styles.inputFocused, specialtyInputFocused && { borderColor: themeHook.colors.primary }]}
             placeholder="e.g., Personal Training, Yoga"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={specialtyInput}
             onChangeText={setSpecialtyInput}
             onFocus={() => setSpecialtyInputFocused(true)}
@@ -1609,20 +1611,20 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
             onSubmitEditing={addSpecialty}
           />
           <TouchableOpacity
-            style={[styles.addButton, !specialtyInput.trim() && styles.addButtonDisabled]}
+            style={[styles.addButton, { backgroundColor: themeHook.colors.primary }, !specialtyInput.trim() && styles.addButtonDisabled, !specialtyInput.trim() && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
             onPress={addSpecialty}
             disabled={!specialtyInput.trim()}
           >
-            <Ionicons name="add" size={20} color="#ffffff" />
+            <Ionicons name="add" size={20} color={themeHook.colors.white} />
           </TouchableOpacity>
         </View>
         {specialties.length > 0 && (
           <View style={styles.specialtyTags}>
             {specialties.map((specialty, index) => (
-              <View key={index} style={styles.specialtyTag}>
-                <Text style={styles.specialtyTagText}>{specialty}</Text>
+              <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
+                <Text style={[styles.specialtyTagText, { color: themeHook.colors.primary }]}>{specialty}</Text>
                 <TouchableOpacity onPress={() => removeSpecialty(index)}>
-                  <Ionicons name="close-circle" size={18} color="#64748b" />
+                  <Ionicons name="close-circle" size={18} color={themeHook.colors.textTertiary} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -1832,19 +1834,19 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
         <TouchableWithoutFeedback onPress={handleClose}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalContainer}>
+              <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
                 {/* Close Button */}
-                <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-                  <Ionicons name="close" size={28} color="#1e293b" />
+                <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} onPress={handleClose}>
+                  <Ionicons name="close" size={28} color={themeHook.colors.text} />
                 </TouchableOpacity>
 
                 {/* Header */}
-                <View style={styles.header}>
-                  <Text style={styles.headerTitle}>Edit Provider Profile</Text>
+                <View style={[styles.header, { borderBottomColor: themeHook.colors.border }]}>
+                  <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Edit Provider Profile</Text>
                 </View>
 
                 {/* Tabs */}
-                <View style={styles.tabs}>
+                <View style={[styles.tabs, { backgroundColor: themeHook.colors.surface }]}>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -1853,18 +1855,20 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
                     {sections.map((section) => (
                       <TouchableOpacity
                         key={section.id}
-                        style={[styles.tab, activeSection === section.id && styles.tabActive]}
+                        style={[styles.tab, activeSection === section.id && styles.tabActive, activeSection === section.id && { borderBottomColor: themeHook.colors.primary }]}
                         onPress={() => setActiveSection(section.id)}
                       >
                         <Ionicons
                           name={section.icon as any}
                           size={20}
-                          color={activeSection === section.id ? '#2563eb' : '#64748b'}
+                          color={activeSection === section.id ? themeHook.colors.primary : themeHook.colors.textTertiary}
                         />
                         <Text
                           style={[
                             styles.tabText,
+                            { color: themeHook.colors.textTertiary },
                             activeSection === section.id && styles.tabTextActive,
+                            activeSection === section.id && { color: themeHook.colors.primary },
                           ]}
                         >
                           {section.label}
@@ -1881,19 +1885,21 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
                   </Animated.View>
 
                   {/* Universal Save Button */}
-                  <View style={styles.universalSaveContainer}>
+                  <View style={[styles.universalSaveContainer, { borderTopColor: themeHook.colors.border, backgroundColor: themeHook.colors.surface }]}>
                     <TouchableOpacity
                       style={[
                         styles.universalSaveButton,
+                        { backgroundColor: themeHook.colors.primary },
                         (loading || !bio.trim()) && styles.buttonDisabled,
+                        (loading || !bio.trim()) && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' },
                       ]}
                       onPress={handleSaveAll}
                       disabled={loading || !bio.trim()}
                     >
                       {loading ? (
-                        <ActivityIndicator color="#ffffff" />
+                        <ActivityIndicator color={themeHook.colors.white} />
                       ) : (
-                        <Text style={styles.universalSaveButtonText}>Save Info</Text>
+                        <Text style={[styles.universalSaveButtonText, { color: themeHook.colors.white }]}>Save Info</Text>
                       )}
                     </TouchableOpacity>
                   </View>

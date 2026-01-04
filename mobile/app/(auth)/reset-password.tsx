@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
@@ -14,6 +15,7 @@ import { authService } from '../../services/auth';
 export default function ResetPasswordScreen() {
   const router = useRouter();
   const modal = useModal();
+  const themeHook = useTheme();
   const [email, setEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isNewPasswordFocused, setIsNewPasswordFocused] = useState(false);
@@ -106,7 +108,7 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -118,20 +120,20 @@ export default function ResetPasswordScreen() {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
           
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="key-outline" size={32} color={theme.colors.white} />
+            <View style={[styles.logoCircle, { backgroundColor: themeHook.colors.primary }]}>
+              <Ionicons name="key-outline" size={32} color={themeHook.colors.white} />
             </View>
           </View>
           
           <View style={styles.headerContent}>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: themeHook.colors.text }]}>
               {step === 'email' ? 'Reset Password' : 'Set New Password'}
             </Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>
               {step === 'email'
                 ? 'Enter your email to receive a reset code'
                 : 'Enter your reset code and new password'}
@@ -140,10 +142,10 @@ export default function ResetPasswordScreen() {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
             {step === 'email' ? (
               <>
-                <Text style={styles.cardTitle}>Request Reset</Text>
+                <Text style={[styles.cardTitle, { color: themeHook.colors.text }]}>Request Reset</Text>
                 
                 <FormField
                   label="Email"
@@ -166,7 +168,7 @@ export default function ResetPasswordScreen() {
               </>
             ) : (
               <>
-                <Text style={styles.cardTitle}>Reset Password</Text>
+                <Text style={[styles.cardTitle, { color: themeHook.colors.text }]}>Reset Password</Text>
                 
                 <FormField
                   label="Reset Code"
@@ -216,9 +218,9 @@ export default function ResetPasswordScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Remember your password? </Text>
+            <Text style={[styles.footerText, { color: themeHook.colors.textSecondary }]}>Remember your password? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={styles.footerLink}>Sign In</Text>
+              <Text style={[styles.footerLink, { color: themeHook.colors.primary }]}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -243,7 +245,6 @@ export default function ResetPasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -270,7 +271,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.card,
@@ -281,13 +281,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.display,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
   },
   form: {
@@ -295,18 +293,15 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
   },
   formCard: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
   },
   cardTitle: {
     ...theme.typography.h2,
     fontSize: 20,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
   },
@@ -325,11 +320,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
   },
   footerLink: {
     ...theme.typography.body,
-    color: theme.colors.primary[500],
     fontWeight: '600',
   },
 });

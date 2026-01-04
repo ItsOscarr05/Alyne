@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Modal } from './Modal';
 import { theme } from '../../theme';
 import { Button } from './Button';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export type AlertType = 'success' | 'error' | 'info' | 'warning';
 
@@ -26,6 +27,8 @@ export function AlertModal({
   buttonText = 'OK',
   onButtonPress,
 }: AlertModalProps) {
+  const themeHook = useTheme();
+
   // Auto-close success modals after 2.5 seconds
   useEffect(() => {
     if (visible && type === 'success') {
@@ -49,13 +52,13 @@ export function AlertModal({
   const getIcon = () => {
     switch (type) {
       case 'success':
-        return { name: 'checkmark-circle' as const, color: theme.colors.semantic.success };
+        return { name: 'checkmark-circle' as const, color: themeHook.colors.success };
       case 'error':
-        return { name: 'close-circle' as const, color: theme.colors.semantic.error };
+        return { name: 'close-circle' as const, color: themeHook.colors.error };
       case 'warning':
-        return { name: 'warning' as const, color: theme.colors.semantic.warning };
+        return { name: 'warning' as const, color: themeHook.colors.warning };
       default:
-        return { name: 'information-circle' as const, color: theme.colors.semantic.info };
+        return { name: 'information-circle' as const, color: themeHook.colors.info };
     }
   };
 
@@ -68,8 +71,8 @@ export function AlertModal({
         <View style={styles.iconContainer}>
           <Ionicons name={icon.name} size={48} color={icon.color} />
         </View>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.message}>{message}</Text>
+        <Text style={[styles.title, { color: themeHook.colors.text }]}>{title}</Text>
+        <Text style={[styles.message, { color: themeHook.colors.textSecondary }]}>{message}</Text>
         {!isSuccess && (
           <View style={styles.buttonContainer}>
             <Button
@@ -95,13 +98,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.h2,
-    color: theme.colors.neutral[900],
     textAlign: 'center',
     marginBottom: theme.spacing.md,
   },
   message: {
     ...theme.typography.body,
-    color: theme.colors.neutral[700],
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
     lineHeight: 22,

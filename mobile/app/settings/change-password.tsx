@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { FormField } from '../../components/ui/FormField';
 import { PasswordRequirements } from '../../components/ui/PasswordRequirements';
 import { Button } from '../../components/ui/Button';
@@ -16,6 +17,7 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const modal = useModal();
   const { logout } = useAuth();
+  const { theme: themeHook } = useTheme();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isNewPasswordFocused, setIsNewPasswordFocused] = useState(false);
@@ -126,7 +128,7 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity
@@ -134,25 +136,25 @@ export default function ChangePasswordScreen() {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Change Password</Text>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>Change Password</Text>
           <View style={styles.placeholder} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}>
           <View style={styles.infoHeader}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.primary[500]} />
-            <Text style={styles.infoText}>
+            <Ionicons name="shield-checkmark-outline" size={20} color={themeHook.colors.primary} />
+            <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
               For your security, choose a strong password with at least 8 characters, including
               letters, numbers, and special characters.
             </Text>
           </View>
         </View>
 
-        <View style={styles.formCard}>
-          <Text style={styles.cardTitle}>Password Change</Text>
+        <View style={[styles.formCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.cardTitle, { color: themeHook.colors.text }]}>Password Change</Text>
 
           <View style={styles.currentPasswordContainer}>
             <FormField
@@ -166,7 +168,7 @@ export default function ChangePasswordScreen() {
             />
             {isVerifyingPassword && (
               <View style={styles.passwordIndicator}>
-                <ActivityIndicator size="small" color={theme.colors.primary[500]} />
+                <ActivityIndicator size="small" color={themeHook.colors.primary} />
               </View>
             )}
             {!isVerifyingPassword && isCurrentPasswordValid && currentPassword.trim().length > 0 && (
@@ -229,7 +231,7 @@ export default function ChangePasswordScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
+    
   },
   header: {
     flexDirection: 'row',
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
+    
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.h1,
-    color: theme.colors.neutral[900],
+    
   },
   placeholder: {
     width: 40,
@@ -265,12 +267,12 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   infoCard: {
-    backgroundColor: theme.colors.primary[50],
+    
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: '#DBEAFE',
+    
   },
   infoHeader: {
     flexDirection: 'row',
@@ -280,22 +282,22 @@ const styles = StyleSheet.create({
   infoText: {
     ...theme.typography.body,
     fontSize: 13,
-    color: theme.colors.neutral[700],
+    
     flex: 1,
     lineHeight: 18,
   },
   formCard: {
-    backgroundColor: theme.colors.white,
+    
     borderRadius: theme.radii.lg,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
+    
   },
   cardTitle: {
     ...theme.typography.h2,
     fontSize: 18,
-    color: theme.colors.neutral[900],
+    
     marginBottom: theme.spacing.lg,
   },
   fieldSpacer: {
@@ -313,7 +315,7 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
+    
     marginBottom: theme.spacing.md,
   },
   requirementItem: {
@@ -325,7 +327,7 @@ const styles = StyleSheet.create({
   requirementText: {
     ...theme.typography.body,
     fontSize: 13,
-    color: theme.colors.neutral[700],
+    
     flex: 1,
   },
   changeButton: {

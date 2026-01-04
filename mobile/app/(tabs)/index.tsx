@@ -21,6 +21,7 @@ import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, isNetworkError, getErrorTitle } from '../../utils/errorMessages';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { mockProviders } from '../../data/mockProviders';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AlertModal } from '../../components/ui/AlertModal';
@@ -32,6 +33,7 @@ import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const themeHook = useTheme();
   const { onProviderRatingUpdate } = useSocket();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
@@ -405,7 +407,7 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <View style={styles.content}>
         <SearchBar
           value={searchQuery}
@@ -416,14 +418,19 @@ export default function DiscoverScreen() {
           <View style={styles.filterRow}>
             <View style={styles.filterPillsContainer}>
               <TouchableOpacity
-                style={[styles.filterPill, activeFilter === 'all' && styles.filterPillActive]}
+                style={[
+                  styles.filterPill,
+                  { backgroundColor: themeHook.colors.surface },
+                  activeFilter === 'all' && { backgroundColor: themeHook.colors.surfaceElevated, ...theme.shadows.card },
+                ]}
                 onPress={() => handleFilterPress('all')}
                 activeOpacity={0.8}
               >
                 <Text
-                  style={
-                    activeFilter === 'all' ? styles.filterPillTextActive : styles.filterPillText
-                  }
+                  style={[
+                    activeFilter === 'all' ? styles.filterPillTextActive : styles.filterPillText,
+                    { color: activeFilter === 'all' ? themeHook.colors.text : themeHook.colors.textSecondary },
+                  ]}
                 >
                   All
                 </Text>
@@ -431,18 +438,20 @@ export default function DiscoverScreen() {
               <TouchableOpacity
                 style={[
                   styles.filterPill,
-                  (activeFilter === 'rating' || ratingOption !== null) && styles.filterPillActive,
+                  { backgroundColor: themeHook.colors.surface },
+                  (activeFilter === 'rating' || ratingOption !== null) && { backgroundColor: themeHook.colors.surfaceElevated, ...theme.shadows.card },
                 ]}
                 onPress={() => handleFilterPress('rating')}
                 onLayout={(e) => handleButtonLayout('rating', e)}
                 activeOpacity={0.8}
               >
                 <Text
-                  style={
+                  style={[
                     activeFilter === 'rating' || ratingOption !== null
                       ? styles.filterPillTextActive
-                      : styles.filterPillText
-                  }
+                      : styles.filterPillText,
+                    { color: (activeFilter === 'rating' || ratingOption !== null) ? themeHook.colors.text : themeHook.colors.textSecondary },
+                  ]}
                   numberOfLines={1}
                 >
                   {ratingOption !== null ? `${ratingOption}★+` : 'Rating'}
@@ -452,26 +461,28 @@ export default function DiscoverScreen() {
                   size={14}
                   color={
                     activeFilter === 'rating' || ratingOption !== null
-                      ? theme.colors.neutral[900]
-                      : theme.colors.neutral[500]
+                      ? themeHook.colors.text
+                      : themeHook.colors.textSecondary
                   }
                 />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.filterPill,
-                  (activeFilter === 'price' || priceOption !== null) && styles.filterPillActive,
+                  { backgroundColor: themeHook.colors.surface },
+                  (activeFilter === 'price' || priceOption !== null) && { backgroundColor: themeHook.colors.surfaceElevated, ...theme.shadows.card },
                 ]}
                 onPress={() => handleFilterPress('price')}
                 onLayout={(e) => handleButtonLayout('price', e)}
                 activeOpacity={0.8}
               >
                 <Text
-                  style={
+                  style={[
                     activeFilter === 'price' || priceOption !== null
                       ? styles.filterPillTextActive
-                      : styles.filterPillText
-                  }
+                      : styles.filterPillText,
+                    { color: (activeFilter === 'price' || priceOption !== null) ? themeHook.colors.text : themeHook.colors.textSecondary },
+                  ]}
                   numberOfLines={1}
                 >
                   {priceOption !== null ? `Price (${priceOption === 'asc' ? '↑' : '↓'})` : 'Price'}
@@ -481,27 +492,28 @@ export default function DiscoverScreen() {
                   size={14}
                   color={
                     activeFilter === 'price' || priceOption !== null
-                      ? theme.colors.neutral[900]
-                      : theme.colors.neutral[500]
+                      ? themeHook.colors.text
+                      : themeHook.colors.textSecondary
                   }
                 />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.filterPill,
-                  (activeFilter === 'distance' || distanceOption !== null) &&
-                    styles.filterPillActive,
+                  { backgroundColor: themeHook.colors.surface },
+                  (activeFilter === 'distance' || distanceOption !== null) && { backgroundColor: themeHook.colors.surfaceElevated, ...theme.shadows.card },
                 ]}
                 onPress={() => handleFilterPress('distance')}
                 onLayout={(e) => handleButtonLayout('distance', e)}
                 activeOpacity={0.8}
               >
                 <Text
-                  style={
+                  style={[
                     activeFilter === 'distance' || distanceOption !== null
                       ? styles.filterPillTextActive
-                      : styles.filterPillText
-                  }
+                      : styles.filterPillText,
+                    { color: (activeFilter === 'distance' || distanceOption !== null) ? themeHook.colors.text : themeHook.colors.textSecondary },
+                  ]}
                   numberOfLines={1}
                 >
                   {distanceOption !== null
@@ -513,26 +525,28 @@ export default function DiscoverScreen() {
                   size={14}
                   color={
                     activeFilter === 'distance' || distanceOption !== null
-                      ? theme.colors.neutral[900]
-                      : theme.colors.neutral[500]
+                      ? themeHook.colors.text
+                      : themeHook.colors.textSecondary
                   }
                 />
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.filterPill,
-                  (activeFilter === 'reviews' || reviewsOption !== null) && styles.filterPillActive,
+                  { backgroundColor: themeHook.colors.surface },
+                  (activeFilter === 'reviews' || reviewsOption !== null) && { backgroundColor: themeHook.colors.surfaceElevated, ...theme.shadows.card },
                 ]}
                 onPress={() => handleFilterPress('reviews')}
                 onLayout={(e) => handleButtonLayout('reviews', e)}
                 activeOpacity={0.8}
               >
                 <Text
-                  style={
+                  style={[
                     activeFilter === 'reviews' || reviewsOption !== null
                       ? styles.filterPillTextActive
-                      : styles.filterPillText
-                  }
+                      : styles.filterPillText,
+                    { color: (activeFilter === 'reviews' || reviewsOption !== null) ? themeHook.colors.text : themeHook.colors.textSecondary },
+                  ]}
                   numberOfLines={1}
                 >
                   {reviewsOption !== null
@@ -544,8 +558,8 @@ export default function DiscoverScreen() {
                   size={14}
                   color={
                     activeFilter === 'reviews' || reviewsOption !== null
-                      ? theme.colors.neutral[900]
-                      : theme.colors.neutral[500]
+                      ? themeHook.colors.text
+                      : themeHook.colors.textSecondary
                   }
                 />
               </TouchableOpacity>
@@ -560,6 +574,8 @@ export default function DiscoverScreen() {
                       width: buttonLayouts[dropdownFilter].width,
                       opacity: dropdownOpacity,
                       transform: [{ translateY: dropdownTranslateY }],
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor: themeHook.colors.border,
                     },
                   ]}
                 >
@@ -570,20 +586,21 @@ export default function DiscoverScreen() {
                         key={stars}
                         style={[
                           styles.dropdownOption,
-                          ratingOption === stars && styles.dropdownOptionActive,
+                          ratingOption === stars && { backgroundColor: themeHook.colors.primaryLight },
                         ]}
                         onPress={() => handleOptionSelect(stars)}
                       >
                         <Text
                           style={[
                             styles.dropdownOptionText,
-                            ratingOption === stars && styles.dropdownOptionTextActive,
+                            { color: ratingOption === stars ? themeHook.colors.primary : themeHook.colors.text },
+                            ratingOption === stars && { fontWeight: '600' },
                           ]}
                         >
                           {stars} star{stars > 1 ? 's' : ''} & above
                         </Text>
                         {ratingOption === stars && (
-                          <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                          <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -595,39 +612,41 @@ export default function DiscoverScreen() {
                     <TouchableOpacity
                       style={[
                         styles.dropdownOption,
-                        priceOption === 'asc' && styles.dropdownOptionActive,
+                        priceOption === 'asc' && { backgroundColor: themeHook.colors.primaryLight },
                       ]}
                       onPress={() => handleOptionSelect('asc')}
                     >
                       <Text
                         style={[
                           styles.dropdownOptionText,
-                          priceOption === 'asc' && styles.dropdownOptionTextActive,
+                          { color: priceOption === 'asc' ? themeHook.colors.primary : themeHook.colors.text },
+                          priceOption === 'asc' && { fontWeight: '600' },
                         ]}
                       >
                         Ascending
                       </Text>
                       {priceOption === 'asc' && (
-                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
                         styles.dropdownOption,
-                        priceOption === 'desc' && styles.dropdownOptionActive,
+                        priceOption === 'desc' && { backgroundColor: themeHook.colors.primaryLight },
                       ]}
                       onPress={() => handleOptionSelect('desc')}
                     >
                       <Text
                         style={[
                           styles.dropdownOptionText,
-                          priceOption === 'desc' && styles.dropdownOptionTextActive,
+                          { color: priceOption === 'desc' ? themeHook.colors.primary : themeHook.colors.text },
+                          priceOption === 'desc' && { fontWeight: '600' },
                         ]}
                       >
                         Descending
                       </Text>
                       {priceOption === 'desc' && (
-                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   </>
@@ -640,20 +659,21 @@ export default function DiscoverScreen() {
                         key={miles}
                         style={[
                           styles.dropdownOption,
-                          distanceOption === miles && styles.dropdownOptionActive,
+                          distanceOption === miles && { backgroundColor: themeHook.colors.primaryLight },
                         ]}
                         onPress={() => handleOptionSelect(miles)}
                       >
                         <Text
                           style={[
                             styles.dropdownOptionText,
-                            distanceOption === miles && styles.dropdownOptionTextActive,
+                            { color: distanceOption === miles ? themeHook.colors.primary : themeHook.colors.text },
+                            distanceOption === miles && { fontWeight: '600' },
                           ]}
                         >
                           {miles === 20 ? '≥ 20 Miles' : `≤ ${miles} Miles`}
                         </Text>
                         {distanceOption === miles && (
-                          <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                          <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -665,39 +685,41 @@ export default function DiscoverScreen() {
                     <TouchableOpacity
                       style={[
                         styles.dropdownOption,
-                        reviewsOption === 'highest' && styles.dropdownOptionActive,
+                        reviewsOption === 'highest' && { backgroundColor: themeHook.colors.primaryLight },
                       ]}
                       onPress={() => handleOptionSelect('highest')}
                     >
                       <Text
                         style={[
                           styles.dropdownOptionText,
-                          reviewsOption === 'highest' && styles.dropdownOptionTextActive,
+                          { color: reviewsOption === 'highest' ? themeHook.colors.primary : themeHook.colors.text },
+                          reviewsOption === 'highest' && { fontWeight: '600' },
                         ]}
                       >
                         Highest
                       </Text>
                       {reviewsOption === 'highest' && (
-                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[
                         styles.dropdownOption,
-                        reviewsOption === 'lowest' && styles.dropdownOptionActive,
+                        reviewsOption === 'lowest' && { backgroundColor: themeHook.colors.primaryLight },
                       ]}
                       onPress={() => handleOptionSelect('lowest')}
                     >
                       <Text
                         style={[
                           styles.dropdownOptionText,
-                          reviewsOption === 'lowest' && styles.dropdownOptionTextActive,
+                          { color: reviewsOption === 'lowest' ? themeHook.colors.primary : themeHook.colors.text },
+                          reviewsOption === 'lowest' && { fontWeight: '600' },
                         ]}
                       >
                         Lowest
                       </Text>
                       {reviewsOption === 'lowest' && (
-                        <Ionicons name="checkmark" size={20} color={theme.colors.primary[500]} />
+                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   </>
@@ -714,8 +736,8 @@ export default function DiscoverScreen() {
                 onPress={handleClearFilters}
                 activeOpacity={0.8}
               >
-                <Ionicons name="close-circle-outline" size={16} color={theme.colors.neutral[500]} />
-                <Text style={styles.clearFiltersText}>Clear filters</Text>
+                <Ionicons name="close-circle-outline" size={16} color={themeHook.colors.textSecondary} />
+                <Text style={[styles.clearFiltersText, { color: themeHook.colors.textSecondary }]}>Clear filters</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -742,8 +764,8 @@ export default function DiscoverScreen() {
           />
         ) : providers.length === 0 ? (
           <AnimatedEmptyState style={styles.emptyState}>
-            <Text style={styles.emptyText}>No providers found</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your search</Text>
+            <Text style={[styles.emptyText, { color: themeHook.colors.text }]}>No providers found</Text>
+            <Text style={[styles.emptySubtext, { color: themeHook.colors.textSecondary }]}>Try adjusting your search</Text>
           </AnimatedEmptyState>
         ) : (
           <FlatList
@@ -758,10 +780,10 @@ export default function DiscoverScreen() {
             ListHeaderComponent={
               <>
                 <View style={styles.header}>
-                  <Text style={styles.title}>Discover Providers</Text>
-                  <Text style={styles.subtitle}>Find wellness professionals near you</Text>
+                  <Text style={[styles.title, { color: themeHook.colors.text }]}>Discover Providers</Text>
+                  <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>Find wellness professionals near you</Text>
                 </View>
-                <View style={styles.headerDivider} />
+                <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
               </>
             }
             contentContainerStyle={styles.listContent}
@@ -808,7 +830,6 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
   },
   header: {
     paddingHorizontal: theme.spacing.xl,
@@ -817,19 +838,16 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
   },
   title: {
     ...theme.typography.display,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
   },
   subtitle: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
   },
   content: {
     flex: 1,
@@ -864,21 +882,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.full,
-    backgroundColor: theme.colors.neutral[50],
   },
   filterPillActive: {
-    backgroundColor: theme.colors.white,
-    ...theme.shadows.card,
   },
   filterPillText: {
     fontSize: 13,
     fontWeight: '500',
-    color: theme.colors.neutral[500],
   },
   filterPillTextActive: {
     fontSize: 13,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
   },
   listContent: {
     paddingBottom: theme.spacing.xl,
@@ -898,12 +911,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
   },
   emptySubtext: {
     fontSize: 14,
-    color: theme.colors.neutral[500],
   },
   dropdownOverlay: {
     position: 'absolute',
@@ -917,13 +928,11 @@ const styles = StyleSheet.create({
   dropdownContainer: {
     position: 'absolute',
     top: 40, // Position below the filter buttons
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.sm,
     ...theme.shadows.card,
     zIndex: 1000,
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
     elevation: 10, // For Android
     minWidth: 150,
   },
@@ -937,14 +946,11 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xs,
   },
   dropdownOptionActive: {
-    backgroundColor: theme.colors.primary[50],
   },
   dropdownOptionText: {
     ...theme.typography.body,
-    color: theme.colors.neutral[700],
   },
   dropdownOptionTextActive: {
-    color: theme.colors.primary[500],
     fontWeight: '600',
   },
   clearFiltersButton: {
@@ -957,7 +963,6 @@ const styles = StyleSheet.create({
   clearFiltersText: {
     ...theme.typography.body,
     fontSize: 13,
-    color: theme.colors.neutral[500],
     fontWeight: '500',
   },
 });

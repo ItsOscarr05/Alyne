@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Modal } from './Modal';
 import { theme } from '../../theme';
 import { Button } from './Button';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export type ConfirmType = 'danger' | 'warning' | 'info' | 'success';
 
@@ -30,6 +31,8 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const { theme: themeHook, isDark } = useTheme();
+
   const handleConfirm = () => {
     onConfirm();
     onClose();
@@ -47,26 +50,26 @@ export function ConfirmModal({
       case 'danger':
         return { 
           name: 'alert-circle' as const, 
-          color: theme.colors.semantic.error,
-          bgColor: '#FEE2E2',
+          color: themeHook.colors.error,
+          bgColor: isDark ? '#7F1D1D' : '#FEE2E2',
         };
       case 'warning':
         return { 
           name: 'warning' as const, 
-          color: theme.colors.semantic.warning,
-          bgColor: '#FEF3C7',
+          color: themeHook.colors.warning,
+          bgColor: isDark ? '#78350F' : '#FEF3C7',
         };
       case 'success':
         return { 
           name: 'checkmark-circle' as const, 
-          color: theme.colors.semantic.success,
-          bgColor: '#D1FAE5',
+          color: themeHook.colors.success,
+          bgColor: isDark ? '#14532D' : '#D1FAE5',
         };
       default:
         return { 
           name: 'information-circle' as const, 
-          color: theme.colors.primary[500],
-          bgColor: theme.colors.primary[50],
+          color: themeHook.colors.primary,
+          bgColor: themeHook.colors.primaryLight,
         };
     }
   };
@@ -76,13 +79,13 @@ export function ConfirmModal({
 
   return (
     <Modal visible={visible} onClose={onClose} dismissible>
-      <View style={styles.borderWrapper}>
+      <View style={[styles.borderWrapper, { borderColor: themeHook.colors.primary }]}>
         <View style={styles.container}>
           <View style={[styles.iconContainer, { backgroundColor: iconConfig.bgColor }]}>
             <Ionicons name={iconConfig.name} size={56} color={iconConfig.color} />
           </View>
-          <Text style={styles.title}>{title}</Text>
-          <Text style={styles.message}>{message}</Text>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>{title}</Text>
+          <Text style={[styles.message, { color: themeHook.colors.textSecondary }]}>{message}</Text>
           <View style={styles.buttonContainer}>
             <Button
               title={cancelText}
@@ -110,7 +113,6 @@ export function ConfirmModal({
 const styles = StyleSheet.create({
   borderWrapper: {
     borderWidth: 2,
-    borderColor: '#2563eb',
     borderRadius: theme.radii.lg,
     width: '100%',
   },
@@ -132,14 +134,12 @@ const styles = StyleSheet.create({
     ...theme.typography.h2,
     fontSize: 22,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
     textAlign: 'center',
     marginBottom: theme.spacing.md,
   },
   message: {
     ...theme.typography.body,
     fontSize: 15,
-    color: theme.colors.neutral[600],
     textAlign: 'center',
     marginBottom: theme.spacing['2xl'],
     lineHeight: 22,

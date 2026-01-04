@@ -27,6 +27,7 @@ import { usePaymentContext } from '../../contexts/PaymentContext';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
@@ -40,6 +41,7 @@ const HIDDEN_BOOKINGS_KEY = 'hidden_bookings';
 export default function BookingsScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
+  const { theme: themeHook, isDark } = useTheme();
   const { onBookingUpdate, onReviewDeleted } = useSocket();
   const { isProcessing: paymentProcessing, currentBookingId } = usePaymentContext();
   const modal = useModal();
@@ -556,13 +558,13 @@ export default function BookingsScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <ScrollView style={styles.content} contentContainerStyle={styles.listContent}>
           <View style={styles.header}>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: themeHook.colors.text }]}>
               {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
             </Text>
-            <View style={styles.tabContainer}>
+            <View style={[styles.tabContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
               <TouchableOpacity
                 style={[
                   styles.tab,
@@ -628,17 +630,17 @@ export default function BookingsScreen() {
 
   if (bookings.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <ScrollView
           style={styles.content}
           contentContainerStyle={styles.listContent}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>
+            <Text style={[styles.title, { color: themeHook.colors.text }]}>
               {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
             </Text>
-            <View style={styles.tabContainer}>
+            <View style={[styles.tabContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
               <TouchableOpacity
                 style={[
                   styles.tab,
@@ -738,66 +740,74 @@ export default function BookingsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>
             {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
           </Text>
-          <View style={styles.tabContainer}>
+          <View style={[styles.tabContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
             <TouchableOpacity
               style={[
                 styles.tab,
+                { backgroundColor: themeHook.colors.surface },
                 activeTab === 'pending' && styles.tabActive,
                 activeTab === 'pending' && styles.tabActivePending,
+                activeTab === 'pending' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
               ]}
               onPress={() => handleTabChange('pending')}
               activeOpacity={0.8}
             >
-              <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
+              <Text style={[activeTab === 'pending' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'pending' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                 Pending
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.tab,
+                { backgroundColor: themeHook.colors.surface },
                 activeTab === 'upcoming' && styles.tabActive,
                 activeTab === 'upcoming' && styles.tabActiveUpcoming,
+                activeTab === 'upcoming' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
               ]}
               onPress={() => handleTabChange('upcoming')}
               activeOpacity={0.8}
             >
-              <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
+              <Text style={[activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'upcoming' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                 Upcoming
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.tab,
+                { backgroundColor: themeHook.colors.surface },
                 activeTab === 'past' && styles.tabActive,
                 activeTab === 'past' && styles.tabActiveCompleted,
+                activeTab === 'past' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
               ]}
               onPress={() => handleTabChange('past')}
               activeOpacity={0.8}
             >
-              <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
+              <Text style={[activeTab === 'past' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'past' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                 Completed
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 styles.tab,
+                { backgroundColor: themeHook.colors.surface },
                 activeTab === 'declined' && styles.tabActive,
                 activeTab === 'declined' && styles.tabActiveDeclined,
+                activeTab === 'declined' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
               ]}
               onPress={() => handleTabChange('declined')}
               activeOpacity={0.8}
             >
-              <Text style={activeTab === 'declined' ? styles.tabActiveText : styles.tabText}>
+              <Text style={[activeTab === 'declined' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'declined' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                 Declined
               </Text>
             </TouchableOpacity>
@@ -809,8 +819,8 @@ export default function BookingsScreen() {
               {pendingBookings.length === 0 ? (
                 <AnimatedEmptyState style={styles.emptyState}>
                   <Ionicons name="time-outline" size={160} color="#FBBF24" />
-                  <Text style={styles.emptyTitle}>No pending bookings</Text>
-                  <Text style={styles.emptyText}>
+                  <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No pending bookings</Text>
+                  <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                     {user?.userType === 'PROVIDER'
                       ? 'When clients request sessions, they will appear here'
                       : 'When you request a session, it will appear here'}
@@ -907,8 +917,8 @@ export default function BookingsScreen() {
               {upcomingBookings.length === 0 ? (
                 <AnimatedEmptyState style={styles.emptyState}>
                   <Ionicons name="calendar-outline" size={160} color="#A855F7" />
-                  <Text style={styles.emptyTitle}>No upcoming bookings</Text>
-                  <Text style={styles.emptyText}>
+                  <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No upcoming bookings</Text>
+                  <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                     When you schedule a session, it will appear here.
                   </Text>
                 </AnimatedEmptyState>
@@ -1019,8 +1029,8 @@ export default function BookingsScreen() {
               {declinedBookings.length === 0 ? (
                 <AnimatedEmptyState style={styles.emptyState}>
                   <Ionicons name="close-circle-outline" size={160} color="#EF4444" />
-                  <Text style={styles.emptyTitle}>No declined bookings</Text>
-                  <Text style={styles.emptyText}>
+                  <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No declined bookings</Text>
+                  <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                     {user?.userType === 'PROVIDER'
                       ? 'Bookings that you declined will appear here.'
                       : 'Bookings that were declined by the provider will appear here.'}
@@ -1108,9 +1118,9 @@ export default function BookingsScreen() {
             <View style={styles.section}>
               {pastBookings.length === 0 ? (
                 <AnimatedEmptyState style={styles.emptyState}>
-                  <Ionicons name="checkmark-circle-outline" size={160} color={theme.colors.semantic.success} />
-                  <Text style={styles.emptyTitle}>No completed bookings yet</Text>
-                  <Text style={styles.emptyText}>
+                  <Ionicons name="checkmark-circle-outline" size={160} color={themeHook.colors.success} />
+                  <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No completed bookings yet</Text>
+                  <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                     Completed and cancelled sessions will appear here.
                   </Text>
                 </AnimatedEmptyState>
@@ -1281,16 +1291,16 @@ export default function BookingsScreen() {
             setSelectedBookingId(null);
           }}
         >
-          <View style={styles.optionsModalOverlay}>
+          <View style={[styles.optionsModalOverlay, { backgroundColor: themeHook.colors.overlay }]}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.optionsModalContainer}>
+              <View style={[styles.optionsModalContainer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.error }]}>
                 <TouchableOpacity
                   style={styles.optionsModalItem}
                   onPress={handleRemoveFromHistory}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="trash-outline" size={22} color="#EF4444" />
-                  <Text style={styles.optionsModalText}>Remove from History</Text>
+                  <Ionicons name="trash-outline" size={22} color={themeHook.colors.error} />
+                  <Text style={[styles.optionsModalText, { color: themeHook.colors.error }]}>Remove from History</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
@@ -1304,7 +1314,6 @@ export default function BookingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
   },
   header: {
     paddingHorizontal: theme.spacing.xl,
@@ -1313,16 +1322,13 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.display,
-    color: theme.colors.neutral[900],
     textAlign: 'center',
   },
   tabContainer: {
     marginTop: theme.spacing.lg,
     flexDirection: 'row',
-    backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.radii.full,
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
     overflow: 'hidden',
   },
   tab: {
@@ -1330,10 +1336,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: theme.spacing.sm,
-    backgroundColor: theme.colors.neutral[50],
   },
   tabActive: {
-    backgroundColor: theme.colors.white,
     borderWidth: 2,
     borderRadius: theme.radii.full,
     shadowOffset: { width: 0, height: 0 },
@@ -1360,12 +1364,10 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme.colors.neutral[500],
   },
   tabActiveText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
   },
   content: {
     flex: 1,
@@ -1381,7 +1383,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.lg,
   },
   emptyState: {
@@ -1395,13 +1396,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.sm,
   },
   emptyText: {
     fontSize: 14,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,
@@ -1539,39 +1538,30 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.sm,
     paddingHorizontal: theme.spacing.md,
     borderRadius: theme.radii.md,
-    backgroundColor: theme.colors.white,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
   },
   paginationButtonDisabled: {
-    backgroundColor: theme.colors.neutral[50],
-    borderColor: theme.colors.neutral[200],
     opacity: 0.5,
   },
   paginationButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.primary[500],
   },
   paginationButtonTextDisabled: {
-    color: theme.colors.neutral[500],
+    // Color applied inline
   },
   paginationInfo: {
     fontSize: 14,
     fontWeight: '500',
-    color: theme.colors.neutral[700],
   },
   optionsModalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
   optionsModalContainer: {
-    backgroundColor: theme.colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderTopWidth: 4,
-    borderTopColor: '#EF4444',
     paddingTop: theme.spacing.lg,
     paddingBottom: theme.spacing.xl,
     paddingHorizontal: theme.spacing.xl,
@@ -1590,6 +1580,5 @@ const styles = StyleSheet.create({
   optionsModalText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#EF4444',
   },
 });

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { theme } from '../../theme';
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface ModalProps {
   visible: boolean;
@@ -19,6 +20,7 @@ interface ModalProps {
 }
 
 export function Modal({ visible, onClose, children, dismissible = true }: ModalProps) {
+  const themeHook = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -71,7 +73,7 @@ export function Modal({ visible, onClose, children, dismissible = true }: ModalP
       statusBarTranslucent
     >
       <TouchableWithoutFeedback onPress={dismissible ? onClose : undefined}>
-        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim, backgroundColor: themeHook.colors.overlay }]}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
             <Animated.View
               style={[
@@ -79,6 +81,9 @@ export function Modal({ visible, onClose, children, dismissible = true }: ModalP
                 {
                   opacity: fadeAnim,
                   transform: [{ scale: scaleAnim }],
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.primary,
+                  borderWidth: 2,
                 },
               ]}
             >
@@ -94,13 +99,11 @@ export function Modal({ visible, onClose, children, dismissible = true }: ModalP
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,
   },
   content: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     width: '100%',
     maxWidth: 400,

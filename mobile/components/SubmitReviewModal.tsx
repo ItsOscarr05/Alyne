@@ -17,6 +17,7 @@ import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { useModal } from '../hooks/useModal';
 import { AlertModal } from './ui/AlertModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SubmitReviewModalProps {
   visible: boolean;
@@ -36,6 +37,7 @@ export function SubmitReviewModal({
   onSuccess,
 }: SubmitReviewModalProps) {
   const modal = useModal();
+  const themeHook = useTheme();
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -186,7 +188,18 @@ export function SubmitReviewModal({
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <TouchableOpacity key={i} onPress={() => setRating(i)} style={styles.starButton}>
+        <TouchableOpacity
+          key={i}
+          onPress={() => {
+            // Toggle selection: if already selected, deselect; otherwise select
+            if (rating === i) {
+              setRating(0);
+            } else {
+              setRating(i);
+            }
+          }}
+          style={styles.starButton}
+        >
           <Ionicons
             name={i <= rating ? 'star' : 'star-outline'}
             size={40}
@@ -204,25 +217,25 @@ export function SubmitReviewModal({
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalContainer}>
+              <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
                 {/* Close Button */}
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                  <Ionicons name="close" size={28} color="#1e293b" />
+                <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} onPress={onClose}>
+                  <Ionicons name="close" size={28} color={themeHook.colors.text} />
                 </TouchableOpacity>
 
                 {checking ? (
                   <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#2563eb" />
-                    <Text style={styles.loadingText}>Checking...</Text>
+                    <ActivityIndicator size="large" color={themeHook.colors.primary} />
+                    <Text style={[styles.loadingText, { color: themeHook.colors.text }]}>Checking...</Text>
                   </View>
                 ) : hasExistingReview ? (
                   <View style={styles.loadingContainer}>
-                    <Ionicons name="checkmark-circle" size={64} color="#10b981" />
-                    <Text style={styles.alreadyReviewedText}>
+                    <Ionicons name="checkmark-circle" size={64} color={themeHook.colors.success} />
+                    <Text style={[styles.alreadyReviewedText, { color: themeHook.colors.text }]}>
                       You have already reviewed this booking
                     </Text>
                     <TouchableOpacity style={styles.backButton} onPress={onClose}>
-                      <Text style={styles.backButtonText}>Go Back</Text>
+                      <Text style={[styles.backButtonText, { color: themeHook.colors.primary }]}>Go Back</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -234,12 +247,12 @@ export function SubmitReviewModal({
                     {/* Header */}
                     <View style={styles.header}>
                       <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                        <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
                       </TouchableOpacity>
-                      <Text style={styles.headerTitle}>Write a Review</Text>
+                      <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Write a Review</Text>
                       <View style={styles.backButton} />
                     </View>
-                    <View style={styles.headerDivider} />
+                    <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
                     <View style={styles.section}>
                       <Text style={styles.label}>How was your experience?</Text>

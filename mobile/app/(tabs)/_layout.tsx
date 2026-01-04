@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 
 export default function TabsLayout() {
   const { user, isLoading } = useAuth();
+  const { theme: themeHook } = useTheme();
   const isProvider = user?.userType === 'PROVIDER';
 
   // Build options objects conditionally
@@ -42,12 +44,12 @@ export default function TabsLayout() {
       initialRouteName={initialRouteName}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary[500],
-        tabBarInactiveTintColor: theme.colors.neutral[500],
+        tabBarActiveTintColor: themeHook.colors.primary,
+        tabBarInactiveTintColor: themeHook.colors.textSecondary,
         tabBarStyle: {
-          borderTopColor: theme.colors.primary[500],
+          borderTopColor: themeHook.colors.primary,
           borderTopWidth: 2,
-          backgroundColor: theme.colors.white,
+          backgroundColor: themeHook.colors.surface,
         },
       }}
     >

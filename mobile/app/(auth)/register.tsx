@@ -3,6 +3,7 @@ import { useState, useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
@@ -14,6 +15,7 @@ import { validatePassword, validateEmail } from '../../utils/passwordValidation'
 export default function RegisterScreen() {
   const router = useRouter();
   const modal = useModal();
+  const themeHook = useTheme();
   const { register } = useAuth();
   const [userType, setUserType] = useState<'provider' | 'client' | null>(null);
   const [email, setEmail] = useState('');
@@ -74,7 +76,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -86,29 +88,30 @@ export default function RegisterScreen() {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
 
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="person-add" size={32} color={theme.colors.white} />
+            <View style={[styles.logoCircle, { backgroundColor: themeHook.colors.primary }]}>
+              <Ionicons name="person-add" size={32} color={themeHook.colors.white} />
             </View>
           </View>
 
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join the Alyne community</Text>
+            <Text style={[styles.title, { color: themeHook.colors.text }]}>Create Account</Text>
+            <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>Join the Alyne community</Text>
           </View>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.userTypeCard}>
-            <Text style={styles.userTypeLabel}>I am a...</Text>
+          <View style={[styles.userTypeCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+            <Text style={[styles.userTypeLabel, { color: themeHook.colors.text }]}>I am a...</Text>
             <View style={styles.userTypeButtons}>
               <TouchableOpacity
                 style={[
                   styles.userTypeButton,
-                  userType === 'provider' && styles.userTypeButtonActive,
+                  { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+                  userType === 'provider' && { borderColor: themeHook.colors.primary, backgroundColor: themeHook.colors.primaryLight },
                 ]}
                 onPress={() => setUserType('provider')}
                 activeOpacity={0.8}
@@ -117,13 +120,14 @@ export default function RegisterScreen() {
                   name="business-outline"
                   size={20}
                   color={
-                    userType === 'provider' ? theme.colors.primary[500] : theme.colors.neutral[500]
+                    userType === 'provider' ? themeHook.colors.primary : themeHook.colors.textSecondary
                   }
                 />
                 <Text
                   style={[
                     styles.userTypeButtonText,
-                    userType === 'provider' && styles.userTypeButtonTextActive,
+                    { color: themeHook.colors.textSecondary },
+                    userType === 'provider' && { color: themeHook.colors.primary },
                   ]}
                 >
                   Provider
@@ -132,7 +136,8 @@ export default function RegisterScreen() {
               <TouchableOpacity
                 style={[
                   styles.userTypeButton,
-                  userType === 'client' && styles.userTypeButtonActive,
+                  { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+                  userType === 'client' && { borderColor: themeHook.colors.primary, backgroundColor: themeHook.colors.primaryLight },
                 ]}
                 onPress={() => setUserType('client')}
                 activeOpacity={0.8}
@@ -141,13 +146,14 @@ export default function RegisterScreen() {
                   name="person-outline"
                   size={20}
                   color={
-                    userType === 'client' ? theme.colors.primary[500] : theme.colors.neutral[500]
+                    userType === 'client' ? themeHook.colors.primary : themeHook.colors.textSecondary
                   }
                 />
                 <Text
                   style={[
                     styles.userTypeButtonText,
-                    userType === 'client' && styles.userTypeButtonTextActive,
+                    { color: themeHook.colors.textSecondary },
+                    userType === 'client' && { color: themeHook.colors.primary },
                   ]}
                 >
                   Client
@@ -156,8 +162,8 @@ export default function RegisterScreen() {
             </View>
           </View>
 
-          <View style={styles.formCard}>
-            <Text style={styles.cardTitle}>Account Information</Text>
+          <View style={[styles.formCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+            <Text style={[styles.cardTitle, { color: themeHook.colors.text }]}>Account Information</Text>
 
             <FormField
               label="First Name"
@@ -217,9 +223,9 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
+            <Text style={[styles.footerText, { color: themeHook.colors.textSecondary }]}>Already have an account? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-              <Text style={styles.footerLink}>Sign In</Text>
+              <Text style={[styles.footerLink, { color: themeHook.colors.primary }]}>Sign In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -244,7 +250,6 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -271,7 +276,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.card,
@@ -282,13 +286,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.display,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
   },
   form: {
@@ -296,34 +298,28 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
   },
   userTypeCard: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
   },
   userTypeLabel: {
     ...theme.typography.body,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.md,
     fontSize: 16,
   },
   formCard: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
   },
   cardTitle: {
     ...theme.typography.h2,
     fontSize: 20,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
   },
@@ -339,24 +335,18 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     borderRadius: theme.radii.md,
     borderWidth: 2,
-    borderColor: theme.colors.neutral[200],
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.white,
     flexDirection: 'row',
     gap: theme.spacing.sm,
   },
   userTypeButtonActive: {
-    borderColor: theme.colors.primary[500],
-    backgroundColor: theme.colors.primary[50],
   },
   userTypeButtonText: {
     ...theme.typography.body,
     fontWeight: '600',
-    color: theme.colors.neutral[500],
   },
   userTypeButtonTextActive: {
-    color: theme.colors.primary[500],
   },
   primaryButton: {
     marginTop: theme.spacing.xl,
@@ -370,11 +360,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
   },
   footerLink: {
     ...theme.typography.body,
-    color: theme.colors.primary[500],
     fontWeight: '600',
   },
 });

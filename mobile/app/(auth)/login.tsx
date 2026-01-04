@@ -1,22 +1,50 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { FormField } from '../../components/ui/FormField';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validateEmail } from '../../utils/passwordValidation';
+import { storage } from '../../utils/storage';
+
+const REMEMBERED_EMAIL_KEY = 'remembered_email';
+const REMEMBERED_PASSWORD_KEY = 'remembered_password';
 
 export default function LoginScreen() {
   const router = useRouter();
   const modal = useModal();
+  const themeHook = useTheme();
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+
+  // Load remembered credentials on mount
+  useEffect(() => {
+    const loadRememberedCredentials = async () => {
+      try {
+        const [rememberedEmail, rememberedPassword] = await Promise.all([
+          storage.getItem(REMEMBERED_EMAIL_KEY),
+          storage.getItem(REMEMBERED_PASSWORD_KEY),
+        ]);
+        if (rememberedEmail && rememberedPassword) {
+          setEmail(rememberedEmail);
+          setPassword(rememberedPassword);
+          setRememberMe(true);
+        }
+      } catch (error) {
+        // Silently fail if we can't load remembered credentials
+        console.error('Error loading remembered credentials:', error);
+      }
+    };
+    loadRememberedCredentials();
+  }, []);
 
   // Validate form fields
   const isFormValid = useMemo(() => {
@@ -36,6 +64,20 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const response = await login(email, password);
+      
+      // Save or clear credentials based on "remember me" preference
+      if (rememberMe) {
+        await Promise.all([
+          storage.setItem(REMEMBERED_EMAIL_KEY, email),
+          storage.setItem(REMEMBERED_PASSWORD_KEY, password),
+        ]);
+      } else {
+        await Promise.all([
+          storage.removeItem(REMEMBERED_EMAIL_KEY),
+          storage.removeItem(REMEMBERED_PASSWORD_KEY),
+        ]);
+      }
+      
       // Route based on user type - navigate immediately
       if (response.user.userType === 'PROVIDER') {
         // Navigate immediately to dashboard
@@ -55,7 +97,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -67,24 +109,24 @@ export default function LoginScreen() {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
           
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="lock-closed" size={32} color={theme.colors.white} />
+            <View style={[styles.logoCircle, { backgroundColor: themeHook.colors.primary }]}>
+              <Ionicons name="lock-closed" size={32} color={themeHook.colors.white} />
             </View>
           </View>
           
           <View style={styles.headerContent}>
-            <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to continue to Alyne</Text>
+            <Text style={[styles.title, { color: themeHook.colors.text }]}>Welcome Back</Text>
+            <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>Sign in to continue to Alyne</Text>
           </View>
         </View>
 
         <View style={styles.form}>
-          <View style={styles.formCard}>
-            <Text style={styles.cardTitle}>Sign In</Text>
+          <View style={[styles.formCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+            <Text style={[styles.cardTitle, { color: themeHook.colors.text }]}>Sign In</Text>
             
             <FormField
               label="Email"
@@ -108,6 +150,19 @@ export default function LoginScreen() {
               required
             />
 
+            <TouchableOpacity
+              style={styles.rememberMeContainer}
+              onPress={() => setRememberMe(!rememberMe)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.checkbox, { borderColor: rememberMe ? themeHook.colors.primary : themeHook.colors.border, backgroundColor: rememberMe ? themeHook.colors.primary : 'transparent' }]}>
+                {rememberMe && (
+                  <Ionicons name="checkmark" size={16} color={themeHook.colors.white} />
+                )}
+              </View>
+              <Text style={[styles.rememberMeText, { color: themeHook.colors.text }]}>Remember me</Text>
+            </TouchableOpacity>
+
             <Button
               title="Sign In"
               onPress={handleLogin}
@@ -121,14 +176,14 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/reset-password')}
               activeOpacity={0.7}
             >
-              <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <Text style={[styles.forgotPasswordText, { color: themeHook.colors.primary }]}>Forgot Password?</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
+            <Text style={[styles.footerText, { color: themeHook.colors.textSecondary }]}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-              <Text style={styles.footerLink}>Sign Up</Text>
+              <Text style={[styles.footerLink, { color: themeHook.colors.primary }]}>Sign Up</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -153,7 +208,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -180,7 +234,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.card,
@@ -191,13 +244,11 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.display,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
   },
   form: {
@@ -205,23 +256,39 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xl,
   },
   formCard: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.xl,
     marginBottom: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
   },
   cardTitle: {
     ...theme.typography.h2,
     fontSize: 20,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.lg,
     textAlign: 'center',
   },
   fieldSpacer: {
     height: theme.spacing.md,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.sm,
+  },
+  rememberMeText: {
+    ...theme.typography.body,
+    fontSize: 14,
   },
   primaryButton: {
     marginTop: theme.spacing.lg,
@@ -233,7 +300,6 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     ...theme.typography.body,
-    color: theme.colors.primary[500],
     fontSize: 14,
     fontWeight: '600',
   },
@@ -245,11 +311,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
   },
   footerLink: {
     ...theme.typography.body,
-    color: theme.colors.primary[500],
     fontWeight: '600',
   },
 });

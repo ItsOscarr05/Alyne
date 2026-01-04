@@ -15,6 +15,7 @@ import { reviewService } from '../services/review';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { AlertModal } from './ui/AlertModal';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface EditReviewModalProps {
   visible: boolean;
@@ -35,6 +36,7 @@ export function EditReviewModal({
   onClose,
   onSuccess,
 }: EditReviewModalProps) {
+  const themeHook = useTheme();
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -74,8 +76,8 @@ export function EditReviewModal({
     }
   }, [visible, reviewId, initialRating, initialComment]);
 
-  // Check if any changes have been made
-  const hasChanges = rating !== initialRatingValue || comment.trim() !== initialCommentValue.trim();
+  // Check if any changes have been made (but rating must be > 0)
+  const hasChanges = rating > 0 && (rating !== initialRatingValue || comment.trim() !== initialCommentValue.trim());
 
   const handleSubmit = async () => {
     if (!rating) {
@@ -146,11 +148,22 @@ export function EditReviewModal({
     const stars = [];
     for (let i = 1; i <= 5; i++) {
       stars.push(
-        <TouchableOpacity key={i} onPress={() => setRating(i)} style={styles.starButton}>
+        <TouchableOpacity
+          key={i}
+          onPress={() => {
+            // Toggle selection: if already selected, deselect; otherwise select
+            if (rating === i) {
+              setRating(0);
+            } else {
+              setRating(i);
+            }
+          }}
+          style={styles.starButton}
+        >
           <Ionicons
             name={i <= rating ? 'star' : 'star-outline'}
             size={40}
-            color={i <= rating ? '#fbbf24' : '#d1d5db'}
+            color={i <= rating ? '#fbbf24' : themeHook.colors.textTertiary}
           />
         </TouchableOpacity>
       );
@@ -163,16 +176,16 @@ export function EditReviewModal({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalContainer}>
+            <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
               {/* Close Button */}
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Ionicons name="close" size={28} color="#1e293b" />
+              <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} onPress={onClose}>
+                <Ionicons name="close" size={28} color={themeHook.colors.text} />
               </TouchableOpacity>
 
               {loading ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#2563eb" />
-                  <Text style={styles.loadingText}>Loading...</Text>
+                  <ActivityIndicator size="large" color={themeHook.colors.primary} />
+                  <Text style={[styles.loadingText, { color: themeHook.colors.text }]}>Loading...</Text>
                 </View>
               ) : (
                 <ScrollView
@@ -183,19 +196,19 @@ export function EditReviewModal({
                   {/* Header */}
                   <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                      <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                      <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
                     </TouchableOpacity>
-                    <Text style={styles.headerTitle}>Edit Review</Text>
+                    <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Edit Review</Text>
                     <View style={styles.backButton} />
                   </View>
-                  <View style={styles.headerDivider} />
+                  <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
                   <View style={styles.section}>
-                    <Text style={styles.label}>How was your experience?</Text>
-                    {providerName && <Text style={styles.providerName}>with {providerName}</Text>}
+                    <Text style={[styles.label, { color: themeHook.colors.text }]}>How was your experience?</Text>
+                    {providerName && <Text style={[styles.providerName, { color: themeHook.colors.textSecondary }]}>with {providerName}</Text>}
                     <View style={styles.starsContainer}>{renderStars()}</View>
                     {rating > 0 && (
-                      <Text style={styles.ratingText}>
+                      <Text style={[styles.ratingText, { color: themeHook.colors.primary }]}>
                         {rating === 1 && 'Poor'}
                         {rating === 2 && 'Fair'}
                         {rating === 3 && 'Good'}
@@ -206,10 +219,11 @@ export function EditReviewModal({
                   </View>
 
                   <View style={styles.section}>
-                    <Text style={styles.label}>Tell us more (optional)</Text>
+                    <Text style={[styles.label, { color: themeHook.colors.text }]}>Tell us more (optional)</Text>
                     <TextInput
-                      style={styles.textArea}
+                      style={[styles.textArea, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
                       placeholder="Share your experience with this provider..."
+                      placeholderTextColor={themeHook.colors.textTertiary}
                       value={comment}
                       onChangeText={setComment}
                       multiline
@@ -217,19 +231,21 @@ export function EditReviewModal({
                       textAlignVertical="top"
                       maxLength={500}
                     />
-                    <Text style={styles.charCount}>{comment.length}/500</Text>
+                    <Text style={[styles.charCount, { color: themeHook.colors.textTertiary }]}>{comment.length}/500</Text>
                   </View>
 
                   <TouchableOpacity
                     style={[
                       styles.submitButton,
-                      (!rating || submitting || !hasChanges) && styles.submitButtonDisabled,
+                      (!rating || submitting || !hasChanges) 
+                        ? { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }
+                        : { backgroundColor: themeHook.colors.primary },
                     ]}
                     onPress={handleSubmit}
                     disabled={!rating || submitting || !hasChanges}
                   >
                     {submitting ? (
-                      <ActivityIndicator color="#ffffff" />
+                      <ActivityIndicator color={themeHook.colors.white} />
                     ) : (
                       <Text style={styles.submitButtonText}>Update Review</Text>
                     )}

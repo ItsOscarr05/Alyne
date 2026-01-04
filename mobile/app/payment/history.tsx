@@ -17,6 +17,8 @@ import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useAuth } from '../../hooks/useAuth';
 import { ReceiptModal } from '../../components/ReceiptModal';
+import { useTheme } from '../../contexts/ThemeContext';
+import { theme } from '../../theme';
 
 interface PaymentWithBooking {
   id: string;
@@ -52,6 +54,7 @@ type FilterOption = 'all' | 'completed' | 'pending' | 'failed' | 'refunded';
 export default function PaymentHistoryScreen() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { theme: themeHook } = useTheme();
   const [payments, setPayments] = useState<PaymentWithBooking[]>([]);
   const [allPayments, setAllPayments] = useState<PaymentWithBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -217,7 +220,7 @@ export default function PaymentHistoryScreen() {
 
     return (
       <TouchableOpacity
-        style={styles.paymentCard}
+        style={[styles.paymentCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}
         onPress={() => {
           setSelectedReceiptBookingId(item.bookingId);
           setShowReceiptModal(true);
@@ -225,8 +228,8 @@ export default function PaymentHistoryScreen() {
       >
         <View style={styles.paymentHeader}>
           <View style={styles.paymentInfo}>
-            <Text style={styles.serviceName}>{item.booking.service.name}</Text>
-            <Text style={styles.partyName}>
+            <Text style={[styles.serviceName, { color: themeHook.colors.text }]}>{item.booking.service.name}</Text>
+            <Text style={[styles.partyName, { color: themeHook.colors.textSecondary }]}>
               {isClient ? 'Provider: ' : 'Client: '}
               {otherPartyName}
             </Text>
@@ -236,27 +239,27 @@ export default function PaymentHistoryScreen() {
           </View>
         </View>
 
-        <View style={styles.paymentDetails}>
+        <View style={[styles.paymentDetails, { borderTopColor: themeHook.colors.border }]}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Amount</Text>
-            <Text style={styles.amount}>${item.amount.toFixed(2)}</Text>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Amount</Text>
+            <Text style={[styles.amount, { color: themeHook.colors.primary }]}>${item.amount.toFixed(2)}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date</Text>
-            <Text style={styles.detailValue}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Date</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
               {formatDate(item.booking.scheduledDate)} at {formatTime(item.booking.scheduledTime)}
             </Text>
           </View>
           {item.paidAt && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Paid</Text>
-              <Text style={styles.detailValue}>{formatDate(item.paidAt)}</Text>
+              <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Paid</Text>
+              <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>{formatDate(item.paidAt)}</Text>
             </View>
           )}
         </View>
 
-        <View style={styles.footer}>
-          <Text style={styles.receiptLink}>View Receipt →</Text>
+        <View style={[styles.footer, { borderTopColor: themeHook.colors.border }]}>
+          <Text style={[styles.receiptLink, { color: themeHook.colors.primary }]}>View Receipt →</Text>
         </View>
       </TouchableOpacity>
     );
@@ -265,18 +268,18 @@ export default function PaymentHistoryScreen() {
   // Show loading while checking auth or loading payments
   if (authLoading || loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Payment History</Text>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Payment History</Text>
             <View style={{ width: 24 }} />
           </View>
-          <View style={styles.headerDivider} />
+          <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
+            <ActivityIndicator size="large" color={themeHook.colors.primary} />
           </View>
         </ScrollView>
       </View>
@@ -284,21 +287,21 @@ export default function PaymentHistoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       {allPayments.length === 0 ? (
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Payment History</Text>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Payment History</Text>
             <View style={{ width: 24 }} />
           </View>
-          <View style={styles.headerDivider} />
+          <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.emptyContainer}>
-            <Ionicons name="receipt-outline" size={64} color="#cbd5e1" />
-            <Text style={styles.emptyText}>No payments yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Ionicons name="receipt-outline" size={64} color={themeHook.colors.textTertiary} />
+            <Text style={[styles.emptyText, { color: themeHook.colors.text }]}>No payments yet</Text>
+            <Text style={[styles.emptySubtext, { color: themeHook.colors.textSecondary }]}>
               Your payment history will appear here once you make a payment.
             </Text>
           </View>
@@ -309,43 +312,43 @@ export default function PaymentHistoryScreen() {
             <>
               <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()}>
-                  <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                  <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Payment History</Text>
+                <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Payment History</Text>
                 <View style={{ width: 24 }} />
               </View>
-              <View style={styles.headerDivider} />
+              <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
               
               {/* Filter and Sort Controls */}
-              <View style={styles.controlsContainer}>
+              <View style={[styles.controlsContainer, { backgroundColor: themeHook.colors.surface, borderBottomColor: themeHook.colors.border }]}>
                 <TouchableOpacity
-                  style={styles.controlButton}
+                  style={[styles.controlButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                   onPress={() => {
                     setShowSortMenu(false); // Close sort menu if open
                     setShowFilterMenu(!showFilterMenu);
                   }}
                 >
-                  <Ionicons name="filter-outline" size={18} color="#2563eb" />
-                  <Text style={styles.controlButtonText}>
+                  <Ionicons name="filter-outline" size={18} color={themeHook.colors.primary} />
+                  <Text style={[styles.controlButtonText, { color: themeHook.colors.primary }]}>
                     {filterOption === 'all' ? 'All' : filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#2563eb" />
+                  <Ionicons name="chevron-down" size={16} color={themeHook.colors.primary} />
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.controlButton}
+                  style={[styles.controlButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                   onPress={() => {
                     setShowFilterMenu(false); // Close filter menu if open
                     setShowSortMenu(!showSortMenu);
                   }}
                 >
-                  <Ionicons name="swap-vertical-outline" size={18} color="#2563eb" />
-                  <Text style={styles.controlButtonText}>
+                  <Ionicons name="swap-vertical-outline" size={18} color={themeHook.colors.primary} />
+                  <Text style={[styles.controlButtonText, { color: themeHook.colors.primary }]}>
                     {sortOption === 'date-desc' ? 'Newest' : 
                      sortOption === 'date-asc' ? 'Oldest' :
                      sortOption === 'amount-desc' ? 'Amount: High' : 'Amount: Low'}
                   </Text>
-                  <Ionicons name="chevron-down" size={16} color="#2563eb" />
+                  <Ionicons name="chevron-down" size={16} color={themeHook.colors.primary} />
                 </TouchableOpacity>
               </View>
 
@@ -355,6 +358,8 @@ export default function PaymentHistoryScreen() {
                   style={[
                     styles.dropdownMenu,
                     {
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor: themeHook.colors.border,
                       opacity: filterMenuAnimation,
                       maxHeight: filterMenuAnimation.interpolate({
                         inputRange: [0, 1],
@@ -377,7 +382,8 @@ export default function PaymentHistoryScreen() {
                       key={option}
                       style={[
                         styles.dropdownItem,
-                        filterOption === option && styles.dropdownItemActive,
+                        { borderBottomColor: themeHook.colors.borderLight },
+                        filterOption === option && { backgroundColor: themeHook.colors.primaryLight },
                       ]}
                       onPress={() => {
                         setFilterOption(option);
@@ -387,13 +393,14 @@ export default function PaymentHistoryScreen() {
                       <Text
                         style={[
                           styles.dropdownItemText,
-                          filterOption === option && styles.dropdownItemTextActive,
+                          { color: themeHook.colors.text },
+                          filterOption === option && { fontWeight: '600', color: themeHook.colors.primary },
                         ]}
                       >
                         {option === 'all' ? 'All Payments' : option.charAt(0).toUpperCase() + option.slice(1)}
                       </Text>
                       {filterOption === option && (
-                        <Ionicons name="checkmark" size={18} color="#2563eb" />
+                        <Ionicons name="checkmark" size={18} color={themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -406,6 +413,8 @@ export default function PaymentHistoryScreen() {
                   style={[
                     styles.dropdownMenu,
                     {
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor: themeHook.colors.border,
                       opacity: sortMenuAnimation,
                       maxHeight: sortMenuAnimation.interpolate({
                         inputRange: [0, 1],
@@ -433,7 +442,8 @@ export default function PaymentHistoryScreen() {
                       key={option.value}
                       style={[
                         styles.dropdownItem,
-                        sortOption === option.value && styles.dropdownItemActive,
+                        { borderBottomColor: themeHook.colors.borderLight },
+                        sortOption === option.value && { backgroundColor: themeHook.colors.primaryLight },
                       ]}
                       onPress={() => {
                         setSortOption(option.value);
@@ -443,13 +453,14 @@ export default function PaymentHistoryScreen() {
                       <Text
                         style={[
                           styles.dropdownItemText,
-                          sortOption === option.value && styles.dropdownItemTextActive,
+                          { color: themeHook.colors.text },
+                          sortOption === option.value && { fontWeight: '600', color: themeHook.colors.primary },
                         ]}
                       >
                         {option.label}
                       </Text>
                       {sortOption === option.value && (
-                        <Ionicons name="checkmark" size={18} color="#2563eb" />
+                        <Ionicons name="checkmark" size={18} color={themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -467,9 +478,9 @@ export default function PaymentHistoryScreen() {
           ListEmptyComponent={
             payments.length === 0 && allPayments.length > 0 ? (
               <View style={styles.emptyContainer}>
-                <Ionicons name="filter-outline" size={64} color="#cbd5e1" />
-                <Text style={styles.emptyText}>No payments match your filter</Text>
-                <Text style={styles.emptySubtext}>
+                <Ionicons name="filter-outline" size={64} color={themeHook.colors.textTertiary} />
+                <Text style={[styles.emptyText, { color: themeHook.colors.text }]}>No payments match your filter</Text>
+                <Text style={[styles.emptySubtext, { color: themeHook.colors.textSecondary }]}>
                   Try adjusting your filter to see more payments.
                 </Text>
               </View>
@@ -497,7 +508,6 @@ export default function PaymentHistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -509,7 +519,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -525,7 +534,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   loadingContainer: {
     flex: 1,
@@ -541,13 +549,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   listContent: {
@@ -559,12 +565,10 @@ const styles = StyleSheet.create({
     minHeight: 400,
   },
   paymentCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   paymentHeader: {
     flexDirection: 'row',
@@ -578,12 +582,10 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   partyName: {
     fontSize: 14,
-    color: '#64748b',
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -599,7 +601,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   detailRow: {
     flexDirection: 'row',
@@ -608,28 +609,23 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   amount: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#2563eb',
   },
   footer: {
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   receiptLink: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2563eb',
     textAlign: 'right',
   },
   controlsContainer: {
@@ -637,9 +633,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#ffffff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   controlButton: {
     flex: 1,
@@ -649,23 +643,18 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 8,
     paddingHorizontal: 12,
-    backgroundColor: '#eff6ff',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#dbeafe',
   },
   controlButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#2563eb',
   },
   dropdownMenu: {
-    backgroundColor: '#ffffff',
     borderRadius: 8,
     marginHorizontal: 16,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -680,18 +669,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
   },
   dropdownItemActive: {
-    backgroundColor: '#eff6ff',
   },
   dropdownItemText: {
     fontSize: 14,
-    color: '#1e293b',
   },
   dropdownItemTextActive: {
     fontWeight: '600',
-    color: '#2563eb',
   },
 });
 

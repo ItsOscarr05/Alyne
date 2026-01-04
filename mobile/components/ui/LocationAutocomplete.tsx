@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, Platform, Animated } from 'react-native';
 import { theme } from '../../theme';
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface LocationAutocompleteProps {
   city: string;
@@ -20,6 +21,7 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   cityPlaceholder = 'Enter city',
   statePlaceholder = 'Enter state',
 }) => {
+  const { theme: themeHook } = useTheme();
   const [cityFocused, setCityFocused] = useState(false);
   const [stateFocused, setStateFocused] = useState(false);
   const cityBorderWidthAnim = useRef(new Animated.Value(1)).current;
@@ -45,56 +47,58 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
     }).start();
   }, [stateFocused, stateBorderWidthAnim]);
 
-  const cityBorderColor = cityFocused ? '#2563eb' : '#1e293b';
-  const stateBorderColor = stateFocused ? '#2563eb' : '#1e293b';
+  const cityBorderColor = cityFocused ? themeHook.colors.primary : themeHook.colors.border;
+  const stateBorderColor = stateFocused ? themeHook.colors.primary : themeHook.colors.border;
   
   return (
     <View style={styles.container}>
       <View style={[styles.inputContainer, { marginBottom: theme.spacing.lg }]}>
-        <Text style={styles.label}>City</Text>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>City</Text>
         <Animated.View
           style={[
             styles.animatedBorder,
             {
               borderWidth: cityBorderWidthAnim,
               borderColor: cityBorderColor,
+              backgroundColor: themeHook.colors.inputBackground,
             },
           ]}
           pointerEvents="none"
         />
         <TextInput
-          style={[styles.input, { borderWidth: 0 }]}
+          style={[styles.input, { borderWidth: 0, backgroundColor: themeHook.colors.inputBackground, color: themeHook.colors.text }]}
           placeholder={cityPlaceholder}
           value={city}
           onChangeText={onCityChange}
           onFocus={() => setCityFocused(true)}
           onBlur={() => setCityFocused(false)}
           autoCapitalize="words"
-          placeholderTextColor={theme.colors.neutral[500]}
+          placeholderTextColor={themeHook.colors.textTertiary}
         />
       </View>
 
       <View style={styles.inputContainer}>
-        <Text style={styles.label}>State</Text>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>State</Text>
         <Animated.View
           style={[
             styles.animatedBorder,
             {
               borderWidth: stateBorderWidthAnim,
               borderColor: stateBorderColor,
+              backgroundColor: themeHook.colors.inputBackground,
             },
           ]}
           pointerEvents="none"
         />
         <TextInput
-          style={[styles.input, { borderWidth: 0 }]}
+          style={[styles.input, { borderWidth: 0, backgroundColor: themeHook.colors.inputBackground, color: themeHook.colors.text }]}
           placeholder={statePlaceholder}
           value={state}
           onChangeText={onStateChange}
           onFocus={() => setStateFocused(true)}
           onBlur={() => setStateFocused(false)}
           autoCapitalize="characters"
-          placeholderTextColor={theme.colors.neutral[500]}
+          placeholderTextColor={themeHook.colors.textTertiary}
         />
       </View>
     </View>
@@ -120,18 +124,13 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: theme.radii.md,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     fontSize: 16,
-    backgroundColor: theme.colors.white,
-    color: theme.colors.neutral[900],
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),

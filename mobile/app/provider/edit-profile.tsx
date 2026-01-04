@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -29,8 +29,9 @@ import { AlertModal } from '../../components/ui/AlertModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { Calendar } from 'react-native-calendars';
 import { Animated } from 'react-native';
-import { useRef } from 'react';
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
+import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const USER_KEY = 'user_data';
 
@@ -41,9 +42,11 @@ export default function EditProviderProfileScreen() {
   const params = useLocalSearchParams<{ section?: Section }>();
   const initialSection = (params.section as Section) || 'profile';
   const { user, refreshUser } = useAuth();
+  const { theme: themeHook } = useTheme();
   const [activeSection, setActiveSection] = useState<Section>(initialSection);
   const sectionOpacityAnim = useRef(new Animated.Value(1)).current;
   const prevSectionRef = useRef<Section>(initialSection);
+  const yearScrollViewRef = useRef<ScrollView>(null);
   const [loading, setLoading] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [alertModal, setAlertModal] = useState<{
@@ -209,6 +212,33 @@ export default function EditProviderProfileScreen() {
       prevSectionRef.current = activeSection;
     }
   }, [activeSection, loadingProfile, sectionOpacityAnim]);
+
+  // Scroll to center the selected year when date picker opens
+  useEffect(() => {
+    if (datePickerVisible && datePickerStep === 'year' && yearScrollViewRef.current && selectedYear) {
+      // Use setTimeout to ensure layout is complete
+      const timeoutId = setTimeout(() => {
+        if (yearScrollViewRef.current) {
+          // Calculate approximate scroll position
+          // Years range from 1900 to 2099 (200 years)
+          // With 18% width buttons and gap of 8, approximately 5-6 buttons per row
+          const yearIndex = selectedYear - 1900;
+          const buttonsPerRow = 5; // Approximately 5 buttons per row (100% / 18% ≈ 5.5)
+          const rowIndex = Math.floor(yearIndex / buttonsPerRow);
+          // Estimate button height (assuming container width of ~350px, 18% = ~63px, aspectRatio 1 = 63px height)
+          // With gap of 8, row height is approximately 71px
+          const estimatedRowHeight = 71;
+          const scrollViewHeight = 400;
+          // Center the selected row: scroll so the row is in the middle of the visible area
+          const scrollPosition = Math.max(0, rowIndex * estimatedRowHeight - scrollViewHeight / 2 + estimatedRowHeight / 2);
+          
+          yearScrollViewRef.current.scrollTo({ y: scrollPosition, animated: true });
+        }
+      }, 150);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [datePickerVisible, datePickerStep, selectedYear]);
 
   // Load Plaid link token when bank section is active
   useEffect(() => {
@@ -1415,8 +1445,8 @@ export default function EditProviderProfileScreen() {
 
   const renderLocationSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Service Area</Text>
-      <Text style={styles.sectionDescription}>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Service Area</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
         Set your location and service radius to help clients find you.
       </Text>
 
@@ -1430,53 +1460,54 @@ export default function EditProviderProfileScreen() {
       />
 
       <View style={styles.section}>
-        <Text style={styles.label}>Service Range (mi)</Text>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>Service Range (mi)</Text>
         <TextInput
-          style={[styles.input, serviceRadiusFocused && styles.inputFocused]}
+          style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, serviceRadiusFocused && styles.inputFocused, serviceRadiusFocused && { borderColor: themeHook.colors.primary }]}
           placeholder="15"
+          placeholderTextColor={themeHook.colors.textTertiary}
           value={serviceRadius}
           onChangeText={setServiceRadius}
           onFocus={() => setServiceRadiusFocused(true)}
           onBlur={() => setServiceRadiusFocused(false)}
           keyboardType="numeric"
         />
-        <Text style={styles.hint}>The distance you're willing to travel to clients</Text>
+        <Text style={[styles.hint, { color: themeHook.colors.textSecondary }]}>The distance you're willing to travel to clients</Text>
       </View>
     </ScrollView>
   );
 
   const renderBankSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Bank Account</Text>
-      <Text style={styles.sectionDescription}>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Bank Account</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
         Connect your bank account to receive payments from clients.
       </Text>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <View style={styles.bankCardConnected}>
+        <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? '#064e3b' : '#f0fdf4', borderColor: themeHook.colors.success }]}>
           <View style={styles.bankCardHeader}>
-            <Ionicons name="checkmark-circle" size={28} color="#16a34a" />
+            <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
             <View style={styles.bankInfo}>
-              <Text style={styles.bankAccountName}>{bankAccountInfo.accountName}</Text>
-              <Text style={styles.bankAccountMask}>•••• {bankAccountInfo.accountMask}</Text>
+              <Text style={[styles.bankAccountName, { color: themeHook.colors.text }]}>{bankAccountInfo.accountName}</Text>
+              <Text style={[styles.bankAccountMask, { color: themeHook.colors.textSecondary }]}>•••• {bankAccountInfo.accountMask}</Text>
             </View>
           </View>
-          <View style={styles.bankCardFooter}>
-            <Ionicons name="lock-closed" size={14} color="#64748b" />
-            <Text style={styles.bankCardFooterText}>Securely connected</Text>
+          <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
+            <Ionicons name="lock-closed" size={14} color={themeHook.colors.textSecondary} />
+            <Text style={[styles.bankCardFooterText, { color: themeHook.colors.textSecondary }]}>Securely connected</Text>
           </View>
         </View>
       ) : (
         <>
-          <View style={styles.bankCardEmpty}>
-            <Ionicons name="card-outline" size={40} color="#cbd5e1" />
-            <Text style={styles.bankCardEmptyTitle}>No bank account connected</Text>
-            <Text style={styles.bankCardEmptyText}>
+          <View style={[styles.bankCardEmpty, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+            <Ionicons name="card-outline" size={40} color={themeHook.colors.textTertiary} />
+            <Text style={[styles.bankCardEmptyTitle, { color: themeHook.colors.text }]}>No bank account connected</Text>
+            <Text style={[styles.bankCardEmptyText, { color: themeHook.colors.textSecondary }]}>
               Connect your account to start receiving payments
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.plaidButton, loading && styles.buttonDisabled]}
+            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
             onPress={async () => {
               if (plaidLinkToken) {
                 initializePlaidLink(plaidLinkToken);
@@ -1490,11 +1521,11 @@ export default function EditProviderProfileScreen() {
             disabled={loading}
           >
             {loading ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={themeHook.colors.white} />
             ) : (
               <>
-                <Ionicons name="lock-closed" size={20} color="#ffffff" />
-                <Text style={styles.plaidButtonText}>Connect Bank Account</Text>
+                <Ionicons name="lock-closed" size={20} color={themeHook.colors.white} />
+                <Text style={[styles.plaidButtonText, { color: themeHook.colors.white }]}>Connect Bank Account</Text>
               </>
             )}
           </TouchableOpacity>
@@ -1505,14 +1536,14 @@ export default function EditProviderProfileScreen() {
 
   const renderProfileSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Profile Information</Text>
-      <Text style={styles.sectionDescription}>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Profile Information</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
         Update your name, bio, specialties, and profile photo.
       </Text>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Profile Photo</Text>
-        <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>Profile Photo</Text>
+        <TouchableOpacity style={[styles.photoButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]} onPress={pickImage}>
           {profilePhoto ? (
             <View style={styles.photoPreview}>
               <Image
@@ -1535,13 +1566,13 @@ export default function EditProviderProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Name</Text>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>Name</Text>
         <View style={styles.row}>
           <View style={styles.halfInput}>
             <TextInput
-              style={[styles.input, firstNameFocused && styles.inputFocused]}
+              style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, firstNameFocused && styles.inputFocused, firstNameFocused && { borderColor: themeHook.colors.primary }]}
               placeholder="First name"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={themeHook.colors.textTertiary}
               value={firstName}
               onChangeText={setFirstName}
               onFocus={() => setFirstNameFocused(true)}
@@ -1550,9 +1581,9 @@ export default function EditProviderProfileScreen() {
           </View>
           <View style={styles.halfInput}>
             <TextInput
-              style={[styles.input, lastNameFocused && styles.inputFocused]}
+              style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, lastNameFocused && styles.inputFocused, lastNameFocused && { borderColor: themeHook.colors.primary }]}
               placeholder="Last name"
-              placeholderTextColor="#94a3b8"
+              placeholderTextColor={themeHook.colors.textTertiary}
               value={lastName}
               onChangeText={setLastName}
               onFocus={() => setLastNameFocused(true)}
@@ -1564,13 +1595,13 @@ export default function EditProviderProfileScreen() {
 
       <View style={styles.section}>
         <View style={styles.labelRow}>
-          <Text style={styles.label}>Bio *</Text>
-          <Text style={styles.charCount}>{bio.length} / 500</Text>
+          <Text style={[styles.label, { color: themeHook.colors.text }]}>Bio *</Text>
+          <Text style={[styles.charCount, { color: themeHook.colors.textTertiary }]}>{bio.length} / 500</Text>
         </View>
         <TextInput
-          style={[styles.textArea, bioFocused && styles.textAreaFocused]}
+          style={[styles.textArea, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, bioFocused && styles.textAreaFocused, bioFocused && { borderColor: themeHook.colors.primary }]}
           placeholder="Tell clients about your experience and approach..."
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={themeHook.colors.textTertiary}
           value={bio}
           onChangeText={(text) => {
             if (text.length <= 500) {
@@ -1587,12 +1618,12 @@ export default function EditProviderProfileScreen() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.label}>Specialties</Text>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>Specialties</Text>
         <View style={styles.specialtyInputContainer}>
           <TextInput
-            style={[styles.specialtyInput, specialtyInputFocused && styles.inputFocused]}
+            style={[styles.specialtyInput, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, specialtyInputFocused && styles.inputFocused, specialtyInputFocused && { borderColor: themeHook.colors.primary }]}
             placeholder="e.g., Personal Training, Yoga"
-            placeholderTextColor="#94a3b8"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={specialtyInput}
             onChangeText={setSpecialtyInput}
             onFocus={() => setSpecialtyInputFocused(true)}
@@ -1600,20 +1631,20 @@ export default function EditProviderProfileScreen() {
             onSubmitEditing={addSpecialty}
           />
           <TouchableOpacity
-            style={[styles.addButton, !specialtyInput.trim() && styles.addButtonDisabled]}
+            style={[styles.addButton, { backgroundColor: themeHook.colors.primary }, !specialtyInput.trim() && styles.addButtonDisabled, !specialtyInput.trim() && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
             onPress={addSpecialty}
             disabled={!specialtyInput.trim()}
           >
-            <Ionicons name="add" size={20} color="#ffffff" />
+            <Ionicons name="add" size={20} color={themeHook.colors.white} />
           </TouchableOpacity>
         </View>
         {specialties.length > 0 && (
           <View style={styles.specialtyTags}>
             {specialties.map((specialty, index) => (
-              <View key={index} style={styles.specialtyTag}>
-                <Text style={styles.specialtyTagText}>{specialty}</Text>
+              <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
+                <Text style={[styles.specialtyTagText, { color: themeHook.colors.primary }]}>{specialty}</Text>
                 <TouchableOpacity onPress={() => removeSpecialty(index)}>
-                  <Ionicons name="close-circle" size={18} color="#64748b" />
+                  <Ionicons name="close-circle" size={18} color={themeHook.colors.textTertiary} />
                 </TouchableOpacity>
               </View>
             ))}
@@ -1625,31 +1656,33 @@ export default function EditProviderProfileScreen() {
 
   const renderServicesSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Services</Text>
-      <Text style={styles.sectionDescription}>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Services</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
         Manage the services you offer and their pricing.
       </Text>
 
       {services.map((service, index) => (
-        <View key={index} style={styles.serviceCard}>
+        <View key={index} style={[styles.serviceCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
           <View style={styles.serviceHeader}>
-            <Text style={styles.serviceNumber}>Service {index + 1}</Text>
+            <Text style={[styles.serviceNumber, { color: themeHook.colors.text }]}>Service {index + 1}</Text>
             {services.length > 1 && (
               <TouchableOpacity onPress={() => removeService(index)}>
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                <Ionicons name="trash-outline" size={20} color={themeHook.colors.error} />
               </TouchableOpacity>
             )}
           </View>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
             placeholder="Service name *"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={service.name}
             onChangeText={(value) => updateService(index, 'name', value)}
           />
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
             placeholder="Description"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={service.description}
             onChangeText={(value) => updateService(index, 'description', value)}
             multiline
@@ -1658,11 +1691,12 @@ export default function EditProviderProfileScreen() {
           />
           <View style={styles.row}>
             <View style={styles.halfInput}>
-              <View style={styles.inputWithPrefix}>
-                <Text style={styles.inputPrefix}>$</Text>
+              <View style={[styles.inputWithPrefix, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
+                <Text style={[styles.inputPrefix, { color: themeHook.colors.text }]}>$</Text>
                 <TextInput
-                  style={[styles.input, styles.inputWithSuffixInput]}
+                  style={[styles.input, styles.inputWithSuffixInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="0.00"
+                  placeholderTextColor={themeHook.colors.textTertiary}
                   value={service.price}
                   onChangeText={(value) => updateService(index, 'price', value)}
                   onBlur={() => handlePriceBlur(index, service.price)}
@@ -1671,15 +1705,16 @@ export default function EditProviderProfileScreen() {
               </View>
             </View>
             <View style={styles.halfInput}>
-              <View style={styles.inputWithSuffix}>
+              <View style={[styles.inputWithSuffix, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <TextInput
-                  style={[styles.input, styles.inputWithSuffixInput]}
+                  style={[styles.input, styles.inputWithSuffixInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="0"
+                  placeholderTextColor={themeHook.colors.textTertiary}
                   value={service.duration}
                   onChangeText={(value) => updateService(index, 'duration', value)}
                   keyboardType="numeric"
                 />
-                <Text style={styles.inputSuffix}>min</Text>
+                <Text style={[styles.inputSuffix, { color: themeHook.colors.textSecondary }]}>min</Text>
               </View>
             </View>
           </View>
@@ -1687,49 +1722,52 @@ export default function EditProviderProfileScreen() {
       ))}
 
       <TouchableOpacity style={styles.addServiceButton} onPress={addService}>
-        <Ionicons name="add-circle-outline" size={20} color="#2563eb" />
-        <Text style={styles.addServiceButtonText}>Add Another Service</Text>
+        <Ionicons name="add-circle-outline" size={20} color={themeHook.colors.primary} />
+        <Text style={[styles.addServiceButtonText, { color: themeHook.colors.primary }]}>Add Another Service</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 
   const renderCredentialsSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Credentials</Text>
-      <Text style={styles.sectionDescription}>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Credentials</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
         Showcase your certifications and qualifications.
       </Text>
 
       {credentials.map((credential, index) => (
-        <View key={index} style={styles.serviceCard}>
+        <View key={index} style={[styles.serviceCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
           <View style={styles.serviceHeader}>
-            <Text style={styles.serviceNumber}>Credential {index + 1}</Text>
+            <Text style={[styles.serviceNumber, { color: themeHook.colors.text }]}>Credential {index + 1}</Text>
             {credentials.length > 1 && (
               <TouchableOpacity onPress={() => removeCredential(index)}>
-                <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                <Ionicons name="trash-outline" size={20} color={themeHook.colors.error} />
               </TouchableOpacity>
             )}
           </View>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
             placeholder="Credential name *"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={credential.name}
             onChangeText={(value) => updateCredential(index, 'name', value)}
           />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
             placeholder="Issuing organization"
+            placeholderTextColor={themeHook.colors.textTertiary}
             value={credential.issuer}
             onChangeText={(value) => updateCredential(index, 'issuer', value)}
           />
           <View style={[styles.row, styles.dateRow]}>
             <View style={styles.halfInput}>
-              <Text style={styles.label}>Issue date</Text>
-              <View style={styles.dateInputContainer}>
+              <Text style={[styles.label, { color: themeHook.colors.text }]}>Issue date</Text>
+              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <TextInput
-                  style={[styles.input, styles.dateInput]}
+                  style={[styles.input, styles.dateInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="MM-DD-YYYY"
+                  placeholderTextColor={themeHook.colors.textTertiary}
                   value={credential.issueDate}
                   onChangeText={(value) => updateCredential(index, 'issueDate', value)}
                 />
@@ -1737,16 +1775,17 @@ export default function EditProviderProfileScreen() {
                   style={styles.calendarButton}
                   onPress={() => openDatePicker('issue', index)}
                 >
-                  <Ionicons name="calendar-outline" size={20} color="#2563eb" />
+                  <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
             <View style={styles.halfInput}>
-              <Text style={styles.label}>Expiry date</Text>
-              <View style={styles.dateInputContainer}>
+              <Text style={[styles.label, { color: themeHook.colors.text }]}>Expiry date</Text>
+              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <TextInput
-                  style={[styles.input, styles.dateInput]}
+                  style={[styles.input, styles.dateInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="MM-DD-YYYY"
+                  placeholderTextColor={themeHook.colors.textTertiary}
                   value={credential.expiryDate}
                   onChangeText={(value) => updateCredential(index, 'expiryDate', value)}
                 />
@@ -1754,7 +1793,7 @@ export default function EditProviderProfileScreen() {
                   style={styles.calendarButton}
                   onPress={() => openDatePicker('expiry', index)}
                 >
-                  <Ionicons name="calendar-outline" size={20} color="#2563eb" />
+                  <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1763,48 +1802,50 @@ export default function EditProviderProfileScreen() {
       ))}
 
       <TouchableOpacity style={styles.addServiceButton} onPress={addCredential}>
-        <Ionicons name="add-circle-outline" size={20} color="#2563eb" />
-        <Text style={styles.addServiceButtonText}>Add Another Credential</Text>
+        <Ionicons name="add-circle-outline" size={20} color={themeHook.colors.primary} />
+        <Text style={[styles.addServiceButtonText, { color: themeHook.colors.primary }]}>Add Another Credential</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 
   const renderAvailabilitySection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={styles.sectionTitle}>Availability</Text>
-      <Text style={styles.sectionDescription}>Set when you're available for bookings.</Text>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Availability</Text>
+      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>Set when you're available for bookings.</Text>
 
       {daysOfWeek.map((day, dayIndex) => {
         const slot = availability.find((a) => a.dayOfWeek === dayIndex);
         return (
-          <View key={dayIndex} style={styles.availabilityCard}>
+          <View key={dayIndex} style={[styles.availabilityCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
             <TouchableOpacity
               style={styles.availabilityHeader}
               onPress={() => toggleAvailability(dayIndex)}
             >
-              <Text style={styles.availabilityDay}>{day}</Text>
+              <Text style={[styles.availabilityDay, { color: themeHook.colors.text }]}>{day}</Text>
               {slot ? (
-                <Ionicons name="checkmark-circle" size={24} color="#10b981" />
+                <Ionicons name="checkmark-circle" size={24} color={themeHook.colors.success} />
               ) : (
-                <Ionicons name="ellipse-outline" size={24} color="#cbd5e1" />
+                <Ionicons name="ellipse-outline" size={24} color={themeHook.colors.textTertiary} />
               )}
             </TouchableOpacity>
             {slot && (
               <View style={styles.availabilityTimes}>
                 <View style={styles.halfInput}>
-                  <Text style={styles.timeLabel}>Start Time</Text>
+                  <Text style={[styles.timeLabel, { color: themeHook.colors.textSecondary }]}>Start Time</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
                     placeholder="9:00 AM"
+                    placeholderTextColor={themeHook.colors.textTertiary}
                     value={slot.startTime}
                     onChangeText={(value) => updateAvailabilityTime(dayIndex, 'startTime', value)}
                   />
                 </View>
                 <View style={styles.halfInput}>
-                  <Text style={styles.timeLabel}>End Time</Text>
+                  <Text style={[styles.timeLabel, { color: themeHook.colors.textSecondary }]}>End Time</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
                     placeholder="5:00 PM"
+                    placeholderTextColor={themeHook.colors.textTertiary}
                     value={slot.endTime}
                     onChangeText={(value) => updateAvailabilityTime(dayIndex, 'endTime', value)}
                   />
@@ -1819,18 +1860,18 @@ export default function EditProviderProfileScreen() {
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: themeHook.colors.border }]}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Provider Profile</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Edit Provider Profile</Text>
           <View style={{ width: 40 }} />
         </View>
 
         {/* Tabs */}
-        <View style={styles.tabs}>
+        <View style={[styles.tabs, { backgroundColor: themeHook.colors.surface }]}>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -1839,18 +1880,20 @@ export default function EditProviderProfileScreen() {
                     {sections.map((section) => (
                       <TouchableOpacity
                         key={section.id}
-                        style={[styles.tab, activeSection === section.id && styles.tabActive]}
+                        style={[styles.tab, activeSection === section.id && styles.tabActive, activeSection === section.id && { borderBottomColor: themeHook.colors.primary }]}
                         onPress={() => setActiveSection(section.id)}
                       >
                         <Ionicons
                           name={section.icon as any}
                           size={20}
-                          color={activeSection === section.id ? '#2563eb' : '#64748b'}
+                          color={activeSection === section.id ? themeHook.colors.primary : themeHook.colors.textTertiary}
                         />
                         <Text
                           style={[
                             styles.tabText,
+                            { color: themeHook.colors.textTertiary },
                             activeSection === section.id && styles.tabTextActive,
+                            activeSection === section.id && { color: themeHook.colors.primary },
                           ]}
                         >
                           {section.label}
@@ -1867,19 +1910,21 @@ export default function EditProviderProfileScreen() {
                   </Animated.View>
 
                   {/* Universal Save Button */}
-                  <View style={styles.universalSaveContainer}>
+                  <View style={[styles.universalSaveContainer, { borderTopColor: themeHook.colors.border, backgroundColor: themeHook.colors.surface }]}>
                     <TouchableOpacity
                       style={[
                         styles.universalSaveButton,
+                        { backgroundColor: themeHook.colors.primary },
                         (loading || !bio.trim()) && styles.buttonDisabled,
+                        (loading || !bio.trim()) && { backgroundColor: themeHook.colors.buttonDisabledBackground },
                       ]}
                       onPress={handleSaveAll}
                       disabled={loading || !bio.trim()}
                     >
                       {loading ? (
-                        <ActivityIndicator color="#ffffff" />
+                        <ActivityIndicator color={themeHook.colors.white} />
                       ) : (
-                        <Text style={styles.universalSaveButtonText}>Save Info</Text>
+                        <Text style={[styles.universalSaveButtonText, { color: themeHook.colors.white }]}>Save Info</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1913,34 +1958,41 @@ export default function EditProviderProfileScreen() {
         onRequestClose={() => setDatePickerVisible(false)}
       >
         <TouchableWithoutFeedback onPress={() => setDatePickerVisible(false)}>
-          <View style={styles.datePickerOverlay}>
+          <View style={[styles.datePickerOverlay, { backgroundColor: themeHook.colors.overlay }]}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.datePickerContainer}>
-                <View style={styles.datePickerHeader}>
-                  <Text style={styles.datePickerTitle}>
+              <View style={[styles.datePickerContainer, { backgroundColor: themeHook.colors.surface }]}>
+                <View style={[styles.datePickerHeader, { borderBottomColor: themeHook.colors.border }]}>
+                  <Text style={[styles.datePickerTitle, { color: themeHook.colors.text }]}>
                     Select {datePickerType === 'issue' ? 'Issue' : 'Expiry'} Date
                   </Text>
                   <TouchableOpacity onPress={() => setDatePickerVisible(false)}>
-                    <Ionicons name="close" size={24} color="#1e293b" />
+                    <Ionicons name="close" size={24} color={themeHook.colors.text} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.datePickerContent}>
                   {datePickerStep === 'year' && (
-                    <ScrollView style={styles.datePickerScrollView}>
+                    <ScrollView 
+                      ref={yearScrollViewRef}
+                      style={styles.datePickerScrollView}
+                    >
                       <View style={styles.yearGrid}>
                         {generateYears().map((year) => (
                           <TouchableOpacity
                             key={year}
                             style={[
                               styles.yearButton,
+                              { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
                               selectedYear === year && styles.yearButtonSelected,
+                              selectedYear === year && { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary },
                             ]}
                             onPress={() => handleYearSelect(year)}
                           >
                             <Text
                               style={[
                                 styles.yearButtonText,
+                                { color: themeHook.colors.text },
                                 selectedYear === year && styles.yearButtonTextSelected,
+                                selectedYear === year && { color: themeHook.colors.white },
                               ]}
                             >
                               {year}
@@ -1958,14 +2010,18 @@ export default function EditProviderProfileScreen() {
                           key={index}
                           style={[
                             styles.monthButton,
+                            { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
                             selectedMonth === index && styles.monthButtonSelected,
+                            selectedMonth === index && { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary },
                           ]}
                           onPress={() => handleMonthSelect(index)}
                         >
                           <Text
                             style={[
                               styles.monthButtonText,
+                              { color: themeHook.colors.text },
                               selectedMonth === index && styles.monthButtonTextSelected,
+                              selectedMonth === index && { color: themeHook.colors.white },
                             ]}
                           >
                             {month}
@@ -1982,16 +2038,16 @@ export default function EditProviderProfileScreen() {
                           style={styles.dayPickerBackButton}
                           onPress={() => setDatePickerStep('month')}
                         >
-                          <Ionicons name="chevron-back" size={20} color="#2563eb" />
+                          <Ionicons name="chevron-back" size={20} color={themeHook.colors.primary} />
                         </TouchableOpacity>
-                        <Text style={styles.dayPickerHeaderText}>
+                        <Text style={[styles.dayPickerHeaderText, { color: themeHook.colors.text }]}>
                           {months[selectedMonth]} {selectedYear}
                         </Text>
                         <View style={styles.dayPickerBackButton} />
                       </View>
                       <View style={styles.dayPickerWeekdays}>
                         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                          <Text key={day} style={styles.dayPickerWeekday}>
+                          <Text key={day} style={[styles.dayPickerWeekday, { color: themeHook.colors.textSecondary }]}>
                             {day}
                           </Text>
                         ))}
@@ -2015,14 +2071,18 @@ export default function EditProviderProfileScreen() {
                                 key={day}
                                 style={[
                                   styles.dayPickerDay,
+                                  { backgroundColor: 'transparent' },
                                   isSelected && styles.dayPickerDaySelected,
+                                  isSelected && { backgroundColor: themeHook.colors.primary },
                                 ]}
                                 onPress={() => handleDaySelect(day)}
                               >
                                 <Text
                                   style={[
                                     styles.dayPickerDayText,
+                                    { color: themeHook.colors.text },
                                     isSelected && styles.dayPickerDayTextSelected,
+                                    isSelected && { color: themeHook.colors.white },
                                   ]}
                                 >
                                   {day}
@@ -2047,7 +2107,6 @@ export default function EditProviderProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   header: {
     flexDirection: 'row',
@@ -2055,12 +2114,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
     flex: 1,
     textAlign: 'center',
   },
@@ -2087,15 +2144,12 @@ const styles = StyleSheet.create({
     height: 56,
   },
   tabActive: {
-    borderBottomColor: '#2563eb',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#64748b',
   },
   tabTextActive: {
-    color: '#2563eb',
     fontWeight: '600',
   },
   contentWrapper: {
@@ -2110,36 +2164,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    backgroundColor: '#ffffff',
   },
   universalSaveButton: {
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 52,
-    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   universalSaveButtonText: {
-    color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1e293b',
     marginBottom: 8,
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#64748b',
     marginBottom: 24,
   },
   section: {
@@ -2148,7 +2195,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 8,
   },
   labelRow: {
@@ -2159,33 +2205,25 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: '#94a3b8',
   },
   input: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#1e293b',
     marginBottom: 12,
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),
   },
   inputFocused: {
-    borderColor: '#2563eb',
     borderWidth: 2,
   },
   textArea: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#1e293b',
     minHeight: 120,
     paddingTop: 16,
     ...(Platform.OS === 'web' && {
@@ -2193,12 +2231,10 @@ const styles = StyleSheet.create({
     }),
   },
   textAreaFocused: {
-    borderColor: '#2563eb',
     borderWidth: 2,
   },
   hint: {
     fontSize: 12,
-    color: '#64748b',
     marginTop: 4,
   },
   saveButton: {
@@ -2230,9 +2266,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   photoButton: {
-    backgroundColor: '#ffffff',
     borderWidth: 2,
-    borderColor: '#2563eb',
     borderRadius: 100,
     overflow: 'hidden',
     width: 150,
@@ -2248,7 +2282,6 @@ const styles = StyleSheet.create({
   },
   photoButtonText: {
     fontSize: 16,
-    color: '#2563eb',
     fontWeight: '600',
   },
   photoPreview: {
@@ -2357,9 +2390,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
-    backgroundColor: '#ffffff',
     paddingLeft: 16,
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
@@ -2369,9 +2400,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
-    backgroundColor: '#ffffff',
     paddingLeft: 16,
     paddingRight: 16,
     ...(Platform.OS === 'web' && {
@@ -2380,13 +2409,11 @@ const styles = StyleSheet.create({
   },
   inputPrefix: {
     fontSize: 16,
-    color: '#1e293b',
     fontWeight: '500',
     marginRight: 8,
   },
   inputSuffix: {
     fontSize: 16,
-    color: '#64748b',
     fontWeight: '500',
     marginLeft: 8,
   },
@@ -2407,16 +2434,13 @@ const styles = StyleSheet.create({
   },
   addServiceButtonText: {
     fontSize: 16,
-    color: '#2563eb',
     fontWeight: '600',
   },
   availabilityCard: {
-    backgroundColor: '#f8fafc',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#2563eb',
   },
   availabilityHeader: {
     flexDirection: 'row',
@@ -2426,7 +2450,6 @@ const styles = StyleSheet.create({
   availabilityDay: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
   },
   availabilityTimes: {
     flexDirection: 'row',
@@ -2435,16 +2458,12 @@ const styles = StyleSheet.create({
   },
   timeLabel: {
     fontSize: 12,
-    color: '#64748b',
     marginBottom: 4,
   },
   dateInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
-    backgroundColor: '#ffffff',
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),
@@ -2462,16 +2481,13 @@ const styles = StyleSheet.create({
   },
   datePickerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   datePickerContainer: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     width: '90%',
     maxWidth: 400,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 24,
@@ -2483,12 +2499,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
   },
   datePickerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   datePickerContent: {
     padding: 20,
@@ -2509,21 +2523,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   yearButtonSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
   },
   yearButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1e293b',
   },
   yearButtonTextSelected: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   monthGrid: {
@@ -2538,21 +2546,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   monthButtonSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
   },
   monthButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1e293b',
   },
   monthButtonTextSelected: {
-    color: '#ffffff',
     fontWeight: '600',
   },
   dayPickerHeader: {
@@ -2570,7 +2572,6 @@ const styles = StyleSheet.create({
   dayPickerHeaderText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   dayPickerWeekdays: {
     flexDirection: 'row',
@@ -2581,7 +2582,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
     paddingVertical: 8,
   },
   dayPickerGrid: {
@@ -2596,7 +2596,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   dayPickerDaySelected: {
-    backgroundColor: '#2563eb',
   },
   dayPickerDayText: {
     fontSize: 16,
@@ -2608,12 +2607,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bankCardConnected: {
-    backgroundColor: '#f0fdf4',
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#16a34a',
   },
   bankCardHeader: {
     flexDirection: 'row',
@@ -2627,57 +2624,47 @@ const styles = StyleSheet.create({
   bankAccountName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#0f172a',
     marginBottom: 4,
   },
   bankAccountMask: {
     fontSize: 16,
-    color: '#64748b',
   },
   bankCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     gap: 6,
   },
   bankCardFooterText: {
     fontSize: 13,
-    color: '#64748b',
   },
   bankCardEmpty: {
-    backgroundColor: '#f8fafc',
     borderRadius: 16,
     padding: 32,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#e2e8f0',
     borderStyle: 'dashed',
     alignItems: 'center',
   },
   bankCardEmptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
     marginTop: 16,
     marginBottom: 8,
   },
   bankCardEmptyText: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   plaidButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     gap: 10,
-    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2685,7 +2672,6 @@ const styles = StyleSheet.create({
   },
   plaidButtonText: {
     fontWeight: '600',
-    color: '#ffffff',
     fontSize: 16,
   },
 });

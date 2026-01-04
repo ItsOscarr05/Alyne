@@ -3,11 +3,13 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { theme } from '../theme'; // Static theme for spacing, radii, etc.
 
 export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme: themeHook, themeMode, setThemeMode, isDark } = useTheme();
 
   // Settings state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -16,7 +18,7 @@ export default function SettingsScreen() {
   const [bookingReminders, setBookingReminders] = useState(true);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity
@@ -24,22 +26,22 @@ export default function SettingsScreen() {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Settings</Text>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>Settings</Text>
           <View style={styles.placeholder} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         {/* Notifications Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notifications</Text>
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.textSecondary }]}>Notifications</Text>
 
           <View style={styles.settingItem}>
             <View style={styles.settingInfo}>
-              <Ionicons name="notifications-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons name="notifications-outline" size={22} color={themeHook.colors.text} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Enable Notifications</Text>
-                <Text style={styles.settingDescription}>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Enable Notifications</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>
                   Receive notifications about bookings and messages
                 </Text>
               </View>
@@ -47,41 +49,41 @@ export default function SettingsScreen() {
             <Switch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
-              trackColor={{ false: theme.colors.neutral[200], true: theme.colors.primary[500] }}
-              thumbColor={theme.colors.white}
+              trackColor={{ false: themeHook.colors.border, true: themeHook.colors.primary }}
+              thumbColor={themeHook.colors.white}
             />
           </View>
 
           {notificationsEnabled && (
             <>
-              <View style={styles.itemDivider} />
+              <View style={[styles.itemDivider, { backgroundColor: themeHook.colors.border }]} />
               <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
-                  <Ionicons name="mail-outline" size={22} color={theme.colors.neutral[900]} />
+                  <Ionicons name="mail-outline" size={22} color={themeHook.colors.text} />
                   <View style={styles.settingTextContainer}>
-                    <Text style={styles.settingLabel}>Email Notifications</Text>
-                    <Text style={styles.settingDescription}>Receive notifications via email</Text>
+                    <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Email Notifications</Text>
+                    <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>Receive notifications via email</Text>
                   </View>
                 </View>
                 <Switch
                   value={emailNotifications}
                   onValueChange={setEmailNotifications}
-                  trackColor={{ false: theme.colors.neutral[200], true: theme.colors.primary[500] }}
-                  thumbColor={theme.colors.white}
+                  trackColor={{ false: themeHook.colors.border, true: themeHook.colors.primary }}
+                  thumbColor={themeHook.colors.white}
                 />
               </View>
 
-              <View style={styles.itemDivider} />
+              <View style={[styles.itemDivider, { backgroundColor: themeHook.colors.border }]} />
               <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
                   <Ionicons
                     name="phone-portrait-outline"
                     size={22}
-                    color={theme.colors.neutral[900]}
+                    color={themeHook.colors.text}
                   />
                   <View style={styles.settingTextContainer}>
-                    <Text style={styles.settingLabel}>Push Notifications</Text>
-                    <Text style={styles.settingDescription}>
+                    <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Push Notifications</Text>
+                    <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>
                       Receive push notifications on your device
                     </Text>
                   </View>
@@ -89,18 +91,18 @@ export default function SettingsScreen() {
                 <Switch
                   value={pushNotifications}
                   onValueChange={setPushNotifications}
-                  trackColor={{ false: theme.colors.neutral[200], true: theme.colors.primary[500] }}
-                  thumbColor={theme.colors.white}
+                  trackColor={{ false: themeHook.colors.border, true: themeHook.colors.primary }}
+                  thumbColor={themeHook.colors.white}
                 />
               </View>
 
-              <View style={styles.itemDivider} />
+              <View style={[styles.itemDivider, { backgroundColor: themeHook.colors.border }]} />
               <View style={styles.settingItem}>
                 <View style={styles.settingInfo}>
-                  <Ionicons name="calendar-outline" size={22} color={theme.colors.neutral[900]} />
+                  <Ionicons name="calendar-outline" size={22} color={themeHook.colors.text} />
                   <View style={styles.settingTextContainer}>
-                    <Text style={styles.settingLabel}>Booking Reminders</Text>
-                    <Text style={styles.settingDescription}>
+                    <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Booking Reminders</Text>
+                    <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>
                       Get reminded about upcoming bookings
                     </Text>
                   </View>
@@ -108,33 +110,56 @@ export default function SettingsScreen() {
                 <Switch
                   value={bookingReminders}
                   onValueChange={setBookingReminders}
-                  trackColor={{ false: theme.colors.neutral[200], true: theme.colors.primary[500] }}
-                  thumbColor={theme.colors.white}
+                  trackColor={{ false: themeHook.colors.border, true: themeHook.colors.primary }}
+                  thumbColor={themeHook.colors.white}
                 />
               </View>
             </>
           )}
         </View>
 
+        {/* Appearance Section */}
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.textSecondary }]}>Appearance</Text>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Ionicons name={isDark ? 'moon' : 'sunny'} size={22} color={themeHook.colors.text} />
+              <View style={styles.settingTextContainer}>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Dark Mode</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>
+                  {themeMode === 'system' ? 'System default' : isDark ? 'Enabled' : 'Disabled'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={(value) => setThemeMode(value ? 'dark' : 'light')}
+              trackColor={{ false: themeHook.colors.border, true: themeHook.colors.primary }}
+              thumbColor={themeHook.colors.white}
+            />
+          </View>
+        </View>
+
         {/* Privacy Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacy</Text>
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.textSecondary }]}>Privacy</Text>
 
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/privacy-policy')}
           >
             <View style={styles.settingInfo}>
-              <Ionicons name="lock-closed-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons name="lock-closed-outline" size={22} color={themeHook.colors.text} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Privacy Policy</Text>
-                <Text style={styles.settingDescription}>View our privacy policy</Text>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Privacy Policy</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>View our privacy policy</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textSecondary} />
           </TouchableOpacity>
 
-          <View style={styles.itemDivider} />
+          <View style={[styles.itemDivider, { backgroundColor: themeHook.colors.border }]} />
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/data-security')}
@@ -143,22 +168,22 @@ export default function SettingsScreen() {
               <Ionicons
                 name="shield-checkmark-outline"
                 size={22}
-                color={theme.colors.neutral[900]}
+                color={themeHook.colors.text}
               />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Data & Security</Text>
-                <Text style={styles.settingDescription}>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Data & Security</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>
                   Manage your data and security settings
                 </Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.textSecondary }]}>Account</Text>
 
           <TouchableOpacity
             style={styles.settingItem}
@@ -171,62 +196,62 @@ export default function SettingsScreen() {
             }}
           >
             <View style={styles.settingInfo}>
-              <Ionicons name="person-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons name="person-outline" size={22} color={themeHook.colors.text} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Edit Profile</Text>
-                <Text style={styles.settingDescription}>Update your personal information</Text>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Edit Profile</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>Update your personal information</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textSecondary} />
           </TouchableOpacity>
 
-          <View style={styles.itemDivider} />
+          <View style={[styles.itemDivider, { backgroundColor: themeHook.colors.border }]} />
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/change-password')}
           >
             <View style={styles.settingInfo}>
-              <Ionicons name="key-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons name="key-outline" size={22} color={themeHook.colors.text} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Change Password</Text>
-                <Text style={styles.settingDescription}>Update your account password</Text>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Change Password</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>Update your account password</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
         {/* About Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>About</Text>
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.textSecondary }]}>About</Text>
 
           <TouchableOpacity style={styles.settingItem}>
             <View style={styles.settingInfo}>
               <Ionicons
                 name="information-circle-outline"
                 size={22}
-                color={theme.colors.neutral[900]}
+                color={themeHook.colors.text}
               />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>App Version</Text>
-                <Text style={styles.settingDescription}>Version 1.0.0</Text>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>App Version</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>Version 1.0.0</Text>
               </View>
             </View>
           </TouchableOpacity>
 
-          <View style={styles.itemDivider} />
+          <View style={[styles.itemDivider, { backgroundColor: themeHook.colors.border }]} />
           <TouchableOpacity
             style={styles.settingItem}
             onPress={() => router.push('/settings/terms-of-service')}
           >
             <View style={styles.settingInfo}>
-              <Ionicons name="document-text-outline" size={22} color={theme.colors.neutral[900]} />
+              <Ionicons name="document-text-outline" size={22} color={themeHook.colors.text} />
               <View style={styles.settingTextContainer}>
-                <Text style={styles.settingLabel}>Terms of Service</Text>
-                <Text style={styles.settingDescription}>Read our terms and conditions</Text>
+                <Text style={[styles.settingLabel, { color: themeHook.colors.text }]}>Terms of Service</Text>
+                <Text style={[styles.settingDescription, { color: themeHook.colors.textSecondary }]}>Read our terms and conditions</Text>
               </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -237,7 +262,6 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
   },
   header: {
     flexDirection: 'row',
@@ -249,7 +273,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
@@ -259,7 +282,6 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.h1,
-    color: theme.colors.neutral[900],
   },
   placeholder: {
     width: 40,
@@ -273,11 +295,9 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing['2xl'],
   },
   section: {
-    backgroundColor: theme.colors.white,
     marginTop: theme.spacing.lg,
     paddingVertical: theme.spacing.sm,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     borderRadius: theme.radii.lg,
     paddingHorizontal: 0,
     overflow: 'hidden',
@@ -285,7 +305,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.neutral[500],
     marginTop: theme.spacing.lg,
     marginBottom: theme.spacing.xs,
     marginHorizontal: theme.spacing.xl,
@@ -302,7 +321,6 @@ const styles = StyleSheet.create({
   },
   itemDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     width: '95%',
     alignSelf: 'center',
   },
@@ -318,12 +336,10 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontSize: 16,
     fontWeight: '500',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs,
   },
   settingDescription: {
     fontSize: 13,
-    color: theme.colors.neutral[500],
     lineHeight: 18,
   },
 });

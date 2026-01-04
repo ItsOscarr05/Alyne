@@ -1,3 +1,5 @@
+// Legacy theme export for backward compatibility
+// New components should use useTheme() from ThemeContext instead
 export const theme = {
   colors: {
     primary: {

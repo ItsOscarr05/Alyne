@@ -1,10 +1,12 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const themeHook = useTheme();
 
   const features = [
     {
@@ -25,7 +27,7 @@ export default function WelcomeScreen() {
   ];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -33,12 +35,12 @@ export default function WelcomeScreen() {
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Ionicons name="heart" size={48} color={theme.colors.white} />
+            <View style={[styles.logoCircle, { backgroundColor: themeHook.colors.primary }]}>
+              <Ionicons name="heart" size={48} color={themeHook.colors.white} />
             </View>
           </View>
-          <Text style={styles.title}>Welcome to Alyne</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>Welcome to Alyne</Text>
+          <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>
             Connect with wellness professionals in your area
           </Text>
         </View>
@@ -46,38 +48,38 @@ export default function WelcomeScreen() {
         {/* Features Section */}
         <View style={styles.featuresSection}>
           {features.map((feature, index) => (
-            <View key={index} style={styles.featureCard}>
-              <View style={styles.featureIconContainer}>
+            <View key={index} style={[styles.featureCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+              <View style={[styles.featureIconContainer, { backgroundColor: themeHook.colors.primaryLight }]}>
                 <Ionicons
                   name={feature.icon as any}
                   size={28}
-                  color={theme.colors.primary[500]}
+                  color={themeHook.colors.primary}
                 />
               </View>
-              <Text style={styles.featureTitle}>{feature.title}</Text>
-              <Text style={styles.featureDescription}>{feature.description}</Text>
+              <Text style={[styles.featureTitle, { color: themeHook.colors.text }]}>{feature.title}</Text>
+              <Text style={[styles.featureDescription, { color: themeHook.colors.textSecondary }]}>{feature.description}</Text>
             </View>
           ))}
         </View>
       </ScrollView>
 
       {/* Action Buttons */}
-      <View style={styles.buttonContainer}>
+      <View style={[styles.buttonContainer, { backgroundColor: themeHook.colors.background }]}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, { backgroundColor: themeHook.colors.primary }]}
           onPress={() => router.push('/(auth)/register')}
           activeOpacity={0.8}
         >
           <Text style={styles.primaryButtonText}>Get Started</Text>
-          <Ionicons name="arrow-forward" size={20} color={theme.colors.white} />
+          <Ionicons name="arrow-forward" size={20} color={themeHook.colors.white} />
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.secondaryButton}
+          style={[styles.secondaryButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
           onPress={() => router.push('/(auth)/login')}
           activeOpacity={0.8}
         >
-          <Text style={styles.secondaryButtonText}>Sign In</Text>
+          <Text style={[styles.secondaryButtonText, { color: themeHook.colors.primary }]}>Sign In</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -87,7 +89,6 @@ export default function WelcomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
   },
   scrollContent: {
     flexGrow: 1,
@@ -106,20 +107,17 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
     ...theme.shadows.card,
   },
   title: {
     ...theme.typography.display,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.md,
     textAlign: 'center',
   },
   subtitle: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
     paddingHorizontal: theme.spacing.xl,
     lineHeight: 24,
@@ -132,11 +130,9 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     flex: 1,
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
     alignItems: 'center',
   },
@@ -144,7 +140,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: theme.radii.md,
-    backgroundColor: theme.colors.primary[50],
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: theme.spacing.md,
@@ -152,13 +147,11 @@ const styles = StyleSheet.create({
   featureTitle: {
     ...theme.typography.h2,
     fontSize: 16,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs,
     textAlign: 'center',
   },
   featureDescription: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
     lineHeight: 18,
     textAlign: 'center',
   },
@@ -166,11 +159,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.xl,
     paddingBottom: theme.spacing.xl,
     paddingTop: theme.spacing.lg,
-    backgroundColor: theme.colors.white,
     gap: theme.spacing.md,
   },
   primaryButton: {
-    backgroundColor: theme.colors.primary[500],
     borderRadius: theme.radii.md,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
@@ -186,19 +177,16 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
   },
   secondaryButton: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.md,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
   },
   secondaryButtonText: {
     ...theme.typography.body,
     fontWeight: '600',
-    color: theme.colors.primary[500],
   },
 });
 

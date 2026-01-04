@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Conversation } from '../services/message';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -10,6 +11,7 @@ interface ConversationItemProps {
 }
 
 export function ConversationItem({ conversation, onPress }: ConversationItemProps) {
+  const { theme: themeHook } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -66,8 +68,8 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
         transform: [{ scale: scaleAnim }],
       }}
     >
-      <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.avatar}>
+      <TouchableOpacity style={[styles.container, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]} onPress={onPress} activeOpacity={0.7}>
+      <View style={[styles.avatar, { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primaryLight }]}>
         {conversation.otherUser.profilePhoto ? (
           <Image
             source={{ uri: conversation.otherUser.profilePhoto }}
@@ -75,7 +77,7 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
             contentFit="cover"
           />
         ) : (
-          <Text style={styles.avatarText}>
+          <Text style={[styles.avatarText, { color: themeHook.colors.white }]}>
             {getInitials(conversation.otherUser.firstName, conversation.otherUser.lastName)}
           </Text>
         )}
@@ -83,34 +85,34 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.name} numberOfLines={1}>
+          <Text style={[styles.name, { color: themeHook.colors.text }]} numberOfLines={1}>
             {userName}
           </Text>
-          <Text style={styles.time}>{formatTime(conversation.lastMessage.createdAt)}</Text>
+          <Text style={[styles.time, { color: themeHook.colors.textSecondary }]}>{formatTime(conversation.lastMessage.createdAt)}</Text>
         </View>
 
         <View style={styles.messageRow}>
-          <Text style={styles.message} numberOfLines={1}>
+          <Text style={[styles.message, { color: themeHook.colors.textSecondary }]} numberOfLines={1}>
             {conversation.lastMessage.content}
           </Text>
           {conversation.unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
+            <View style={[styles.unreadBadge, { backgroundColor: themeHook.colors.primary }]}>
+              <Text style={[styles.unreadText, { color: themeHook.colors.white }]}>{conversation.unreadCount}</Text>
             </View>
           )}
         </View>
       </View>
 
       {isProvider && (
-        <View style={styles.providerBadge}>
-          <Ionicons name="checkmark-circle" size={14} color={theme.colors.semantic.success} />
-          <Text style={styles.providerBadgeText}>Provider</Text>
+        <View style={[styles.providerBadge, { backgroundColor: '#f0fdf4' }]}>
+          <Ionicons name="checkmark-circle" size={14} color={themeHook.colors.success} />
+          <Text style={[styles.providerBadgeText, { color: themeHook.colors.success }]}>Provider</Text>
         </View>
       )}
       {isClient && (
-        <View style={styles.clientBadge}>
-          <Ionicons name="person" size={14} color={theme.colors.primary[500]} />
-          <Text style={styles.clientBadgeText}>Client</Text>
+        <View style={[styles.clientBadge, { backgroundColor: themeHook.colors.primaryLight }]}>
+          <Ionicons name="person" size={14} color={themeHook.colors.primary} />
+          <Text style={[styles.clientBadgeText, { color: themeHook.colors.primary }]}>Client</Text>
         </View>
       )}
       </TouchableOpacity>
@@ -121,26 +123,22 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.white,
     paddingHorizontal: theme.spacing.lg,
     paddingVertical: theme.spacing.lg,
     borderRadius: theme.radii.lg,
     alignItems: 'center',
     gap: theme.spacing.md,
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: theme.colors.primary[50],
   },
   avatarImage: {
     width: '100%',
@@ -149,7 +147,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.white,
   },
   content: {
     flex: 1,
@@ -163,12 +160,10 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     flex: 1,
   },
   time: {
     fontSize: 12,
-    color: theme.colors.neutral[500],
     marginLeft: 8,
     fontWeight: '500',
   },
@@ -179,12 +174,10 @@ const styles = StyleSheet.create({
   },
   message: {
     fontSize: 14,
-    color: theme.colors.neutral[700],
     flex: 1,
     lineHeight: 20,
   },
   unreadBadge: {
-    backgroundColor: theme.colors.primary[500],
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -195,7 +188,6 @@ const styles = StyleSheet.create({
   unreadText: {
     fontSize: 11,
     fontWeight: '600',
-    color: theme.colors.white,
   },
   providerBadge: {
     flexDirection: 'row',

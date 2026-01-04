@@ -16,10 +16,12 @@ import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
 import { bookingService } from '../../services/booking';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function ReceiptScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const themeHook = useTheme();
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
@@ -84,14 +86,14 @@ export default function ReceiptScreen() {
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Receipt</Text>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Receipt</Text>
             <View style={{ width: 24 }} />
           </View>
-          <View style={styles.headerDivider} />
+          <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
+            <ActivityIndicator size="large" color={themeHook.colors.primary} />
           </View>
         </ScrollView>
       </View>
@@ -111,10 +113,10 @@ export default function ReceiptScreen() {
           </View>
           <View style={styles.headerDivider} />
           <View style={styles.errorContainer}>
-            <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-            <Text style={styles.errorText}>Receipt not found</Text>
+            <Ionicons name="alert-circle-outline" size={48} color={themeHook.colors.error} />
+            <Text style={[styles.errorText, { color: themeHook.colors.textSecondary }]}>Receipt not found</Text>
             <TouchableOpacity
-              style={styles.backButton}
+              style={[styles.backButton, { backgroundColor: themeHook.colors.primary }]}
               onPress={() => router.back()}
             >
               <Text style={styles.backButtonText}>Go Back</Text>
@@ -126,65 +128,65 @@ export default function ReceiptScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Payment Receipt</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Payment Receipt</Text>
           <TouchableOpacity onPress={() => router.replace('/(tabs)/bookings')}>
-            <Ionicons name="close" size={24} color="#1e293b" />
+            <Ionicons name="close" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         {/* Receipt Header */}
         <View style={styles.receiptHeader}>
-          <View style={styles.logoContainer}>
-            <Ionicons name="checkmark-circle" size={48} color="#10b981" />
+          <View style={[styles.logoContainer, { backgroundColor: themeHook.colors.success + '20' }]}>
+            <Ionicons name="checkmark-circle" size={48} color={themeHook.colors.success} />
           </View>
-          <Text style={styles.successTitle}>Payment Successful</Text>
-          <Text style={styles.receiptNumber}>
+          <Text style={[styles.successTitle, { color: themeHook.colors.text }]}>Payment Successful</Text>
+          <Text style={[styles.receiptNumber, { color: themeHook.colors.textSecondary }]}>
             Receipt #{payment.id ? payment.id.slice(-8).toUpperCase() : 'N/A'}
           </Text>
         </View>
 
         {/* Payment Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Payment Details</Text>
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Payment Details</Text>
           
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Amount Paid</Text>
-            <Text style={styles.detailValue}>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Amount Paid</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
               ${payment.amount ? payment.amount.toFixed(2) : '0.00'}
             </Text>
           </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Payment Method</Text>
-            <Text style={styles.detailValue}>Card ending in ••••</Text>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Payment Method</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>Card ending in ••••</Text>
           </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Payment Status</Text>
-            <View style={styles.statusBadge}>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Payment Status</Text>
+            <View style={[styles.statusBadge, { backgroundColor: themeHook.colors.success }]}>
               <Text style={styles.statusText}>
                 {payment.status ? payment.status.toUpperCase() : 'UNKNOWN'}
               </Text>
             </View>
           </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date Paid</Text>
-            <Text style={styles.detailValue}>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Date Paid</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
               {payment.paidAt ? formatDate(payment.paidAt) : 'N/A'}
             </Text>
           </View>
 
           {payment.stripePaymentId && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Transaction ID</Text>
-              <Text style={[styles.detailValue, styles.transactionId]}>
+              <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Transaction ID</Text>
+              <Text style={[styles.detailValue, styles.transactionId, { color: themeHook.colors.text }]}>
                 {payment.stripePaymentId ? payment.stripePaymentId.slice(-12) : 'N/A'}
               </Text>
             </View>
@@ -192,41 +194,41 @@ export default function ReceiptScreen() {
         </View>
 
         {/* Booking Details */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Booking Details</Text>
+        <View style={[styles.section, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Booking Details</Text>
           
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Service</Text>
-            <Text style={styles.detailValue}>{booking.service?.name || 'Service'}</Text>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Service</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>{booking.service?.name || 'Service'}</Text>
           </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Provider</Text>
-            <Text style={styles.detailValue}>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Provider</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
               {booking.provider
                 ? `${booking.provider.firstName} ${booking.provider.lastName}`
                 : 'Provider'}
             </Text>
           </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date</Text>
-            <Text style={styles.detailValue}>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Date</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
               {formatDate(booking.scheduledDate)}
             </Text>
           </View>
 
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Time</Text>
-            <Text style={styles.detailValue}>
+          <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
+            <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Time</Text>
+            <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
               {formatTime(booking.scheduledTime)}
             </Text>
           </View>
 
           {booking.location && typeof booking.location === 'object' && (
             <View style={styles.detailRow}>
-              <Text style={styles.detailLabel}>Location</Text>
-              <Text style={styles.detailValue}>
+              <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Location</Text>
+              <Text style={[styles.detailValue, { color: themeHook.colors.text }]}>
                 {booking.location.address || 'Location details'}
               </Text>
             </View>
@@ -234,23 +236,23 @@ export default function ReceiptScreen() {
         </View>
 
         {/* Summary */}
-        <View style={styles.summaryCard}>
+        <View style={[styles.summaryCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service Price</Text>
-            <Text style={styles.summaryValue}>
+            <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service Price</Text>
+            <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
               ${payment.providerAmount ? payment.providerAmount.toFixed(2) : booking.price.toFixed(2)}
             </Text>
           </View>
           {payment.platformFee && payment.platformFee > 0 && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
-              <Text style={styles.summaryValue}>+${payment.platformFee.toFixed(2)}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Platform Fee (Alyne)</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>+${payment.platformFee.toFixed(2)}</Text>
             </View>
           )}
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Paid</Text>
-            <Text style={styles.totalAmount}>
+            <Text style={[styles.totalLabel, { color: themeHook.colors.text }]}>Total Paid</Text>
+            <Text style={[styles.totalAmount, { color: themeHook.colors.primary }]}>
               ${(() => {
                 // Calculate total: service price + platform fee
                 const servicePrice = payment.providerAmount || booking.price;
@@ -262,17 +264,17 @@ export default function ReceiptScreen() {
         </View>
 
         {/* Footer Info */}
-        <View style={styles.footerInfo}>
-          <Ionicons name="shield-checkmark" size={20} color="#64748b" />
-          <Text style={styles.footerText}>
+        <View style={[styles.footerInfo, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}>
+          <Ionicons name="shield-checkmark" size={20} color={themeHook.colors.primary} />
+          <Text style={[styles.footerText, { color: themeHook.colors.primary }]}>
             This payment was processed securely by Stripe. Your card details were never stored.
           </Text>
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, { backgroundColor: themeHook.colors.primary }]}
           onPress={() => router.replace('/(tabs)/bookings')}
         >
           <Text style={styles.primaryButtonText}>Done</Text>
@@ -294,7 +296,6 @@ export default function ReceiptScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -306,7 +307,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -314,7 +314,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   loadingContainer: {
     flex: 1,
@@ -329,12 +328,10 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#64748b',
     marginTop: 16,
     marginBottom: 24,
   },
   backButton: {
-    backgroundColor: '#2563eb',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -359,7 +356,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#f0fdf4',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -367,17 +363,14 @@ const styles = StyleSheet.create({
   successTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1e293b',
     marginBottom: 8,
   },
   receiptNumber: {
     fontSize: 14,
-    color: '#64748b',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
   section: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     marginBottom: 20,
@@ -387,12 +380,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#2563eb',
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 20,
   },
   detailRow: {
@@ -402,22 +393,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8fafc',
   },
   detailLabel: {
     fontSize: 14,
-    color: '#64748b',
     flex: 1,
   },
   detailValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
     textAlign: 'right',
     flex: 1,
   },
   statusBadge: {
-    backgroundColor: '#10b981',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -432,7 +419,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 24,
     marginBottom: 20,
@@ -442,7 +428,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     borderWidth: 1,
-    borderColor: '#2563eb',
   },
   summaryRow: {
     flexDirection: 'row',
@@ -451,16 +436,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   divider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginVertical: 16,
   },
   totalRow: {
@@ -472,38 +454,30 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
   },
   totalAmount: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#2563eb',
   },
   footerInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#eff6ff',
     borderRadius: 12,
     padding: 16,
     gap: 12,
     borderWidth: 1,
-    borderColor: '#dbeafe',
   },
   footerText: {
     flex: 1,
     fontSize: 13,
-    color: '#1e40af',
     lineHeight: 20,
     fontWeight: '500',
   },
   footer: {
     padding: 24,
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   primaryButton: {
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',

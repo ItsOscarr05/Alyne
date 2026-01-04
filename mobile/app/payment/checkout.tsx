@@ -19,6 +19,7 @@ import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
 import { ReceiptModal } from '../../components/ReceiptModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { useTheme } from '../../contexts/ThemeContext';
 import Constants from 'expo-constants';
 
 // Import React Stripe.js - Metro has resolution issues, so we'll load it conditionally
@@ -329,7 +330,10 @@ function WebPaymentForm({
     <View style={styles.paymentForm}>
       {Platform.OS === 'web' && (
         <View 
-          style={[styles.stripeElementContainer, { minHeight: 200 }]}
+            style={[
+            styles.stripeElementContainer,
+            { minHeight: 200, backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+          ]}
           ref={(el) => {
             if (Platform.OS === 'web' && el && typeof (el as any)._domNode !== 'undefined') {
               // React Native Web exposes _domNode
@@ -373,6 +377,7 @@ export default function PaymentCheckoutScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const { user } = useAuth();
+  const themeHook = useTheme();
   const { startPayment, endPayment, isProcessing: globalIsProcessing, currentBookingId } = usePaymentContext();
   
   // Redirect providers - they don't make payments
@@ -721,14 +726,14 @@ export default function PaymentCheckoutScreen() {
         <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Payment</Text>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Payment</Text>
             <View style={{ width: 24 }} />
           </View>
-          <View style={styles.headerDivider} />
+          <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#2563eb" />
+            <ActivityIndicator size="large" color={themeHook.colors.primary} />
           </View>
         </ScrollView>
       </View>
@@ -736,27 +741,27 @@ export default function PaymentCheckoutScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Complete Payment</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Complete Payment</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.headerDivider} />
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryTitle}>Booking Summary</Text>
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
+        <View style={[styles.summaryCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <Text style={[styles.summaryTitle, { color: themeHook.colors.text }]}>Booking Summary</Text>
           
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service</Text>
-            <Text style={styles.summaryValue}>{booking.service?.name || 'Service'}</Text>
+            <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service</Text>
+            <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{booking.service?.name || 'Service'}</Text>
           </View>
 
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Provider</Text>
-            <Text style={styles.summaryValue}>
+            <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Provider</Text>
+            <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
               {booking.provider
                 ? `${booking.provider.firstName} ${booking.provider.lastName}`
                 : 'Provider'}
@@ -764,50 +769,50 @@ export default function PaymentCheckoutScreen() {
           </View>
 
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Date & Time</Text>
-            <Text style={styles.summaryValue}>
+            <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Date & Time</Text>
+            <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
               {new Date(booking.scheduledDate).toLocaleDateString()} at {formatTime12Hour(booking.scheduledTime)}
             </Text>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: themeHook.colors.border }]} />
 
           {/* Payment Breakdown */}
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Service Price</Text>
-            <Text style={styles.summaryValue}>
+            <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service Price</Text>
+            <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
               ${paymentAmounts?.providerAmount.toFixed(2) || booking.price.toFixed(2)}
             </Text>
           </View>
 
           {paymentAmounts && (
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
-              <Text style={styles.summaryValue}>+${paymentAmounts.platformFee.toFixed(2)}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Platform Fee (Alyne)</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>+${paymentAmounts.platformFee.toFixed(2)}</Text>
             </View>
           )}
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: themeHook.colors.border }]} />
 
           <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total Amount Due</Text>
-            <Text style={styles.totalAmount}>
+            <Text style={[styles.totalLabel, { color: themeHook.colors.text }]}>Total Amount Due</Text>
+            <Text style={[styles.totalAmount, { color: themeHook.colors.primary }]}>
               ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
             </Text>
           </View>
 
           {requiresPlaidPayment && paymentAmounts && (
-            <View style={styles.paymentBreakdownCard}>
-              <Text style={styles.breakdownTitle}>Payment Breakdown</Text>
+            <View style={[styles.paymentBreakdownCard, { backgroundColor: themeHook.colors.surfaceElevated }]}>
+              <Text style={[styles.breakdownTitle, { color: themeHook.colors.text }]}>Payment Breakdown</Text>
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Platform Fee (Stripe)</Text>
-                <Text style={styles.breakdownValue}>
+                <Text style={[styles.breakdownLabel, { color: themeHook.colors.textSecondary }]}>Platform Fee (Stripe)</Text>
+                <Text style={[styles.breakdownValue, { color: themeHook.colors.text }]}>
                   ${paymentAmounts.platformFee.toFixed(2)}
                 </Text>
               </View>
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Provider Payment (Plaid)</Text>
-                <Text style={styles.breakdownValue}>
+                <Text style={[styles.breakdownLabel, { color: themeHook.colors.textSecondary }]}>Provider Payment (Plaid)</Text>
+                <Text style={[styles.breakdownValue, { color: themeHook.colors.text }]}>
                   ${paymentAmounts.providerAmount.toFixed(2)}
                 </Text>
               </View>
@@ -815,15 +820,15 @@ export default function PaymentCheckoutScreen() {
           )}
         </View>
 
-        <View style={styles.infoCard}>
-          <Ionicons name="lock-closed" size={20} color="#2563eb" />
-          <Text style={styles.infoText}>
+        <View style={[styles.infoCard, { backgroundColor: themeHook.colors.primaryLight }]}>
+          <Ionicons name="lock-closed" size={20} color={themeHook.colors.primary} />
+          <Text style={[styles.infoText, { color: themeHook.colors.primary }]}>
             Your payments are secured by Stripe and Plaid. We never store your payment details.
           </Text>
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
         <ScrollView 
           style={styles.footerScrollView}
           contentContainerStyle={styles.footerScrollContent}
@@ -857,12 +862,16 @@ export default function PaymentCheckoutScreen() {
               {/* Unified Pay Now Button */}
               {!stripePaymentComplete && !plaidPaymentComplete && (
                 <TouchableOpacity
-                  style={[styles.payButton, (processing || !stripeInstance) && styles.payButtonDisabled]}
+                  style={[
+                    styles.payButton,
+                    { backgroundColor: themeHook.colors.primary },
+                    (processing || !stripeInstance) && { backgroundColor: themeHook.colors.buttonDisabledBackground },
+                  ]}
                   onPress={handleUnifiedPayment}
                   disabled={processing || !stripeInstance}
                 >
                   {processing ? (
-                    <ActivityIndicator color="#ffffff" />
+                    <ActivityIndicator color={themeHook.colors.white} />
                   ) : (
                     <Text style={styles.payButtonText}>
                       Pay ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
@@ -873,8 +882,8 @@ export default function PaymentCheckoutScreen() {
               
               {/* Show status while processing */}
               {processing && (
-                <View style={styles.paymentStatus}>
-                  <Text style={styles.paymentStatusText}>
+                <View style={[styles.paymentStatus, { backgroundColor: themeHook.colors.primaryLight }]}>
+                  <Text style={[styles.paymentStatusText, { color: themeHook.colors.primary }]}>
                     {!stripePaymentComplete 
                       ? 'Processing platform fee...' 
                       : requiresPlaidPayment && !plaidPaymentComplete
@@ -882,7 +891,7 @@ export default function PaymentCheckoutScreen() {
                       : 'Payment completed!'}
                   </Text>
                   {requiresPlaidPayment && (
-                    <Text style={[styles.paymentStatusText, { fontSize: 12, marginTop: 4 }]}>
+                    <Text style={[styles.paymentStatusText, { fontSize: 12, marginTop: 4, color: themeHook.colors.primary }]}>
                       Platform fee: {stripePaymentComplete ? '✓' : '...'} | Provider payment: {plaidPaymentComplete ? '✓' : '...'}
                     </Text>
                   )}
@@ -891,8 +900,8 @@ export default function PaymentCheckoutScreen() {
             </>
           ) : Platform.OS === 'web' ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" color="#2563eb" />
-              <Text style={styles.loadingText}>
+              <ActivityIndicator size="small" color={themeHook.colors.primary} />
+              <Text style={[styles.loadingText, { color: themeHook.colors.textSecondary }]}>
                 {(() => {
                   const reasons = [];
                   if (!stripeModulesLoaded) reasons.push('Loading Stripe modules...');
@@ -903,19 +912,23 @@ export default function PaymentCheckoutScreen() {
               </Text>
               {/* Debug info */}
               {__DEV__ && (
-                <Text style={[styles.loadingText, { fontSize: 10, marginTop: 8 }]}>
+                <Text style={[styles.loadingText, { fontSize: 10, marginTop: 8, color: themeHook.colors.textSecondary }]}>
                   Debug: modules={stripeModulesLoaded ? '✓' : '✗'} stripe={stripeInstance ? '✓' : '✗'} secret={clientSecret ? '✓' : '✗'}
                 </Text>
               )}
             </View>
           ) : (
             <TouchableOpacity
-              style={[styles.payButton, processing && styles.payButtonDisabled]}
+              style={[
+                styles.payButton,
+                { backgroundColor: themeHook.colors.primary },
+                processing && { backgroundColor: themeHook.colors.buttonDisabledBackground },
+              ]}
               onPress={handlePayment}
               disabled={processing}
             >
               {processing ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={themeHook.colors.white} />
               ) : (
                 <Text style={styles.payButtonText}>
                   Pay ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
@@ -951,7 +964,6 @@ export default function PaymentCheckoutScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -963,7 +975,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -971,7 +982,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   loadingContainer: {
     flex: 1,
@@ -985,17 +995,14 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
   },
   summaryRow: {
@@ -1005,16 +1012,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   divider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginVertical: 16,
   },
   totalRow: {
@@ -1025,17 +1029,14 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   totalAmount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2563eb',
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -1043,13 +1044,10 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1e40af',
     lineHeight: 20,
   },
   footer: {
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     maxHeight: '50%',
     flex: 1,
   },
@@ -1061,13 +1059,11 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   payButton: {
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
   },
   payButtonDisabled: {
-    opacity: 0.6,
   },
   payButtonText: {
     color: '#ffffff',
@@ -1080,16 +1076,13 @@ const styles = StyleSheet.create({
   stripeElementContainer: {
     marginBottom: 16,
     padding: 16,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     minHeight: 200,
   },
   loadingText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   paymentSection: {
@@ -1107,7 +1100,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   paymentBreakdownCard: {
-    backgroundColor: '#f1f5f9',
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -1115,7 +1107,6 @@ const styles = StyleSheet.create({
   breakdownTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 12,
   },
   breakdownRow: {
@@ -1126,25 +1117,21 @@ const styles = StyleSheet.create({
   },
   breakdownLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   breakdownValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
   },
   paymentStatus: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#eff6ff',
     borderRadius: 8,
     alignItems: 'center',
   },
   paymentStatusText: {
     fontSize: 14,
-    color: '#1e40af',
     textAlign: 'center',
   },
 });

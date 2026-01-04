@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, StyleSheet, TextInputProps, TouchableOpacity, Platform, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
 
 interface FormFieldProps extends TextInputProps {
@@ -11,6 +12,7 @@ interface FormFieldProps extends TextInputProps {
 }
 
 export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secureTextEntry, required, ...inputProps }) => {
+  const { theme: themeHook } = useTheme();
   const hasError = Boolean(error);
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -37,14 +39,14 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
   }, [hasError, borderWidthAnim]);
 
   const borderColor = hasError 
-    ? theme.colors.semantic.error 
+    ? themeHook.colors.error 
     : isFocused 
-    ? theme.colors.primary[500] 
-    : theme.colors.neutral[200];
+    ? themeHook.colors.primary 
+    : themeHook.colors.border;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>
+      <Text style={[styles.label, { color: themeHook.colors.text }]}>
         {label}
         {required && <Text style={styles.requiredAsterisk}> *</Text>}
       </Text>
@@ -62,12 +64,16 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
         <TextInput
           style={[
             styles.input,
+            { 
+              backgroundColor: themeHook.colors.surface,
+              color: themeHook.colors.text,
+            },
             !hasError && { borderWidth: 0 }, // Remove default border when no error (animated border handles it)
             hasError && styles.inputError,
             isPasswordField && styles.inputWithIcon,
             style
           ]}
-          placeholderTextColor={theme.colors.neutral[500]}
+          placeholderTextColor={themeHook.colors.textTertiary}
           secureTextEntry={isPasswordField && !isPasswordVisible}
           onFocus={(e) => {
             setIsFocused(true);
@@ -88,7 +94,7 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
             <Ionicons
               name={isPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
               size={20}
-              color={theme.colors.neutral[500]}
+              color={themeHook.colors.textTertiary}
             />
           </TouchableOpacity>
         )}
@@ -105,7 +111,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.sm,
   },
   requiredAsterisk: {
@@ -125,13 +130,10 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
     borderRadius: theme.radii.md,
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.lg,
     fontSize: 16,
-    backgroundColor: theme.colors.white,
-    color: theme.colors.neutral[900],
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),

@@ -1,8 +1,9 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface FAQItem {
   question: string;
@@ -11,6 +12,7 @@ interface FAQItem {
 
 export default function HelpSupportScreen() {
   const router = useRouter();
+  const { theme: themeHook } = useTheme();
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
 
   const faqs: FAQItem[] = [
@@ -53,8 +55,92 @@ export default function HelpSupportScreen() {
     setExpandedFAQ(expandedFAQ === index ? null : index);
   };
 
+  const dynamicStyles = useMemo(() => StyleSheet.create({
+    section: {
+      marginBottom: themeHook.spacing['2xl'],
+    },
+    sectionTitle: {
+      ...theme.typography.h2,
+      color: themeHook.colors.text,
+      marginBottom: themeHook.spacing.sm,
+    },
+    sectionDescription: {
+      ...theme.typography.body,
+      color: themeHook.colors.textSecondary,
+      marginBottom: themeHook.spacing.lg,
+      lineHeight: 22,
+    },
+    contactCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeHook.colors.surface,
+      borderRadius: theme.radii.md,
+      padding: themeHook.spacing.lg,
+      borderWidth: 1,
+      borderColor: themeHook.colors.border,
+      marginBottom: themeHook.spacing.md,
+      gap: themeHook.spacing.md,
+      ...theme.shadows.card,
+    },
+    contactIconContainer: {
+      width: 48,
+      height: 48,
+      borderRadius: theme.radii.md,
+      backgroundColor: themeHook.colors.primaryLight,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    contactTitle: {
+      ...theme.typography.h2,
+      fontSize: 16,
+      color: themeHook.colors.text,
+      marginBottom: themeHook.spacing.xs,
+    },
+    contactDescription: {
+      ...theme.typography.caption,
+      color: themeHook.colors.textSecondary,
+    },
+    faqCard: {
+      backgroundColor: themeHook.colors.surface,
+      borderRadius: theme.radii.md,
+      padding: themeHook.spacing.lg,
+      borderWidth: 1,
+      borderColor: themeHook.colors.border,
+      marginBottom: themeHook.spacing.md,
+      ...theme.shadows.card,
+    },
+    faqQuestion: {
+      ...theme.typography.body,
+      fontWeight: '600',
+      color: themeHook.colors.text,
+      flex: 1,
+    },
+    faqAnswer: {
+      ...theme.typography.body,
+      color: themeHook.colors.textSecondary,
+      marginTop: themeHook.spacing.md,
+      lineHeight: 22,
+    },
+    linkCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: themeHook.colors.surface,
+      borderRadius: theme.radii.md,
+      padding: themeHook.spacing.lg,
+      borderWidth: 1,
+      borderColor: themeHook.colors.border,
+      marginBottom: themeHook.spacing.md,
+      gap: themeHook.spacing.md,
+    },
+    linkText: {
+      ...theme.typography.body,
+      color: themeHook.colors.text,
+      flex: 1,
+    },
+  }), [themeHook]);
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
           <TouchableOpacity
@@ -62,96 +148,96 @@ export default function HelpSupportScreen() {
             style={styles.backButton}
             activeOpacity={0.8}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.neutral[900]} />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Help & Support</Text>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>Help & Support</Text>
           <View style={styles.placeholder} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         {/* Contact Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Get in Touch</Text>
-          <Text style={styles.sectionDescription}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Get in Touch</Text>
+          <Text style={dynamicStyles.sectionDescription}>
             We're here to help! Reach out to us via email.
           </Text>
           
           {contactMethods.map((method, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.contactCard}
+              style={dynamicStyles.contactCard}
               onPress={method.action}
               activeOpacity={0.8}
             >
-              <View style={styles.contactIconContainer}>
-                <Ionicons name={method.icon as any} size={24} color={theme.colors.primary[500]} />
+              <View style={dynamicStyles.contactIconContainer}>
+                <Ionicons name={method.icon as any} size={24} color={themeHook.colors.primary} />
               </View>
               <View style={styles.contactInfo}>
-                <Text style={styles.contactTitle}>{method.title}</Text>
-                <Text style={styles.contactDescription}>{method.description}</Text>
+                <Text style={dynamicStyles.contactTitle}>{method.title}</Text>
+                <Text style={dynamicStyles.contactDescription}>{method.description}</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+              <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* FAQ Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Frequently Asked Questions</Text>
-          <Text style={styles.sectionDescription}>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Frequently Asked Questions</Text>
+          <Text style={dynamicStyles.sectionDescription}>
             Find answers to common questions about using Alyne.
           </Text>
 
           {faqs.map((faq, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.faqCard}
+              style={dynamicStyles.faqCard}
               onPress={() => toggleFAQ(index)}
               activeOpacity={0.8}
             >
               <View style={styles.faqHeader}>
-                <Text style={styles.faqQuestion}>{faq.question}</Text>
+                <Text style={dynamicStyles.faqQuestion}>{faq.question}</Text>
                 <Ionicons
                   name={expandedFAQ === index ? 'chevron-up' : 'chevron-down'}
                   size={20}
-                  color={theme.colors.neutral[500]}
+                  color={themeHook.colors.textTertiary}
                 />
               </View>
               {expandedFAQ === index && (
-                <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                <Text style={dynamicStyles.faqAnswer}>{faq.answer}</Text>
               )}
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Quick Links Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Links</Text>
+        <View style={dynamicStyles.section}>
+          <Text style={dynamicStyles.sectionTitle}>Quick Links</Text>
           
           <TouchableOpacity
-            style={styles.linkCard}
+            style={dynamicStyles.linkCard}
             onPress={() => router.push('/settings/privacy-policy')}
           >
-            <Ionicons name="lock-closed-outline" size={20} color={theme.colors.neutral[900]} />
-            <Text style={styles.linkText}>Privacy Policy</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="lock-closed-outline" size={20} color={themeHook.colors.text} />
+            <Text style={dynamicStyles.linkText}>Privacy Policy</Text>
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.linkCard}
+            style={dynamicStyles.linkCard}
             onPress={() => router.push('/settings/terms-of-service')}
           >
-            <Ionicons name="document-text-outline" size={20} color={theme.colors.neutral[900]} />
-            <Text style={styles.linkText}>Terms of Service</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="document-text-outline" size={20} color={themeHook.colors.text} />
+            <Text style={dynamicStyles.linkText}>Terms of Service</Text>
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.linkCard}
+            style={dynamicStyles.linkCard}
             onPress={() => router.push('/settings/data-security')}
           >
-            <Ionicons name="shield-checkmark-outline" size={20} color={theme.colors.neutral[900]} />
-            <Text style={styles.linkText}>Data & Security</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+            <Ionicons name="shield-checkmark-outline" size={20} color={themeHook.colors.text} />
+            <Text style={dynamicStyles.linkText}>Data & Security</Text>
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -162,7 +248,6 @@ export default function HelpSupportScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.white,
   },
   header: {
     flexDirection: 'row',
@@ -174,7 +259,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
@@ -184,7 +268,6 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.h1,
-    color: theme.colors.neutral[900],
   },
   placeholder: {
     width: 40,
@@ -197,61 +280,8 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
-  section: {
-    marginBottom: theme.spacing['2xl'],
-  },
-  sectionTitle: {
-    ...theme.typography.h2,
-    color: theme.colors.neutral[900],
-    marginBottom: theme.spacing.sm,
-  },
-  sectionDescription: {
-    ...theme.typography.body,
-    color: theme.colors.neutral[500],
-    marginBottom: theme.spacing.lg,
-    lineHeight: 22,
-  },
-  contactCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.md,
-    ...theme.shadows.card,
-  },
-  contactIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: theme.radii.md,
-    backgroundColor: theme.colors.primary[50],
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   contactInfo: {
     flex: 1,
-  },
-  contactTitle: {
-    ...theme.typography.h2,
-    fontSize: 16,
-    color: theme.colors.neutral[900],
-    marginBottom: theme.spacing.xs,
-  },
-  contactDescription: {
-    ...theme.typography.caption,
-    color: theme.colors.neutral[500],
-  },
-  faqCard: {
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.card,
   },
   faqHeader: {
     flexDirection: 'row',
@@ -259,33 +289,4 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: theme.spacing.md,
   },
-  faqQuestion: {
-    ...theme.typography.body,
-    fontWeight: '600',
-    color: theme.colors.neutral[900],
-    flex: 1,
-  },
-  faqAnswer: {
-    ...theme.typography.body,
-    color: theme.colors.neutral[700],
-    marginTop: theme.spacing.md,
-    lineHeight: 22,
-  },
-  linkCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.white,
-    borderRadius: theme.radii.md,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
-    marginBottom: theme.spacing.md,
-    gap: theme.spacing.md,
-  },
-  linkText: {
-    ...theme.typography.body,
-    color: theme.colors.neutral[900],
-    flex: 1,
-  },
 });
-

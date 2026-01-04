@@ -19,11 +19,14 @@ import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { messageService, Message } from '../../services/message';
+import { useTheme } from '../../contexts/ThemeContext';
+import { theme } from '../../theme';
 
 export default function ChatScreen() {
   const router = useRouter();
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { theme: themeHook } = useTheme();
   const { socket, joinConversation, leaveConversation, sendMessage, onMessage, onMessagesRead, isConnected } = useSocket();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -441,8 +444,8 @@ export default function ChatScreen() {
         ]}
       >
         {!isMe ? (
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
+          <View style={[styles.avatar, { backgroundColor: themeHook.colors.border }]}>
+            <Text style={[styles.avatarText, { color: themeHook.colors.textSecondary }]}>
               {item.sender?.firstName[0] || 'U'}
               {item.sender?.lastName[0] || ''}
             </Text>
@@ -452,17 +455,19 @@ export default function ChatScreen() {
           <View
             style={[
               styles.messageBubble,
-              isMe ? styles.myBubble : styles.otherBubble,
+              isMe 
+                ? [styles.myBubble, { backgroundColor: themeHook.colors.primary }]
+                : [styles.otherBubble, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }],
             ]}
           >
             {!isMe && (
-              <Text style={styles.senderName}>{senderName}</Text>
+              <Text style={[styles.senderName, { color: themeHook.colors.textSecondary }]}>{senderName}</Text>
             )}
-            <Text style={[styles.messageText, isMe && styles.myMessageText]}>
+            <Text style={[styles.messageText, isMe ? { color: themeHook.colors.white } : { color: themeHook.colors.text }]}>
               {item.content}
             </Text>
             <View style={styles.messageFooter}>
-              <Text style={[styles.messageTime, isMe && styles.myMessageTime]}>
+              <Text style={[styles.messageTime, isMe ? { color: 'rgba(255, 255, 255, 0.8)' } : { color: themeHook.colors.textTertiary }]}>
                 {new Date(item.createdAt).toLocaleTimeString([], {
                   hour: '2-digit',
                   minute: '2-digit',
@@ -471,7 +476,7 @@ export default function ChatScreen() {
             </View>
           </View>
           {isMe && (
-            <Text style={styles.statusText}>
+            <Text style={[styles.statusText, { color: themeHook.colors.textTertiary }]}>
               {item.id.startsWith('temp-') ? 'Sending' : 
                item.status === 'READ' ? 'Read' :
                item.status === 'DELIVERED' ? 'Delivered' :
@@ -486,17 +491,17 @@ export default function ChatScreen() {
   // Show loading while auth is loading or messages are loading
   if (authLoading || loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+        <View style={[styles.header, { backgroundColor: themeHook.colors.surface }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Loading...</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Loading...</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={themeHook.colors.primary} />
         </View>
       </View>
     );
@@ -510,29 +515,29 @@ export default function ChatScreen() {
   // If user is not available after auth loaded, show error
   if (!user) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+        <View style={[styles.header, { backgroundColor: themeHook.colors.surface }]}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Error</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Error</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         <View style={styles.loadingContainer}>
-          <Text style={{ color: '#ef4444', marginBottom: 16 }}>
+          <Text style={{ color: themeHook.colors.error, marginBottom: 16 }}>
             Unable to load user data
           </Text>
           <TouchableOpacity
             style={{
-              backgroundColor: '#2563eb',
+              backgroundColor: themeHook.colors.primary,
               paddingHorizontal: 24,
               paddingVertical: 12,
               borderRadius: 8,
             }}
             onPress={() => router.replace('/(auth)/login')}
           >
-            <Text style={{ color: '#ffffff', fontWeight: '600' }}>
+            <Text style={{ color: themeHook.colors.white, fontWeight: '600' }}>
               Go to Login
             </Text>
           </TouchableOpacity>
@@ -543,34 +548,34 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: themeHook.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Fixed Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: themeHook.colors.surface }]}>
         <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#1e293b" />
+          <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>
+          <View style={[styles.headerAvatar, { backgroundColor: themeHook.colors.primary }]}>
+            <Text style={[styles.headerAvatarText, { color: themeHook.colors.white }]}>
               {otherUser?.firstName[0] || 'U'}
               {otherUser?.lastName[0] || ''}
             </Text>
           </View>
           <View>
-            <Text style={styles.headerTitle}>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>
               {otherUser ? `${otherUser.firstName} ${otherUser.lastName}` : 'User'}
             </Text>
-            <Text style={styles.headerSubtitle}>
+            <Text style={[styles.headerSubtitle, { color: themeHook.colors.textSecondary }]}>
               {isConnected ? 'Online' : 'Offline'}
             </Text>
           </View>
         </View>
         <View style={{ width: 24 }} />
       </View>
-      <View style={styles.headerDivider} />
+      <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
       
       {/* Messages List */}
       <FlatList
@@ -585,19 +590,20 @@ export default function ChatScreen() {
         }}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No messages yet</Text>
-            <Text style={styles.emptySubtext}>
+            <Text style={[styles.emptyText, { color: themeHook.colors.text }]}>No messages yet</Text>
+            <Text style={[styles.emptySubtext, { color: themeHook.colors.textSecondary }]}>
               Start the conversation by sending a message
             </Text>
           </View>
         }
       />
 
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
         <TextInput
           ref={inputRef}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: themeHook.colors.background, color: themeHook.colors.text }]}
           placeholder="Type a message..."
+          placeholderTextColor={themeHook.colors.textTertiary}
           value={inputText}
           onChangeText={setInputText}
           multiline
@@ -609,14 +615,18 @@ export default function ChatScreen() {
           returnKeyType="send"
         />
         <TouchableOpacity
-          style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]}
+          style={[
+            styles.sendButton, 
+            { backgroundColor: themeHook.colors.primary },
+            (!inputText.trim() || sending) && [styles.sendButtonDisabled, { backgroundColor: themeHook.colors.border }]
+          ]}
           onPress={handleSend}
           disabled={!inputText.trim() || sending}
         >
           {sending ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={themeHook.colors.white} />
           ) : (
-            <Ionicons name="send" size={20} color="#ffffff" />
+            <Ionicons name="send" size={20} color={themeHook.colors.white} />
           )}
         </TouchableOpacity>
       </View>
@@ -627,7 +637,6 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -636,12 +645,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 12,
-    backgroundColor: '#ffffff',
     zIndex: 10,
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     width: '100%',
   },
   content: {
@@ -663,23 +670,19 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerAvatarText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ffffff',
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
   },
   headerSubtitle: {
     fontSize: 12,
-    color: '#64748b',
   },
   loadingContainer: {
     flex: 1,
@@ -706,7 +709,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#cbd5e1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 8,
@@ -714,7 +716,6 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
   },
   messageBubbleWrapper: {
     maxWidth: '75%',
@@ -729,28 +730,23 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   myBubble: {
-    backgroundColor: '#2563eb',
     borderBottomRightRadius: 4,
   },
   otherBubble: {
-    backgroundColor: '#ffffff',
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   senderName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748b',
     marginBottom: 4,
   },
   messageText: {
     fontSize: 16,
-    color: '#1e293b',
     lineHeight: 20,
   },
   myMessageText: {
-    color: '#ffffff',
+    // Color applied inline
   },
   messageFooter: {
     flexDirection: 'row',
@@ -760,14 +756,12 @@ const styles = StyleSheet.create({
   },
   messageTime: {
     fontSize: 11,
-    color: '#64748b',
   },
   myMessageTime: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    // Color applied inline
   },
   statusText: {
     fontSize: 11,
-    color: '#94a3b8',
     marginTop: 2,
     paddingRight: 8,
     fontStyle: 'italic',
@@ -781,43 +775,35 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 8,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 16,
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     gap: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: '#f1f5f9',
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#1e293b',
     maxHeight: 100,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#2563eb',
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#cbd5e1',
     opacity: 0.5,
   },
 });

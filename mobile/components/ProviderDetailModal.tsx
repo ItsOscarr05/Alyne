@@ -21,6 +21,7 @@ import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { formatTime12Hour } from '../utils/timeUtils';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { CreateBookingModal } from './CreateBookingModal';
 import { EditReviewModal } from './EditReviewModal';
 import { AlertModal } from './ui/AlertModal';
@@ -40,6 +41,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   const router = useRouter();
   const { user } = useAuth();
   const { onProviderRatingUpdate } = useSocket();
+  const { theme: themeHook } = useTheme();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>(initialTab);
@@ -237,7 +239,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
     }
     const emptyStars = 5 - Math.ceil(rating);
     for (let i = 0; i < emptyStars; i++) {
-      stars.push(<Ionicons key={`empty-${i}`} name="star-outline" size={16} color="#d1d5db" />);
+      stars.push(<Ionicons key={`empty-${i}`} name="star-outline" size={16} color={themeHook.colors.textTertiary} />);
     }
     return stars;
   };
@@ -318,12 +320,12 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   return (
     <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.modalOverlay}>
+        <View style={[styles.modalOverlay, { backgroundColor: themeHook.colors.overlay }]}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalContainer}>
+            <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
               {/* Close Button */}
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Ionicons name="close" size={28} color="#1e293b" />
+              <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} onPress={onClose}>
+                <Ionicons name="close" size={28} color={themeHook.colors.text} />
               </TouchableOpacity>
 
               {isLoading ? (
@@ -333,7 +335,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                 />
               ) : !provider ? (
                 <View style={styles.loadingContainer}>
-                  <Text style={styles.errorText}>Provider not found</Text>
+                  <Text style={[styles.errorText, { color: themeHook.colors.textSecondary }]}>Provider not found</Text>
                 </View>
               ) : (
                 <>
@@ -347,9 +349,9 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                     scrollEventThrottle={16}
                   >
                     {/* Profile Header */}
-                    <View style={styles.profileHeader}>
+                    <View style={[styles.profileHeader, { backgroundColor: themeHook.colors.surface, borderBottomColor: themeHook.colors.border }]}>
                       <View style={styles.profileHeaderRow}>
-                        <View style={styles.profileAvatar}>
+                        <View style={[styles.profileAvatar, { borderColor: themeHook.colors.primary }]}>
                           {provider.profilePhoto ? (
                             <Image
                               source={{ uri: provider.profilePhoto }}
@@ -360,23 +362,23 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                               cachePolicy="memory-disk"
                             />
                           ) : (
-                            <View style={styles.profileAvatarPlaceholder}>
-                              <Ionicons name="person" size={32} color="#94a3b8" />
+                            <View style={[styles.profileAvatarPlaceholder, { backgroundColor: themeHook.colors.primaryLight }]}>
+                              <Ionicons name="person" size={32} color={themeHook.colors.textSecondary} />
                             </View>
                           )}
                         </View>
 
                         <View style={styles.profileHeaderContent}>
                           <View style={styles.nameRow}>
-                            <Text style={styles.name}>{provider.name}</Text>
+                            <Text style={[styles.name, { color: themeHook.colors.text }]}>{provider.name}</Text>
                             {provider.isVerified && (
-                              <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                              <Ionicons name="checkmark-circle" size={20} color={themeHook.colors.success} />
                             )}
                           </View>
 
                           <View style={styles.ratingRow}>
                             <View style={styles.stars}>{renderStars(provider.rating)}</View>
-                            <Text style={styles.ratingText}>
+                            <Text style={[styles.ratingText, { color: themeHook.colors.textSecondary }]}>
                               {provider.rating.toFixed(1)} ({provider.reviewCount} reviews)
                             </Text>
                           </View>
@@ -384,8 +386,8 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                           {provider.specialties.length > 0 && (
                             <View style={styles.specialties}>
                               {provider.specialties.map((specialty, index) => (
-                                <View key={index} style={styles.specialtyTag}>
-                                  <Text style={styles.specialtyText}>{specialty}</Text>
+                                <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
+                                  <Text style={[styles.specialtyText, { color: themeHook.colors.primary }]}>{specialty}</Text>
                                 </View>
                               ))}
                             </View>
@@ -395,33 +397,33 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                     </View>
 
                     {/* Tabs */}
-                    <View style={styles.tabs}>
+                    <View style={[styles.tabs, { backgroundColor: themeHook.colors.surface, borderBottomColor: themeHook.colors.border }]}>
                       <TouchableOpacity
-                        style={[styles.tab, activeTab === 'about' && styles.activeTab]}
+                        style={[styles.tab, activeTab === 'about' && styles.activeTab, activeTab === 'about' && { borderBottomColor: themeHook.colors.primary }]}
                         onPress={() => setActiveTab('about')}
                       >
                         <Text
-                          style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}
+                          style={[styles.tabText, { color: themeHook.colors.textSecondary }, activeTab === 'about' && styles.activeTabText, activeTab === 'about' && { color: themeHook.colors.primary }]}
                         >
                           About
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.tab, activeTab === 'services' && styles.activeTab]}
+                        style={[styles.tab, activeTab === 'services' && styles.activeTab, activeTab === 'services' && { borderBottomColor: themeHook.colors.primary }]}
                         onPress={() => setActiveTab('services')}
                       >
                         <Text
-                          style={[styles.tabText, activeTab === 'services' && styles.activeTabText]}
+                          style={[styles.tabText, { color: themeHook.colors.textSecondary }, activeTab === 'services' && styles.activeTabText, activeTab === 'services' && { color: themeHook.colors.primary }]}
                         >
                           Services
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.tab, activeTab === 'reviews' && styles.activeTab]}
+                        style={[styles.tab, activeTab === 'reviews' && styles.activeTab, activeTab === 'reviews' && { borderBottomColor: themeHook.colors.primary }]}
                         onPress={() => setActiveTab('reviews')}
                       >
                         <Text
-                          style={[styles.tabText, activeTab === 'reviews' && styles.activeTabText]}
+                          style={[styles.tabText, { color: themeHook.colors.textSecondary }, activeTab === 'reviews' && styles.activeTabText, activeTab === 'reviews' && { color: themeHook.colors.primary }]}
                         >
                           Reviews ({provider.reviewCount})
                         </Text>
@@ -435,23 +437,23 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                           <View>
                           {provider.bio && (
                             <View style={styles.section}>
-                              <Text style={styles.sectionTitle}>About</Text>
-                              <Text style={styles.bioText}>{provider.bio}</Text>
+                              <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>About</Text>
+                              <Text style={[styles.bioText, { color: themeHook.colors.textSecondary }]}>{provider.bio}</Text>
                             </View>
                           )}
 
                           {provider.credentials && provider.credentials.length > 0 && (
                             <>
-                              <View style={styles.sectionDivider} />
+                              <View style={[styles.sectionDivider, { backgroundColor: themeHook.colors.border }]} />
                               <View style={styles.section}>
-                                <Text style={styles.sectionTitle}>Credentials</Text>
+                                <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Credentials</Text>
                                 {provider.credentials.map((cred) => (
                                   <View key={cred.id} style={styles.credentialItem}>
-                                    <Ionicons name="checkmark-circle" size={20} color="#10b981" />
+                                    <Ionicons name="checkmark-circle" size={20} color={themeHook.colors.success} />
                                     <View style={styles.credentialInfo}>
-                                      <Text style={styles.credentialName}>{cred.name}</Text>
+                                      <Text style={[styles.credentialName, { color: themeHook.colors.text }]}>{cred.name}</Text>
                                       {cred.issuer && (
-                                        <Text style={styles.credentialIssuer}>{cred.issuer}</Text>
+                                        <Text style={[styles.credentialIssuer, { color: themeHook.colors.textSecondary }]}>{cred.issuer}</Text>
                                       )}
                                     </View>
                                   </View>
@@ -497,7 +499,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
 
                               return (
                                 <>
-                                  <View style={styles.sectionDivider} />
+                                  <View style={[styles.sectionDivider, { backgroundColor: themeHook.colors.border }]} />
                                   <View 
                                     ref={availabilitySectionRef}
                                     style={styles.section}
@@ -514,17 +516,17 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                       });
                                     }}
                                   >
-                                    <Text style={styles.sectionTitle}>Availability</Text>
+                                    <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Availability</Text>
                                     <View style={styles.availabilityDaysRow}>
                                       {availableDays.map((day) => (
                                         <View
                                           key={day.label}
-                                          style={styles.availabilityDayPill}
+                                          style={[styles.availabilityDayPill, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                                         >
-                                          <Text style={styles.availabilityDayPillText}>
+                                          <Text style={[styles.availabilityDayPillText, { color: themeHook.colors.primary }]}>
                                             {day.label}
                                           </Text>
-                                          <Text style={styles.availabilityTimeSmall}>
+                                          <Text style={[styles.availabilityTimeSmall, { color: themeHook.colors.textSecondary }]}>
                                             {day.timeRange || '—'}
                                           </Text>
                                         </View>
@@ -536,19 +538,19 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             })()}
 
                           {/* Session format & location */}
-                          <View style={styles.sectionDivider} />
+                          <View style={[styles.sectionDivider, { backgroundColor: themeHook.colors.border }]} />
                           <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Session Format & Location</Text>
+                            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Session Format & Location</Text>
                             <View style={styles.infoRow}>
-                              <Ionicons name="location-outline" size={18} color="#64748b" />
-                              <Text style={styles.infoText}>
+                              <Ionicons name="location-outline" size={18} color={themeHook.colors.textTertiary} />
+                              <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
                                 Sessions are held within the provider&apos;s listed service area.
                                 Exact address is shared after booking is confirmed.
                               </Text>
                             </View>
                             <View style={styles.infoRow}>
-                              <Ionicons name="desktop-outline" size={18} color="#64748b" />
-                              <Text style={styles.infoText}>
+                              <Ionicons name="desktop-outline" size={18} color={themeHook.colors.textTertiary} />
+                              <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
                                 Many providers can offer virtual sessions on request. Use Messages
                                 to confirm what works best for you.
                               </Text>
@@ -556,10 +558,10 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                           </View>
 
                           {/* Approach & style */}
-                          <View style={styles.sectionDivider} />
+                          <View style={[styles.sectionDivider, { backgroundColor: themeHook.colors.border }]} />
                           <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Approach & Style</Text>
-                            <Text style={styles.infoText}>
+                            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Approach & Style</Text>
+                            <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
                               Sessions focus on your goals, at your pace. Expect a calm,
                               collaborative environment with space for questions and check‑ins
                               throughout.
@@ -567,8 +569,8 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             {provider.specialties && provider.specialties.length > 0 && (
                               <View style={styles.chipRow}>
                                 {provider.specialties.slice(0, 3).map((tag) => (
-                                  <View key={tag} style={styles.chip}>
-                                    <Text style={styles.chipText}>{tag}</Text>
+                                  <View key={tag} style={[styles.chip, { backgroundColor: themeHook.colors.primaryLight }]}>
+                                    <Text style={[styles.chipText, { color: themeHook.colors.primary }]}>{tag}</Text>
                                   </View>
                                 ))}
                               </View>
@@ -576,19 +578,19 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                           </View>
 
                           {/* Logistics & expectations */}
-                          <View style={styles.sectionDivider} />
+                          <View style={[styles.sectionDivider, { backgroundColor: themeHook.colors.border }]} />
                           <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Logistics & Expectations</Text>
+                            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Logistics & Expectations</Text>
                             <View style={styles.infoRow}>
-                              <Ionicons name="time-outline" size={18} color="#64748b" />
-                              <Text style={styles.infoText}>
+                              <Ionicons name="time-outline" size={18} color={themeHook.colors.textTertiary} />
+                              <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
                                 Please arrive a few minutes early (or join virtually on time) so you
                                 can get the full benefit of your session.
                               </Text>
                             </View>
                             <View style={styles.infoRow}>
-                              <Ionicons name="refresh-outline" size={18} color="#64748b" />
-                              <Text style={styles.infoText}>
+                              <Ionicons name="refresh-outline" size={18} color={themeHook.colors.textTertiary} />
+                              <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
                                 If you need to reschedule or cancel, reach out as soon as possible
                                 so the provider can open the spot for someone else.
                               </Text>
@@ -597,9 +599,9 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                               <Ionicons
                                 name="information-circle-outline"
                                 size={18}
-                                color="#64748b"
+                                color={themeHook.colors.textTertiary}
                               />
-                              <Text style={styles.infoText}>
+                              <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>
                                 Use Messages to clarify anything before your first visit—what to
                                 bring, how to prepare, or what to expect.
                               </Text>
@@ -607,17 +609,17 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                           </View>
 
                           {/* Contact Info */}
-                          <View style={styles.sectionDivider} />
+                          <View style={[styles.sectionDivider, { backgroundColor: themeHook.colors.border }]} />
                           <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Contact Info</Text>
+                            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Contact Info</Text>
                             <View style={styles.infoRow}>
-                              <Ionicons name="mail-outline" size={18} color="#64748b" />
-                              <Text style={styles.infoText}>{provider.email}</Text>
+                              <Ionicons name="mail-outline" size={18} color={themeHook.colors.textTertiary} />
+                              <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>{provider.email}</Text>
                             </View>
                             {provider.phoneNumber && (
                               <View style={styles.infoRow}>
-                                <Ionicons name="call-outline" size={18} color="#64748b" />
-                                <Text style={styles.infoText}>{provider.phoneNumber}</Text>
+                                <Ionicons name="call-outline" size={18} color={themeHook.colors.textTertiary} />
+                                <Text style={[styles.infoText, { color: themeHook.colors.textSecondary }]}>{provider.phoneNumber}</Text>
                               </View>
                             )}
                           </View>
@@ -652,30 +654,30 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                 <View style={styles.gridContainer}>
                                   {uniqueServices.map((service) => (
                                     <View key={service.id} style={styles.serviceCardWrapper}>
-                                      <View style={styles.serviceCard}>
+                                      <View style={[styles.serviceCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
                                         <View style={styles.serviceHeader}>
                                           <View style={styles.serviceTitleRow}>
-                                            <Text style={styles.serviceName}>{service.name}</Text>
+                                            <Text style={[styles.serviceName, { color: themeHook.colors.text }]}>{service.name}</Text>
                                             <Text style={styles.serviceDurationChip}>
                                               <Ionicons
                                                 name="time-outline"
                                                 size={12}
-                                                color="#64748b"
+                                                color={themeHook.colors.textTertiary}
                                               />{' '}
-                                              <Text style={styles.serviceDurationChipText}>
+                                              <Text style={[styles.serviceDurationChipText, { color: themeHook.colors.textTertiary }]}>
                                                 {service.duration} min
                                               </Text>
                                             </Text>
                                           </View>
                                           <View style={styles.servicePriceTag}>
-                                            <Text style={styles.servicePriceAmount}>
+                                            <Text style={[styles.servicePriceAmount, { color: themeHook.colors.primary }]}>
                                               ${service.price}/session
                                             </Text>
                                           </View>
                                         </View>
                                         {service.description && (
                                           <Text
-                                            style={styles.serviceDescription}
+                                            style={[styles.serviceDescription, { color: themeHook.colors.textSecondary }]}
                                             numberOfLines={3}
                                             ellipsizeMode="tail"
                                           >
@@ -690,7 +692,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             })()
                           ) : (
                             <AnimatedEmptyState>
-                              <Text style={styles.emptyText}>No services available</Text>
+                              <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>No services available</Text>
                             </AnimatedEmptyState>
                           )}
                         </View>
@@ -702,30 +704,30 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             <View style={styles.gridContainer}>
                               {provider.reviews.map((review) => (
                                 <View key={review.id} style={styles.reviewCardWrapper}>
-                                  <View style={styles.reviewCard}>
+                                  <View style={[styles.reviewCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
                                     <View style={styles.reviewHeader}>
                                       <View style={styles.reviewerInfo}>
-                                        <View style={styles.reviewerAvatar}>
-                                          <Text style={styles.reviewerInitials}>
+                                        <View style={[styles.reviewerAvatar, { backgroundColor: themeHook.colors.primary }]}>
+                                          <Text style={[styles.reviewerInitials, { color: themeHook.colors.white }]}>
                                             {review.client.firstName[0]}
                                             {review.client.lastName[0]}
                                           </Text>
                                         </View>
                                         <View style={styles.reviewerTextBlock}>
-                                          <Text style={styles.reviewerName} numberOfLines={1}>
+                                          <Text style={[styles.reviewerName, { color: themeHook.colors.text }]} numberOfLines={1}>
                                             {review.client.firstName} {review.client.lastName}
                                           </Text>
                                           <View style={styles.reviewMetaRow}>
-                                            <View style={styles.reviewRatingPill}>
+                                            <View style={[styles.reviewRatingPill, { backgroundColor: themeHook.isDark ? '#78350F' : '#FEF3C7' }]}>
                                               <Ionicons name="star" size={12} color="#fbbf24" />
-                                              <Text style={styles.reviewRatingText}>
+                                              <Text style={[styles.reviewRatingText, { color: themeHook.isDark ? '#FCD34D' : '#92400E' }]}>
                                                 {review.rating.toFixed(1)}
                                               </Text>
                                             </View>
                                             <View style={styles.reviewStars}>
                                               {renderStars(review.rating)}
                                             </View>
-                                            <Text style={styles.reviewDate} numberOfLines={1}>
+                                            <Text style={[styles.reviewDate, { color: themeHook.colors.textTertiary }]} numberOfLines={1}>
                                               {new Date(review.createdAt).toLocaleDateString()}
                                             </Text>
                                           </View>
@@ -749,7 +751,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                               <Ionicons
                                                 name="pencil-outline"
                                                 size={16}
-                                                color="#2563eb"
+                                                color={themeHook.colors.primary}
                                               />
                                             </TouchableOpacity>
                                             <TouchableOpacity
@@ -759,7 +761,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                               <Ionicons
                                                 name="trash-outline"
                                                 size={16}
-                                                color="#ef4444"
+                                                color={themeHook.colors.error}
                                               />
                                             </TouchableOpacity>
                                           </>
@@ -772,7 +774,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                             <Ionicons
                                               name="flag-outline"
                                               size={16}
-                                              color="#ef4444"
+                                              color={themeHook.colors.error}
                                             />
                                           </TouchableOpacity>
                                         )}
@@ -781,7 +783,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
 
                                     {review.comment && (
                                       <Text
-                                        style={styles.reviewComment}
+                                        style={[styles.reviewComment, { color: themeHook.colors.textSecondary }]}
                                         numberOfLines={4}
                                         ellipsizeMode="tail"
                                       >
@@ -794,7 +796,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             </View>
                           ) : (
                             <View style={styles.emptyTextContainer}>
-                              <Text style={styles.emptyText}>No reviews yet</Text>
+                              <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>No reviews yet</Text>
                             </View>
                           )}
                         </View>
@@ -804,21 +806,21 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                   </ScrollView>
 
                   {/* Book Button */}
-                  <View style={styles.footer}>
+                  <View style={[styles.footer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
                     {user?.userType === 'CLIENT' && providerId && (
                       <TouchableOpacity
-                        style={styles.messageButton}
+                        style={[styles.messageButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
                         onPress={() => {
                           onClose();
                           router.push(`/messages/${providerId}`);
                         }}
                       >
-                        <Ionicons name="chatbubble-outline" size={20} color="#2563eb" />
-                        <Text style={styles.messageButtonText}>Message</Text>
+                        <Ionicons name="chatbubble-outline" size={20} color={themeHook.colors.primary} />
+                        <Text style={[styles.messageButtonText, { color: themeHook.colors.primary }]}>Message</Text>
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity style={styles.bookButton} onPress={handleBookSession}>
-                      <Text style={styles.bookButtonText}>Book Session</Text>
+                    <TouchableOpacity style={[styles.bookButton, { backgroundColor: themeHook.colors.primary }]} onPress={handleBookSession}>
+                      <Text style={[styles.bookButtonText, { color: themeHook.colors.white }]}>Book Session</Text>
                     </TouchableOpacity>
                   </View>
                 </>
@@ -949,7 +951,6 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
   },
   profileAvatarImage: {
     width: '100%',
@@ -958,7 +959,6 @@ const styles = StyleSheet.create({
   profileAvatarPlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: theme.colors.neutral[200],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -974,7 +974,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
   },
   ratingRow: {
     flexDirection: 'row',
@@ -988,7 +987,6 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
-    color: theme.colors.neutral[700],
   },
   specialties: {
     flexDirection: 'row',
@@ -996,7 +994,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.xs,
   },
   specialtyTag: {
-    backgroundColor: theme.colors.primary[50],
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.radii.sm,
@@ -1004,13 +1001,10 @@ const styles = StyleSheet.create({
   specialtyText: {
     fontSize: 12,
     fontWeight: '500',
-    color: theme.colors.primary[500],
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
     paddingHorizontal: theme.spacing.xl,
   },
   tab: {
@@ -1021,15 +1015,13 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: theme.colors.primary[500],
+    // borderBottomColor set via inline styles
   },
   tabText: {
     fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.neutral[500],
   },
   activeTabText: {
-    color: theme.colors.primary[500],
     fontWeight: '600',
   },
   tabContent: {
@@ -1041,18 +1033,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.md,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     marginVertical: theme.spacing.lg,
   },
   bioText: {
     fontSize: 15,
     lineHeight: 22,
-    color: theme.colors.neutral[700],
   },
   credentialItem: {
     flexDirection: 'row',
@@ -1066,12 +1055,10 @@ const styles = StyleSheet.create({
   credentialName: {
     fontSize: 15,
     fontWeight: '500',
-    color: theme.colors.neutral[900],
     marginBottom: 2,
   },
   credentialIssuer: {
     fontSize: 13,
-    color: theme.colors.neutral[700],
   },
   availabilityDaysRow: {
     flexDirection: 'row',
@@ -1079,30 +1066,26 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   availabilityDayPill: {
-    backgroundColor: theme.colors.primary[50],
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.sm,
     borderWidth: 1,
-    borderColor: '#2563eb',
     minWidth: 60,
     alignItems: 'center',
   },
   availabilityDayPillDisabled: {
-    backgroundColor: theme.colors.neutral[50],
+    // backgroundColor set via inline styles
   },
   availabilityDayPillText: {
     fontSize: 11,
     fontWeight: '600',
-    color: theme.colors.primary[500],
     marginBottom: 2,
   },
   availabilityDayPillTextDisabled: {
-    color: theme.colors.neutral[500],
+    // color set via inline styles
   },
   availabilityTimeSmall: {
     fontSize: 9,
-    color: theme.colors.neutral[700],
     textAlign: 'center',
   },
   infoRow: {
@@ -1115,7 +1098,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 20,
-    color: theme.colors.neutral[700],
   },
   chipRow: {
     flexDirection: 'row',
@@ -1124,7 +1106,6 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.md,
   },
   chip: {
-    backgroundColor: theme.colors.primary[50],
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.md,
@@ -1132,7 +1113,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: '500',
-    color: theme.colors.primary[500],
   },
   gridContainer: {
     flexDirection: 'row',
@@ -1143,11 +1123,9 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   serviceCard: {
-    backgroundColor: '#f8fafc',
-    borderRadius: 16,
-    padding: 18,
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.lg,
     borderWidth: 2,
-    borderColor: '#2563eb',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -1167,16 +1145,13 @@ const styles = StyleSheet.create({
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
   },
   serviceDurationChip: {
     marginTop: 3,
     fontSize: 11,
-    color: '#64748b',
   },
   serviceDurationChipText: {
     fontSize: 11,
-    color: '#64748b',
     fontWeight: '500',
   },
   servicePriceTag: {
@@ -1185,12 +1160,9 @@ const styles = StyleSheet.create({
   servicePriceAmount: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563eb',
   },
   serviceDescription: {
     fontSize: 14,
-    color: '#64748b',
-    marginTop: 12,
     lineHeight: 20,
     flex: 1,
   },
@@ -1198,11 +1170,9 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   reviewCard: {
-    backgroundColor: '#f8fafc',
     borderRadius: 16,
     padding: 18,
     borderWidth: 2,
-    borderColor: '#2563eb',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -1212,49 +1182,49 @@ const styles = StyleSheet.create({
   },
   reviewHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 12,
+    position: 'relative',
+    paddingRight: 40,
+    minWidth: 0,
   },
   reviewerInfo: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
     flex: 1,
+    minWidth: 0,
   },
   reviewerAvatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.primary[500],
     justifyContent: 'center',
     alignItems: 'center',
   },
   reviewerInitials: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.white,
   },
   reviewerTextBlock: {
     flex: 1,
+    minWidth: 0,
   },
   reviewerName: {
     fontSize: 15,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: 4,
   },
   reviewMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'wrap',
+    flexWrap: 'nowrap',
   },
   reviewRatingPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FEF3C7',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 8,
@@ -1262,7 +1232,6 @@ const styles = StyleSheet.create({
   reviewRatingText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#92400E',
   },
   reviewStars: {
     flexDirection: 'row',
@@ -1270,18 +1239,20 @@ const styles = StyleSheet.create({
   },
   reviewDate: {
     fontSize: 12,
-    color: theme.colors.neutral[500],
   },
   reviewActions: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
     flexDirection: 'row',
-    gap: 8,
+    gap: 4,
+    alignItems: 'flex-start',
   },
   editButton: {
     padding: 4,
   },
   deleteButton: {
     padding: 4,
-    marginLeft: 8,
   },
   flagButton: {
     padding: 4,
@@ -1289,7 +1260,6 @@ const styles = StyleSheet.create({
   reviewComment: {
     fontSize: 14,
     lineHeight: 20,
-    color: theme.colors.neutral[700],
     marginTop: 12,
     flex: 1,
   },
@@ -1299,19 +1269,15 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',
     gap: theme.spacing.md,
-    backgroundColor: theme.colors.white,
     padding: theme.spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.neutral[200],
   },
   messageButton: {
-    backgroundColor: theme.colors.white,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.xl,
     borderRadius: theme.radii.md,
@@ -1320,16 +1286,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: theme.spacing.sm,
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
     flex: 1,
   },
   messageButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.primary[500],
   },
   bookButton: {
-    backgroundColor: theme.colors.primary[500],
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.xl,
     borderRadius: theme.radii.md,
@@ -1339,6 +1302,5 @@ const styles = StyleSheet.create({
   bookButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.white,
   },
 });

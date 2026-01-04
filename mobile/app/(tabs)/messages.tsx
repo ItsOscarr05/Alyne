@@ -12,6 +12,7 @@ import { useCallback } from 'react';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -21,6 +22,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme: themeHook } = useTheme();
   const { onMessage } = useSocket();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,15 +149,15 @@ export default function MessagesScreen() {
 
   if (loading && conversations.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <FlatList
           data={[]}
           ListHeaderComponent={
             <>
               <View style={styles.header}>
-                <Text style={styles.title}>Messages</Text>
+                <Text style={[styles.title, { color: themeHook.colors.text }]}>Messages</Text>
               </View>
-              <View style={styles.headerDivider} />
+              <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
               <View style={styles.searchContainer}>
                 <SearchBar
                   value={searchQuery}
@@ -167,9 +169,9 @@ export default function MessagesScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={160} color="#3B82F6" />
-              <Text style={styles.emptyTitle}>Loading conversations...</Text>
-              <Text style={styles.emptyText}>
+              <Ionicons name="chatbubbles-outline" size={160} color={themeHook.colors.primary} />
+              <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>Loading conversations...</Text>
+              <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                 We&apos;re fetching your recent chats with providers.
               </Text>
             </View>
@@ -182,15 +184,15 @@ export default function MessagesScreen() {
 
   if (conversations.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <FlatList
           data={[]}
           ListHeaderComponent={
             <>
               <View style={styles.header}>
-                <Text style={styles.title}>Messages</Text>
+                <Text style={[styles.title, { color: themeHook.colors.text }]}>Messages</Text>
               </View>
-              <View style={styles.headerDivider} />
+              <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
               <View style={styles.searchContainer}>
                 <SearchBar
                   value={searchQuery}
@@ -202,9 +204,9 @@ export default function MessagesScreen() {
           }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={160} color="#3B82F6" />
-              <Text style={styles.emptyTitle}>No messages yet</Text>
-              <Text style={styles.emptyText}>
+              <Ionicons name="chatbubbles-outline" size={160} color={themeHook.colors.primary} />
+              <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No messages yet</Text>
+              <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                 Start a conversation with a provider to discuss bookings and services
               </Text>
             </View>
@@ -219,7 +221,7 @@ export default function MessagesScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <FlatList
         data={filteredConversations}
         keyExtractor={(item) => item.id}
@@ -232,9 +234,9 @@ export default function MessagesScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.header}>
-              <Text style={styles.title}>Messages</Text>
+              <Text style={[styles.title, { color: themeHook.colors.text }]}>Messages</Text>
             </View>
-            <View style={styles.headerDivider} />
+            <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
             <View style={styles.searchContainer}>
               <SearchBar
                 value={searchQuery}
@@ -252,9 +254,9 @@ export default function MessagesScreen() {
         ListEmptyComponent={
           searchQuery.trim() ? (
             <View style={styles.emptyState}>
-              <Ionicons name="search-outline" size={80} color="#94a3b8" />
-              <Text style={styles.emptyTitle}>No conversations found</Text>
-              <Text style={styles.emptyText}>
+              <Ionicons name="search-outline" size={80} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No conversations found</Text>
+              <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                 No conversations match &quot;{searchQuery}&quot;
               </Text>
             </View>
@@ -268,7 +270,6 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
   },
   header: {
     paddingHorizontal: theme.spacing.xl,
@@ -277,7 +278,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
@@ -285,7 +285,6 @@ const styles = StyleSheet.create({
   title: {
     ...theme.typography.display,
     fontSize: 28,
-    color: theme.colors.neutral[900],
   },
   listContent: {
     paddingHorizontal: theme.spacing.xl,
@@ -304,13 +303,11 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginTop: theme.spacing.xl,
     marginBottom: theme.spacing.sm,
   },
   emptyText: {
     fontSize: 14,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
     lineHeight: 20,
     maxWidth: 280,

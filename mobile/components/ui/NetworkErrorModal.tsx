@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Modal } from './Modal';
 import { theme } from '../../theme';
 import { Button } from './Button';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface NetworkErrorModalProps {
   visible: boolean;
@@ -18,6 +19,7 @@ export function NetworkErrorModal({
   onRetry,
   message = 'Unable to connect to the server. Please check your internet connection and try again.',
 }: NetworkErrorModalProps) {
+  const themeHook = useTheme();
   const handleRetry = () => {
     if (onRetry) {
       onRetry();
@@ -29,10 +31,10 @@ export function NetworkErrorModal({
     <Modal visible={visible} onClose={onClose}>
       <View style={styles.container}>
         <View style={styles.iconContainer}>
-          <Ionicons name="cloud-offline-outline" size={64} color={theme.colors.semantic.error} />
+          <Ionicons name="cloud-offline-outline" size={64} color={themeHook.colors.error} />
         </View>
-        <Text style={styles.title}>No Connection</Text>
-        <Text style={styles.message}>{message}</Text>
+        <Text style={[styles.title, { color: themeHook.colors.text }]}>No Connection</Text>
+        <Text style={[styles.message, { color: themeHook.colors.textSecondary }]}>{message}</Text>
         <View style={styles.buttonContainer}>
           {onRetry && (
             <Button
@@ -64,14 +66,12 @@ const styles = StyleSheet.create({
   },
   title: {
     ...theme.typography.h2,
-    color: theme.colors.neutral[900],
     textAlign: 'center',
     marginBottom: theme.spacing.md,
     fontWeight: '600',
   },
   message: {
     ...theme.typography.body,
-    color: theme.colors.neutral[700],
     textAlign: 'center',
     marginBottom: theme.spacing.xl,
     lineHeight: 22,

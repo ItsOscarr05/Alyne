@@ -1,6 +1,7 @@
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 interface SearchBarProps {
   value: string;
@@ -10,26 +11,28 @@ interface SearchBarProps {
 }
 
 export function SearchBar({ value, onChangeText, placeholder = 'Search providers...', onFilterPress }: SearchBarProps) {
+  const { theme: themeHook } = useTheme();
+  
   return (
     <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <Ionicons name="search" size={20} color="#64748b" style={styles.searchIcon} />
+      <View style={[styles.searchContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+        <Ionicons name="search" size={20} color={themeHook.colors.textTertiary} style={styles.searchIcon} />
         <TextInput
-          style={styles.input}
+          style={[styles.input, { color: themeHook.colors.text }]}
           placeholder={placeholder}
-          placeholderTextColor="#94a3b8"
+          placeholderTextColor={themeHook.colors.textTertiary}
           value={value}
           onChangeText={onChangeText}
         />
         {value.length > 0 && (
           <TouchableOpacity onPress={() => onChangeText('')} style={styles.clearButton}>
-            <Ionicons name="close-circle" size={20} color="#94a3b8" />
+            <Ionicons name="close-circle" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
       {onFilterPress && (
-        <TouchableOpacity style={styles.filterButton} onPress={onFilterPress}>
-          <Ionicons name="options-outline" size={20} color="#2563eb" />
+        <TouchableOpacity style={[styles.filterButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primaryLight }]} onPress={onFilterPress}>
+          <Ionicons name="options-outline" size={20} color={themeHook.colors.primary} />
         </TouchableOpacity>
       )}
     </View>
@@ -46,10 +49,8 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.neutral[50],
     borderRadius: theme.radii.md,
     borderWidth: 1,
-    borderColor: theme.colors.neutral[200],
   },
   searchIcon: {
     marginLeft: theme.spacing.md,
@@ -59,7 +60,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.sm,
     fontSize: 16,
-    color: theme.colors.neutral[900],
   },
   clearButton: {
     padding: theme.spacing.sm,
@@ -68,11 +68,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: theme.radii.md,
-    backgroundColor: theme.colors.primary[50],
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#dbeafe',
   },
 });
 

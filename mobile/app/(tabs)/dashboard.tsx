@@ -17,6 +17,7 @@ import { bookingService, BookingDetail } from '../../services/booking';
 import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { formatTime12Hour } from '../../utils/timeUtils';
 
 // Animated bar component for smooth transitions
@@ -28,6 +29,7 @@ function AnimatedBar({
   isFocused,
   onPressIn,
   onPressOut,
+  textColor,
 }: {
   height: number;
   color: string;
@@ -36,6 +38,7 @@ function AnimatedBar({
   isFocused: boolean;
   onPressIn: () => void;
   onPressOut: () => void;
+  textColor: string;
 }) {
   const animatedHeight = useRef(new Animated.Value(height)).current;
   const animatedScale = useRef(new Animated.Value(1)).current;
@@ -78,7 +81,7 @@ function AnimatedBar({
           ]}
         />
       </View>
-      <Text style={styles.chartLabel}>{monthName}</Text>
+      <Text style={[styles.chartLabel, { color: textColor }]}>{monthName}</Text>
     </TouchableOpacity>
   );
 }
@@ -87,6 +90,7 @@ export default function ProviderDashboardScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { onBookingUpdate } = useSocket();
+  const { theme: themeHook } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
@@ -238,14 +242,19 @@ export default function ProviderDashboardScreen() {
           oldStatus = booking.status;
           oldPaymentStatus = booking.payment?.status;
           scheduledDate = booking.scheduledDate;
-          if (booking.status !== data.status || booking.payment?.status !== data.booking?.payment?.status) {
+          if (
+            booking.status !== data.status ||
+            booking.payment?.status !== data.booking?.payment?.status
+          ) {
             // Status or payment status changed, update the booking
             return prev.map((b) =>
               b.id === data.bookingId
                 ? {
                     ...b,
                     status: data.status as any,
-                    ...(data.booking?.payment && { payment: { ...b.payment, ...data.booking.payment } }),
+                    ...(data.booking?.payment && {
+                      payment: { ...b.payment, ...data.booking.payment },
+                    }),
                   }
                 : b
             );
@@ -348,7 +357,7 @@ export default function ProviderDashboardScreen() {
       case 'DECLINED':
         return '#ef4444';
       default:
-        return theme.colors.primary[500];
+        return themeHook.colors.primary;
     }
   };
 
@@ -361,16 +370,16 @@ export default function ProviderDashboardScreen() {
   // Show loading state while auth is loading or data is loading
   if (authLoading || isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary[500]} />
+          <ActivityIndicator size="large" color={themeHook.colors.primary} />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView
         style={styles.content}
         contentContainerStyle={styles.contentContainer}
@@ -379,26 +388,35 @@ export default function ProviderDashboardScreen() {
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View>
-              <Text style={styles.title}>Dashboard</Text>
-              <Text style={styles.subtitle}>Welcome back, {user?.firstName}</Text>
+              <Text style={[styles.title, { color: themeHook.colors.text }]}>Dashboard</Text>
+              <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>
+                Welcome back, {user?.firstName}
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.headerSettingsButton}
+              style={[styles.headerSettingsButton, { backgroundColor: themeHook.colors.surface }]}
               onPress={() => router.push('/settings')}
               activeOpacity={0.7}
             >
-              <Ionicons name="settings-outline" size={22} color={theme.colors.primary[500]} />
+              <Ionicons name="settings-outline" size={22} color={themeHook.colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         {/* Hero Section - Key Metrics */}
         <View style={styles.heroSection}>
-          <View style={styles.heroCard}>
+          <View
+            style={[
+              styles.heroCard,
+              { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary },
+            ]}
+          >
             <View style={styles.heroContent}>
               <View style={styles.heroMain}>
-                <Text style={styles.heroLabel}>Total Earnings</Text>
-                <Text style={styles.heroValue}>
+                <Text style={[styles.heroLabel, { color: themeHook.colors.textSecondary }]}>
+                  Total Earnings
+                </Text>
+                <Text style={[styles.heroValue, { color: themeHook.colors.text }]}>
                   $
                   {stats.totalEarnings.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
@@ -408,10 +426,20 @@ export default function ProviderDashboardScreen() {
                 {stats.averageRating > 0 && (
                   <View style={styles.heroRatingInline}>
                     <Ionicons name="star" size={16} color="#fbbf24" />
-                    <Text style={[styles.heroRatingValueInline, { marginLeft: theme.spacing.xs }]}>
+                    <Text
+                      style={[
+                        styles.heroRatingValueInline,
+                        { marginLeft: theme.spacing.xs, color: themeHook.colors.text },
+                      ]}
+                    >
                       {stats.averageRating.toFixed(1)}
                     </Text>
-                    <Text style={[styles.heroRatingLabelInline, { marginLeft: theme.spacing.xs }]}>
+                    <Text
+                      style={[
+                        styles.heroRatingLabelInline,
+                        { marginLeft: theme.spacing.xs, color: themeHook.colors.textSecondary },
+                      ]}
+                    >
                       ({stats.totalReviews})
                     </Text>
                   </View>
@@ -419,14 +447,20 @@ export default function ProviderDashboardScreen() {
               </View>
               <View style={[styles.heroChart, { marginLeft: theme.spacing.lg }]}>
                 <View style={styles.chartHeader}>
-                  <Text style={styles.chartTitle}>Last {timeRange}M</Text>
+                  <Text style={[styles.chartTitle, { color: themeHook.colors.text }]}>
+                    Last {timeRange}M
+                  </Text>
                   <View style={styles.timeRangePills}>
                     {([1, 3, 6, 12] as const).map((months, index) => (
                       <TouchableOpacity
                         key={months}
                         style={[
                           styles.timeRangePill,
+                          { backgroundColor: themeHook.colors.surface },
                           timeRange === months && styles.timeRangePillActive,
+                          timeRange === months && {
+                            backgroundColor: themeHook.colors.surfaceElevated,
+                          },
                           index > 0 && { marginLeft: theme.spacing.xs },
                         ]}
                         onPress={() => setTimeRange(months)}
@@ -435,7 +469,9 @@ export default function ProviderDashboardScreen() {
                         <Text
                           style={[
                             styles.timeRangePillText,
+                            { color: themeHook.colors.textSecondary },
                             timeRange === months && styles.timeRangePillTextActive,
+                            timeRange === months && { color: themeHook.colors.text },
                           ]}
                         >
                           {months}M
@@ -509,8 +545,8 @@ export default function ProviderDashboardScreen() {
                       const barHeight = month.hasData ? Math.max(height, 2) : 2;
                       const barColor =
                         month.hasData && month.earnings > 0
-                          ? theme.colors.primary[500]
-                          : theme.colors.neutral[200];
+                          ? themeHook.colors.primary
+                          : themeHook.colors.border;
 
                       return (
                         <View key={index} style={index > 0 ? { marginLeft: theme.spacing.sm } : {}}>
@@ -520,25 +556,26 @@ export default function ProviderDashboardScreen() {
                             monthName={month.monthName}
                             earnings={month.earnings}
                             isFocused={focusedBarIndex === index}
+                            textColor={themeHook.colors.textSecondary}
                             onPressIn={() => {
-                            if (month.hasData && month.earnings > 0) {
-                              setFocusedBarIndex(index);
-                              // Calculate tooltip position (approximate)
-                              const barWidth = 24; // Approximate bar width
-                              const spacing = 4; // Gap between bars
-                              const x = index * (barWidth + spacing) + barWidth / 2;
-                              setTooltipData({
-                                monthName: month.monthName,
-                                earnings: month.earnings,
-                                x,
-                                y: barHeight, // Position above the bar
-                              });
-                            }
-                          }}
-                          onPressOut={() => {
-                            setFocusedBarIndex(null);
-                            setTooltipData(null);
-                          }}
+                              if (month.hasData && month.earnings > 0) {
+                                setFocusedBarIndex(index);
+                                // Calculate tooltip position (approximate)
+                                const barWidth = 24; // Approximate bar width
+                                const spacing = 4; // Gap between bars
+                                const x = index * (barWidth + spacing) + barWidth / 2;
+                                setTooltipData({
+                                  monthName: month.monthName,
+                                  earnings: month.earnings,
+                                  x,
+                                  y: barHeight, // Position above the bar
+                                });
+                              }
+                            }}
+                            onPressOut={() => {
+                              setFocusedBarIndex(null);
+                              setTooltipData(null);
+                            }}
                           />
                         </View>
                       );
@@ -547,11 +584,12 @@ export default function ProviderDashboardScreen() {
                 </View>
               </View>
             </View>
-            <View style={styles.heroDivider} />
             <View style={styles.heroMetrics}>
               <View style={styles.heroMetric}>
-                <Text style={styles.heroMetricLabel}>This Month</Text>
-                <Text style={styles.heroMetricValue}>
+                <Text style={[styles.heroMetricLabel, { color: themeHook.colors.textSecondary }]}>
+                  This Month
+                </Text>
+                <Text style={[styles.heroMetricValue, { color: themeHook.colors.text }]}>
                   $
                   {stats.thisMonthEarnings.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
@@ -559,10 +597,14 @@ export default function ProviderDashboardScreen() {
                   })}
                 </Text>
               </View>
-              <View style={styles.heroMetricDivider} />
+              <View
+                style={[styles.heroMetricDivider, { backgroundColor: themeHook.colors.border }]}
+              />
               <View style={styles.heroMetric}>
-                <Text style={styles.heroMetricLabel}>Avg. Booking</Text>
-                <Text style={styles.heroMetricValue}>
+                <Text style={[styles.heroMetricLabel, { color: themeHook.colors.textSecondary }]}>
+                  Avg. Booking
+                </Text>
+                <Text style={[styles.heroMetricValue, { color: themeHook.colors.text }]}>
                   $
                   {stats.averageBookingValue.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
@@ -576,10 +618,16 @@ export default function ProviderDashboardScreen() {
 
         {/* Booking Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Booking Overview</Text>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>
+            Booking Overview
+          </Text>
           <View style={styles.statsGrid}>
             <TouchableOpacity
-              style={[styles.statCard, styles.statCardPending]}
+              style={[
+                styles.statCard,
+                styles.statCardPending,
+                { backgroundColor: themeHook.colors.surface },
+              ]}
               onPress={() => {
                 router.push({
                   pathname: '/(tabs)/bookings',
@@ -591,12 +639,20 @@ export default function ProviderDashboardScreen() {
               <View style={styles.statIconContainer}>
                 <Ionicons name="time-outline" size={22} color="#F59E0B" />
               </View>
-              <Text style={styles.statValue}>{stats.pendingBookings}</Text>
-              <Text style={styles.statLabel}>Pending</Text>
+              <Text style={[styles.statValue, { color: themeHook.colors.text }]}>
+                {stats.pendingBookings}
+              </Text>
+              <Text style={[styles.statLabel, { color: themeHook.colors.textSecondary }]}>
+                Pending
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.statCard, styles.statCardUpcoming, { marginLeft: theme.spacing.md }]}
+              style={[
+                styles.statCard,
+                styles.statCardUpcoming,
+                { marginLeft: theme.spacing.md, backgroundColor: themeHook.colors.surface },
+              ]}
               onPress={() => {
                 router.push({
                   pathname: '/(tabs)/bookings',
@@ -608,12 +664,20 @@ export default function ProviderDashboardScreen() {
               <View style={styles.statIconContainer}>
                 <Ionicons name="calendar-outline" size={22} color="#9333EA" />
               </View>
-              <Text style={styles.statValue}>{stats.upcomingBookings}</Text>
-              <Text style={styles.statLabel}>Upcoming</Text>
+              <Text style={[styles.statValue, { color: themeHook.colors.text }]}>
+                {stats.upcomingBookings}
+              </Text>
+              <Text style={[styles.statLabel, { color: themeHook.colors.textSecondary }]}>
+                Upcoming
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.statCard, styles.statCardCompleted, { marginLeft: theme.spacing.md }]}
+              style={[
+                styles.statCard,
+                styles.statCardCompleted,
+                { marginLeft: theme.spacing.md, backgroundColor: themeHook.colors.surface },
+              ]}
               onPress={() => {
                 router.push({
                   pathname: '/(tabs)/bookings',
@@ -625,8 +689,12 @@ export default function ProviderDashboardScreen() {
               <View style={styles.statIconContainer}>
                 <Ionicons name="checkmark-circle-outline" size={22} color="#16A34A" />
               </View>
-              <Text style={styles.statValue}>{stats.completedBookings}</Text>
-              <Text style={styles.statLabel}>Completed</Text>
+              <Text style={[styles.statValue, { color: themeHook.colors.text }]}>
+                {stats.completedBookings}
+              </Text>
+              <Text style={[styles.statLabel, { color: themeHook.colors.textSecondary }]}>
+                Completed
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -634,10 +702,12 @@ export default function ProviderDashboardScreen() {
         {/* Recent Bookings */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Bookings</Text>
+            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>
+              Recent Bookings
+            </Text>
             {recentBookings.length > 0 && (
               <TouchableOpacity onPress={() => router.push('/(tabs)/bookings')}>
-                <Text style={styles.seeAllText}>See All</Text>
+                <Text style={[styles.seeAllText, { color: themeHook.colors.text }]}>See All</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -682,7 +752,10 @@ export default function ProviderDashboardScreen() {
                   key={booking.id}
                   style={[
                     styles.bookingItem,
-                    { borderColor: getBookingBorderColor(booking.status) },
+                    {
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor: getBookingBorderColor(booking.status),
+                    },
                   ]}
                   onPress={() => handleBookingPress(booking.id)}
                   activeOpacity={0.8}
@@ -692,47 +765,70 @@ export default function ProviderDashboardScreen() {
                     {booking.client?.profilePhoto ? (
                       <View style={styles.avatarImage} />
                     ) : (
-                      <View style={styles.avatarPlaceholder}>
-                        <Text style={styles.avatarText}>{clientInitials}</Text>
+                      <View
+                        style={[
+                          styles.avatarPlaceholder,
+                          { backgroundColor: themeHook.colors.primaryLight },
+                        ]}
+                      >
+                        <Text style={[styles.avatarText, { color: themeHook.colors.primary }]}>
+                          {clientInitials}
+                        </Text>
                       </View>
                     )}
                   </View>
 
                   <View style={[styles.bookingInfo, { marginLeft: theme.spacing.md }]}>
-                    <Text style={styles.bookingService}>
+                    <Text style={[styles.bookingService, { color: themeHook.colors.text }]}>
                       {booking.service?.name || 'Service'}
                       {providerAmount !== null && (
-                        <Text style={styles.bookingPrice}>: ${providerAmount.toFixed(2)}</Text>
+                        <Text style={[styles.bookingPrice, { color: themeHook.colors.primary }]}>
+                          : ${providerAmount.toFixed(2)}
+                        </Text>
                       )}
                     </Text>
-                    <Text style={styles.bookingClient}>
+                    <Text style={[styles.bookingClient, { color: themeHook.colors.text }]}>
                       {booking.client?.firstName} {booking.client?.lastName}
                     </Text>
                     <View style={styles.bookingMeta}>
-                      <Ionicons
-                        name="calendar-outline"
-                        size={14}
-                        color={theme.colors.neutral[500]}
-                      />
-                      <Text style={styles.bookingDate}>
+                      <Ionicons name="calendar-outline" size={14} color={themeHook.colors.text} />
+                      <Text style={[styles.bookingDate, { color: themeHook.colors.text }]}>
                         {dateText} at {formatTime12Hour(booking.scheduledTime)}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.bookingRight}>
                     <View style={[styles.statusBadge, styles[`status${booking.status}`]]}>
-                      <Text style={styles.statusText}>{booking.status}</Text>
+                      <Text
+                        style={[
+                          styles.statusText,
+                          {
+                            color:
+                              booking.status === 'COMPLETED' ? '#000000' : themeHook.colors.text,
+                          },
+                        ]}
+                      >
+                        {booking.status}
+                      </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={20} color={theme.colors.neutral[500]} />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={20}
+                      color={themeHook.colors.textTertiary}
+                    />
                   </View>
                 </TouchableOpacity>
               );
             })
           ) : (
-            <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={48} color={theme.colors.neutral[500]} />
-              <Text style={styles.emptyStateText}>No bookings yet</Text>
-              <Text style={styles.emptyStateSubtext}>Your recent bookings will appear here</Text>
+            <View style={[styles.emptyState, { backgroundColor: themeHook.colors.surface }]}>
+              <Ionicons name="calendar-outline" size={48} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.emptyStateText, { color: themeHook.colors.text }]}>
+                No bookings yet
+              </Text>
+              <Text style={[styles.emptyStateSubtext, { color: themeHook.colors.textSecondary }]}>
+                Your recent bookings will appear here
+              </Text>
             </View>
           )}
         </View>
@@ -752,7 +848,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: theme.colors.neutral[200],
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
@@ -766,19 +861,16 @@ const styles = StyleSheet.create({
     ...theme.typography.h1,
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs / 2,
   },
   subtitle: {
     ...theme.typography.body,
     fontSize: 14,
-    color: theme.colors.neutral[500],
   },
   headerSettingsButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: theme.colors.neutral[50],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -799,11 +891,9 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.xl,
   },
   heroCard: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
-    padding: theme.spacing.xl,
+    padding: theme.spacing.lg,
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
     ...theme.shadows.card,
   },
   heroContent: {
@@ -811,6 +901,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: theme.spacing.lg,
+    borderBottomWidth: 0,
+    borderBottomColor: 'transparent',
   },
   heroMain: {
     flex: 1,
@@ -818,14 +910,12 @@ const styles = StyleSheet.create({
   heroLabel: {
     ...theme.typography.body,
     fontSize: 14,
-    color: theme.colors.neutral[500],
     marginBottom: theme.spacing.xs,
   },
   heroValue: {
     ...theme.typography.display,
     fontSize: 36,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
   },
   heroRatingInline: {
     flexDirection: 'row',
@@ -835,17 +925,16 @@ const styles = StyleSheet.create({
   heroRatingValueInline: {
     ...theme.typography.body,
     fontSize: 14,
-    color: theme.colors.neutral[700],
     fontWeight: '600',
   },
   heroRatingLabelInline: {
     ...theme.typography.caption,
     fontSize: 12,
-    color: theme.colors.neutral[500],
   },
   heroChart: {
     width: 400,
     alignItems: 'flex-end',
+    borderBottomWidth: 0,
   },
   chartHeader: {
     width: '100%',
@@ -855,7 +944,6 @@ const styles = StyleSheet.create({
   chartTitle: {
     ...theme.typography.caption,
     fontSize: 12,
-    color: theme.colors.neutral[500],
     marginBottom: theme.spacing.xs,
     textAlign: 'right',
   },
@@ -867,21 +955,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
     borderRadius: theme.radii.full,
-    backgroundColor: theme.colors.neutral[50],
   },
   timeRangePillActive: {
-    backgroundColor: theme.colors.white,
     ...theme.shadows.card,
   },
   timeRangePillText: {
     fontSize: 11,
     fontWeight: '500',
-    color: theme.colors.neutral[500],
   },
   timeRangePillTextActive: {
     fontSize: 11,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
   },
   chartContainer: {
     flexDirection: 'row',
@@ -889,6 +973,7 @@ const styles = StyleSheet.create({
     height: 100,
     width: '100%',
     position: 'relative',
+    borderBottomWidth: 0,
   },
   chartBarContainer: {
     flex: 1,
@@ -905,7 +990,6 @@ const styles = StyleSheet.create({
   chartBar: {
     width: '100%',
     minHeight: 2,
-    backgroundColor: theme.colors.neutral[200],
     borderRadius: theme.radii.sm,
     borderTopLeftRadius: theme.radii.sm,
     borderTopRightRadius: theme.radii.sm,
@@ -913,12 +997,10 @@ const styles = StyleSheet.create({
   chartLabel: {
     ...theme.typography.caption,
     fontSize: 11,
-    color: theme.colors.neutral[500],
     textAlign: 'center',
   },
   tooltip: {
     position: 'absolute',
-    backgroundColor: theme.colors.neutral[900],
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.md,
@@ -930,14 +1012,12 @@ const styles = StyleSheet.create({
   tooltipMonth: {
     ...theme.typography.caption,
     fontSize: 11,
-    color: theme.colors.white,
     marginBottom: 2,
     fontWeight: '600',
   },
   tooltipAmount: {
     ...theme.typography.body,
     fontSize: 13,
-    color: theme.colors.white,
     fontWeight: '700',
   },
   chartEmpty: {
@@ -949,40 +1029,31 @@ const styles = StyleSheet.create({
   chartEmptyText: {
     ...theme.typography.caption,
     fontSize: 11,
-    color: theme.colors.neutral[500],
-  },
-  heroDivider: {
-    height: 1,
-    backgroundColor: theme.colors.neutral[200],
-    marginVertical: theme.spacing.lg,
   },
   heroMetrics: {
     flexDirection: 'row',
+    marginTop: theme.spacing.md,
   },
   heroMetric: {
     flex: 1,
   },
   heroMetricLabel: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
     marginBottom: theme.spacing.xs,
   },
   heroMetricValue: {
     ...theme.typography.h2,
     fontSize: 18,
-    color: theme.colors.neutral[900],
     fontWeight: '600',
   },
   heroMetricDivider: {
     width: 1,
-    backgroundColor: theme.colors.neutral[200],
   },
   statsGrid: {
     flexDirection: 'row',
   },
   statCard: {
     flex: 1,
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
@@ -1006,12 +1077,10 @@ const styles = StyleSheet.create({
   statValue: {
     ...theme.typography.h1,
     fontSize: 24,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs,
   },
   statLabel: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -1027,19 +1096,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...theme.typography.h2,
     fontSize: 18,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.md,
     fontWeight: '600',
   },
   seeAllText: {
     ...theme.typography.body,
-    color: theme.colors.primary[500],
     fontWeight: '600',
   },
   bookingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     marginBottom: theme.spacing.sm,
@@ -1052,17 +1118,17 @@ const styles = StyleSheet.create({
   bookingService: {
     ...theme.typography.body,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs,
+    // Color is set via inline styles for theme support
   },
   bookingClient: {
     ...theme.typography.body,
-    color: theme.colors.neutral[700],
     marginBottom: theme.spacing.xs,
+    // Color is set via inline styles for theme support
   },
   bookingDate: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
+    // Color is set via inline styles for theme support
   },
   statusBadge: {
     paddingHorizontal: theme.spacing.sm,
@@ -1097,7 +1163,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: theme.colors.primary[50],
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1105,7 +1170,6 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.primary[600],
   },
   avatarImage: {
     width: 48,
@@ -1117,7 +1181,6 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.primary[600],
   },
   bookingMeta: {
     flexDirection: 'row',

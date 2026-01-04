@@ -2,10 +2,12 @@ import { useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function Index() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useAuth();
+  const themeHook = useTheme();
 
   useEffect(() => {
     if (!isLoading) {
@@ -19,17 +21,17 @@ export default function Index() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#2563eb" />
-        <Text style={styles.subtitle}>Loading...</Text>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+        <ActivityIndicator size="large" color={themeHook.colors.primary} />
+        <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>Loading...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Alyne</Text>
-      <Text style={styles.subtitle}>Connecting Wellness</Text>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <Text style={[styles.title, { color: themeHook.colors.primary }]}>Alyne</Text>
+      <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>Connecting Wellness</Text>
     </View>
   );
 }
@@ -39,17 +41,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
   },
   title: {
     fontSize: 48,
     fontWeight: 'bold',
-    color: '#2563eb',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#64748b',
   },
 });
 

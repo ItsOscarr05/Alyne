@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react
 import { useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { ANIMATION_DURATIONS } from '../utils/animations';
 
 export interface ProviderCardData {
@@ -23,6 +24,7 @@ interface ProviderCardProps {
 }
 
 export function ProviderCard({ provider, onPress }: ProviderCardProps) {
+  const themeHook = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -68,7 +70,7 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
     const emptyStars = 5 - Math.ceil(rating);
     for (let i = 0; i < emptyStars; i++) {
       stars.push(
-        <Ionicons key={`empty-${i}`} name="star-outline" size={14} color="#d1d5db" />
+        <Ionicons key={`empty-${i}`} name="star-outline" size={14} color={themeHook.colors.textTertiary} />
       );
     }
 
@@ -78,7 +80,7 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
-        style={styles.card}
+        style={[styles.card, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -91,29 +93,29 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
             {provider.profilePhoto ? (
               <Image 
                 source={{ uri: provider.profilePhoto }} 
-                style={styles.avatar}
+                style={[styles.avatar, { borderColor: themeHook.colors.primary }]}
                 contentFit="cover"
                 transition={200}
                 placeholder={{ blurhash: 'LGF5]+Yk^6#M@-5c,1J5@[or[Q6.' }}
                 cachePolicy="memory-disk"
               />
             ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons name="person" size={32} color={theme.colors.neutral[500]} />
+              <View style={[styles.avatarPlaceholder, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
+                <Ionicons name="person" size={32} color={themeHook.colors.textSecondary} />
               </View>
             )}
             {provider.isAvailableNow && (
-              <View style={styles.availableIndicator} />
+              <View style={[styles.availableIndicator, { backgroundColor: themeHook.colors.success, borderColor: themeHook.colors.surface }]} />
             )}
           </View>
           
           <View style={styles.nameSection}>
-            <Text style={styles.name} numberOfLines={1}>
+            <Text style={[styles.name, { color: themeHook.colors.text }]} numberOfLines={1}>
               {provider.name}
             </Text>
             <View style={styles.distanceRow}>
-              <Ionicons name="location" size={14} color={theme.colors.neutral[500]} />
-              <Text style={styles.distance}>{formatDistance(provider.distance)}</Text>
+              <Ionicons name="location" size={14} color={themeHook.colors.textSecondary} />
+              <Text style={[styles.distance, { color: themeHook.colors.textSecondary }]}>{formatDistance(provider.distance)}</Text>
             </View>
           </View>
         </View>
@@ -121,19 +123,19 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
         {/* Specialties Row */}
         <View style={styles.specialtiesRow}>
           {provider.specialties.slice(0, 3).map((specialty, index) => (
-            <View key={index} style={styles.specialtyTag}>
-              <Text style={styles.specialtyText}>{specialty}</Text>
+            <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
+              <Text style={[styles.specialtyText, { color: themeHook.colors.primary }]}>{specialty}</Text>
             </View>
           ))}
           {provider.specialties.length > 3 && (
-            <Text style={styles.moreSpecialties}>+{provider.specialties.length - 3} more</Text>
+            <Text style={[styles.moreSpecialties, { color: themeHook.colors.textSecondary }]}>+{provider.specialties.length - 3} more</Text>
           )}
         </View>
 
         {/* Bio Section */}
         {provider.bio && (
           <View style={styles.bioSection}>
-            <Text style={styles.bioText} numberOfLines={4} ellipsizeMode="tail">
+            <Text style={[styles.bioText, { color: themeHook.colors.textSecondary }]} numberOfLines={4} ellipsizeMode="tail">
               {provider.bio}
             </Text>
           </View>
@@ -143,21 +145,21 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
         <View style={styles.spacer} />
 
         {/* Footer Row: Price and Rating */}
-        <View style={styles.footerRow}>
+        <View style={[styles.footerRow, { borderTopColor: themeHook.colors.border }]}>
           {provider.startingPrice > 0 && (
             <View style={styles.priceContainer}>
-              <Text style={styles.priceText}>Starting at ${provider.startingPrice.toFixed(0)}</Text>
+              <Text style={[styles.priceText, { color: themeHook.colors.primary }]}>Starting at ${provider.startingPrice.toFixed(0)}</Text>
             </View>
           )}
           <View style={styles.footerRight}>
             {provider.reviewCount > 0 ? (
               <View style={styles.ratingRow}>
                 <View style={styles.stars}>{renderStars(provider.rating)}</View>
-                <Text style={styles.ratingValue}>{provider.rating.toFixed(1)}</Text>
-                <Text style={styles.reviewCount}>({provider.reviewCount} reviews)</Text>
+                <Text style={[styles.ratingValue, { color: themeHook.colors.text }]}>{provider.rating.toFixed(1)}</Text>
+                <Text style={[styles.reviewCount, { color: themeHook.colors.textSecondary }]}>({provider.reviewCount} reviews)</Text>
               </View>
             ) : (
-              <Text style={styles.noReviews}>No reviews yet</Text>
+              <Text style={[styles.noReviews, { color: themeHook.colors.textSecondary }]}>No reviews yet</Text>
             )}
           </View>
         </View>
@@ -169,11 +171,9 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     ...theme.shadows.card,
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
     height: 280,
   },
   content: {
@@ -193,19 +193,15 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: theme.colors.neutral[50],
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
   },
   avatarPlaceholder: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: theme.colors.neutral[50],
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: theme.colors.primary[500],
   },
   availableIndicator: {
     position: 'absolute',
@@ -214,9 +210,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: theme.colors.semantic.success,
     borderWidth: 2,
-    borderColor: theme.colors.white,
   },
   nameSection: {
     flex: 1,
@@ -225,7 +219,6 @@ const styles = StyleSheet.create({
   name: {
     ...theme.typography.h2,
     fontSize: 18,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs,
   },
   distanceRow: {
@@ -235,7 +228,6 @@ const styles = StyleSheet.create({
   },
   distance: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
   },
   specialtiesRow: {
     flexDirection: 'row',
@@ -251,14 +243,12 @@ const styles = StyleSheet.create({
   bioText: {
     ...theme.typography.body,
     fontSize: 13,
-    color: theme.colors.neutral[600],
     lineHeight: 18,
   },
   spacer: {
     flex: 1,
   },
   specialtyTag: {
-    backgroundColor: theme.colors.primary[50],
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.full,
@@ -266,12 +256,10 @@ const styles = StyleSheet.create({
   specialtyText: {
     ...theme.typography.caption,
     fontSize: 12,
-    color: theme.colors.primary[500],
     fontWeight: '500',
   },
   moreSpecialties: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
     fontStyle: 'italic',
   },
   footerRow: {
@@ -280,7 +268,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: theme.spacing.md,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.neutral[200],
     marginTop: theme.spacing.xs,
   },
   priceContainer: {
@@ -302,23 +289,19 @@ const styles = StyleSheet.create({
     ...theme.typography.body,
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
   },
   reviewCount: {
     ...theme.typography.caption,
-    color: theme.colors.neutral[500],
   },
   noReviews: {
     ...theme.typography.body,
     fontSize: 14,
-    color: theme.colors.neutral[500],
     fontStyle: 'italic',
   },
   priceText: {
     ...theme.typography.body,
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.primary[500],
   },
 });
 

@@ -20,6 +20,7 @@ import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError } from '../../utils/errorMessages';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { ProviderDetailModal } from '../../components/ProviderDetailModal';
@@ -46,6 +47,7 @@ interface ProviderProfile {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, deleteAccount, refreshUser } = useAuth();
+  const { theme: themeHook } = useTheme();
   const modal = useModal();
   const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -247,14 +249,14 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
         <View style={styles.header}>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: themeHook.colors.text }]}>
             {user?.userType === 'PROVIDER' ? 'Provider Profile' : 'Profile'}
           </Text>
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         {user && (
           <>
             {/* Hero Section - Provider Only */}
@@ -271,13 +273,14 @@ export default function ProfileScreen() {
                           style={[
                             styles.heroPatternCell,
                             (rowIndex + colIndex) % 2 === 0 && styles.heroPatternCellAlt,
+                            (rowIndex + colIndex) % 2 === 0 && { backgroundColor: themeHook.colors.primaryLight },
                           ]}
                         />
                       ))}
                     </View>
                   ))}
                   {/* Radial gradient effect */}
-                  <View style={styles.heroPatternRadial} />
+                  <View style={[styles.heroPatternRadial, { backgroundColor: themeHook.colors.primaryLight }]} />
                 </View>
                 <View style={styles.heroContent}>
                   <View style={styles.heroAvatarContainer}>
@@ -331,35 +334,35 @@ export default function ProfileScreen() {
                       )}
                     </TouchableOpacity>
                     {providerProfile && providerProfile.rating && providerProfile.rating > 0 && (
-                      <View style={styles.heroRatingBadge}>
+                      <View style={[styles.heroRatingBadge, { backgroundColor: themeHook.colors.white }]}>
                         <Ionicons name="star" size={14} color="#fbbf24" />
-                        <Text style={styles.heroRatingText}>
+                        <Text style={[styles.heroRatingText, { color: themeHook.colors.text }]}>
                           {providerProfile.rating.toFixed(1)}
                         </Text>
                         {providerProfile.reviewCount && providerProfile.reviewCount > 0 && (
-                          <Text style={styles.heroReviewCount}>
+                          <Text style={[styles.heroReviewCount, { color: themeHook.colors.textSecondary }]}>
                             ({providerProfile.reviewCount})
                           </Text>
                         )}
                       </View>
                     )}
                   </View>
-                  <Text style={styles.heroName}>
+                  <Text style={[styles.heroName, { color: themeHook.colors.text }]}>
                     {user.firstName} {user.lastName}
                   </Text>
                   <View style={styles.heroEmailContainer}>
-                    <Ionicons name="mail-outline" size={14} color={theme.colors.neutral[500]} />
-                    <Text style={styles.heroEmail}>{user.email}</Text>
+                    <Ionicons name="mail-outline" size={14} color={themeHook.colors.textSecondary} />
+                    <Text style={[styles.heroEmail, { color: themeHook.colors.textSecondary }]}>{user.email}</Text>
                   </View>
                 </View>
               </View>
             ) : (
-              <View style={styles.profileSection}>
-                <View style={styles.profileCard}>
+              <View style={[styles.profileSection, { backgroundColor: themeHook.colors.background }]}>
+                <View style={[styles.profileCard, { backgroundColor: themeHook.colors.surface }]}>
                   <View style={styles.profileHeader}>
                     <View style={styles.avatarWrapper}>
                       <TouchableOpacity
-                        style={styles.avatar}
+                        style={[styles.avatar, { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.surface }]}
                         onPress={pickImage}
                         disabled={isUpdatingPhoto}
                         onMouseEnter={() => Platform.OS === 'web' && setIsHoveringPhoto(true)}
@@ -388,7 +391,7 @@ export default function ProfileScreen() {
                           </>
                         ) : (
                           <>
-                            <Text style={styles.avatarText}>
+                            <Text style={[styles.avatarText, { color: themeHook.colors.white }]}>
                               {user.firstName[0]}
                               {user.lastName[0]}
                             </Text>
@@ -407,19 +410,19 @@ export default function ProfileScreen() {
                           </>
                         )}
                       </TouchableOpacity>
-                      <View style={styles.userTypeBadge}>
-                        <Ionicons name="person" size={12} color={theme.colors.white} />
-                        <Text style={styles.userTypeText}>Client</Text>
+                      <View style={[styles.userTypeBadge, { backgroundColor: themeHook.colors.primary }]}>
+                        <Ionicons name="person" size={12} color={themeHook.colors.white} />
+                        <Text style={[styles.userTypeText, { color: themeHook.colors.white }]}>Client</Text>
                       </View>
                     </View>
                   </View>
                   <View style={styles.profileInfo}>
-                    <Text style={styles.name}>
+                    <Text style={[styles.name, { color: themeHook.colors.text }]}>
                       {user.firstName} {user.lastName}
                     </Text>
                     <View style={styles.emailContainer}>
-                      <Ionicons name="mail-outline" size={16} color={theme.colors.neutral[500]} />
-                      <Text style={styles.email}>{user.email}</Text>
+                      <Ionicons name="mail-outline" size={16} color={themeHook.colors.textSecondary} />
+                      <Text style={[styles.email, { color: themeHook.colors.textSecondary }]}>{user.email}</Text>
                     </View>
                   </View>
                 </View>
@@ -428,10 +431,10 @@ export default function ProfileScreen() {
 
             {/* Quick Stats - Provider Only */}
             {user.userType === 'PROVIDER' && providerProfile && (
-              <View style={styles.quickStatsSection}>
+              <View style={[styles.quickStatsSection, { borderTopColor: themeHook.colors.border }]}>
                 <View style={styles.quickStatsGrid}>
                   <TouchableOpacity 
-                    style={[styles.quickStatCard, styles.quickStatCardServices]}
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }, styles.quickStatCardServices]}
                     onPress={() => {
                       setProviderDetailInitialTab('services');
                       setScrollToAvailability(false);
@@ -442,15 +445,15 @@ export default function ProfileScreen() {
                     <Ionicons
                       name="briefcase-outline"
                       size={24}
-                      color={theme.colors.primary[500]}
+                      color={themeHook.colors.primary}
                     />
-                    <Text style={styles.quickStatNumber}>
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
                       {providerProfile.services?.length || 0}
                     </Text>
-                    <Text style={styles.quickStatLabel}>Services</Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Services</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.quickStatCard, styles.quickStatCardCredentials]}
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: '#9333EA' }, styles.quickStatCardCredentials]}
                     onPress={() => {
                       setProviderDetailInitialTab('about');
                       setScrollToAvailability(false);
@@ -459,13 +462,13 @@ export default function ProfileScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons name="ribbon-outline" size={24} color="#9333EA" />
-                    <Text style={styles.quickStatNumber}>
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
                       {providerProfile.credentials?.length || 0}
                     </Text>
-                    <Text style={styles.quickStatLabel}>Credentials</Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Credentials</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.quickStatCard, styles.quickStatCardAvailability]}
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: '#16A34A' }, styles.quickStatCardAvailability]}
                     onPress={() => {
                       setProviderDetailInitialTab('about');
                       setScrollToAvailability(true);
@@ -474,13 +477,13 @@ export default function ProfileScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons name="calendar-outline" size={24} color="#16A34A" />
-                    <Text style={styles.quickStatNumber}>
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
                       {providerProfile.availability?.length || 0}
                     </Text>
-                    <Text style={styles.quickStatLabel}>Days Available</Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Days Available</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
-                    style={[styles.quickStatCard, styles.quickStatCardRating]}
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: '#fbbf24' }, styles.quickStatCardRating]}
                     onPress={() => {
                       setProviderDetailInitialTab('reviews');
                       setScrollToAvailability(false);
@@ -489,23 +492,23 @@ export default function ProfileScreen() {
                     activeOpacity={0.7}
                   >
                     <Ionicons name="star-outline" size={24} color="#fbbf24" />
-                    <Text style={styles.quickStatNumber}>
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
                       {providerProfile.rating && providerProfile.rating > 0
                         ? providerProfile.rating.toFixed(1)
                         : 'N/A'}
                     </Text>
-                    <Text style={styles.quickStatLabel}>Rating</Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Rating</Text>
                   </TouchableOpacity>
                 </View>
                 {/* Bank Account Status */}
-                <View style={styles.bankAccountStatusCard}>
+                <View style={[styles.bankAccountStatusCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
                   <View style={styles.bankAccountStatusRow}>
                     <Ionicons
                       name={providerProfile.bankAccountVerified ? "checkmark-circle" : "close-circle"}
                       size={20}
                       color={providerProfile.bankAccountVerified ? "#16a34a" : "#ef4444"}
                     />
-                    <Text style={styles.bankAccountStatusText}>
+                    <Text style={[styles.bankAccountStatusText, { color: themeHook.colors.text }]}>
                       Bank Account: {providerProfile.bankAccountVerified 
                         ? (providerProfile.bankAccountMask ? `Connected (****${providerProfile.bankAccountMask})` : "Connected")
                         : "Not Connected"}
@@ -519,87 +522,87 @@ export default function ProfileScreen() {
 
         {/* Provider Profile Info */}
         {user?.userType === 'PROVIDER' && (
-          <View style={styles.providerInfoSection}>
+          <View style={[styles.providerInfoSection, { backgroundColor: themeHook.colors.background }]}>
             {isLoadingProfile ? (
-              <ActivityIndicator size="small" color="#2563eb" />
+              <ActivityIndicator size="small" color={themeHook.colors.primary} />
             ) : providerProfile ? (
               <>
                 {providerProfile.bio && (
-                  <View style={styles.infoCard}>
-                    <Text style={styles.infoLabel}>Bio</Text>
-                    <Text style={styles.infoValue}>{providerProfile.bio}</Text>
+                  <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderWidth: 2, borderColor: themeHook.colors.primary, borderRadius: theme.radii.lg, padding: themeHook.spacing.lg }]}>
+                    <Text style={[styles.infoLabel, { color: themeHook.colors.text }]}>Bio</Text>
+                    <Text style={[styles.infoValue, { color: themeHook.colors.textSecondary }]}>{providerProfile.bio}</Text>
                   </View>
                 )}
                 {providerProfile.specialties && providerProfile.specialties.length > 0 ? (
-                  <View style={styles.infoCard}>
-                    <Text style={styles.infoLabel}>Specialties</Text>
+                  <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderWidth: 2, borderColor: themeHook.colors.primary, borderRadius: theme.radii.lg, padding: themeHook.spacing.lg }]}>
+                    <Text style={[styles.infoLabel, { color: themeHook.colors.text }]}>Specialties</Text>
                     <View style={styles.specialtiesContainer}>
                       {providerProfile.specialties.map((specialty, index) => (
-                        <View key={index} style={styles.specialtyTag}>
-                          <Text style={styles.specialtyText}>{specialty}</Text>
+                        <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}>
+                          <Text style={[styles.specialtyText, { color: themeHook.colors.primary }]}>{specialty}</Text>
                         </View>
                       ))}
                     </View>
                   </View>
                 ) : (
-                  <View style={styles.infoCard}>
-                    <Text style={styles.infoLabel}>Specialties</Text>
-                    <Text style={[styles.infoValue, { color: '#94a3b8', fontStyle: 'italic' }]}>
+                  <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderWidth: 2, borderColor: themeHook.colors.primary, borderRadius: theme.radii.lg, padding: themeHook.spacing.lg }]}>
+                    <Text style={[styles.infoLabel, { color: themeHook.colors.text }]}>Specialties</Text>
+                    <Text style={[styles.infoValue, { color: themeHook.colors.textTertiary, fontStyle: 'italic' }]}>
                       No specialties added yet
                     </Text>
                   </View>
                 )}
               </>
             ) : (
-              <View style={styles.infoCard}>
-                <Text style={styles.infoValue}>No profile information yet</Text>
+              <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderWidth: 1, borderColor: themeHook.colors.border, borderRadius: theme.radii.lg, padding: themeHook.spacing.lg }]}>
+                <Text style={[styles.infoValue, { color: themeHook.colors.textSecondary }]}>No profile information yet</Text>
               </View>
             )}
           </View>
         )}
 
         <View style={styles.menuSection}>
-          <Text style={styles.menuSectionLabel}>Account</Text>
+          <Text style={[styles.menuSectionLabel, { color: themeHook.colors.textSecondary }]}>Account</Text>
           {user?.userType === 'PROVIDER' && (
             <TouchableOpacity
-              style={styles.menuItem}
+              style={[styles.menuItem, { borderBottomColor: themeHook.colors.border }]}
               onPress={() => router.push('/provider/edit-profile')}
             >
-              <Ionicons name="person-outline" size={20} color={theme.colors.primary[500]} />
-              <Text style={styles.menuText}>
+              <Ionicons name="person-outline" size={20} color={themeHook.colors.primary} />
+              <Text style={[styles.menuText, { color: themeHook.colors.text }]}>
                 {providerProfile ? 'Edit Provider Profile' : 'Complete Provider Profile'}
               </Text>
-              <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+              <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/payment/history')}>
-            <Ionicons name="receipt-outline" size={20} color={theme.colors.primary[500]} />
-            <Text style={styles.menuText}>Payment History</Text>
-            <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: themeHook.colors.border }]} onPress={() => router.push('/payment/history')}>
+            <Ionicons name="receipt-outline" size={20} color={themeHook.colors.primary} />
+            <Text style={[styles.menuText, { color: themeHook.colors.text }]}>Payment History</Text>
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
 
-          <Text style={styles.menuSectionLabel}>Preferences</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/settings')}>
-            <Ionicons name="settings-outline" size={20} color={theme.colors.primary[500]} />
-            <Text style={styles.menuText}>Settings</Text>
-            <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+          <Text style={[styles.menuSectionLabel, { color: themeHook.colors.textSecondary }]}>Preferences</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: themeHook.colors.border }]} onPress={() => router.push('/settings')}>
+            <Ionicons name="settings-outline" size={20} color={themeHook.colors.primary} />
+            <Text style={[styles.menuText, { color: themeHook.colors.text }]}>Settings</Text>
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
 
-          <Text style={styles.menuSectionLabel}>Support</Text>
-          <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/help-support')}>
-            <Ionicons name="help-circle-outline" size={20} color={theme.colors.primary[500]} />
-            <Text style={styles.menuText}>Help & Support</Text>
-            <Ionicons name="chevron-forward" size={20} color="#cbd5e1" />
+          <Text style={[styles.menuSectionLabel, { color: themeHook.colors.textSecondary }]}>Support</Text>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: themeHook.colors.border }]} onPress={() => router.push('/help-support')}>
+            <Ionicons name="help-circle-outline" size={20} color={themeHook.colors.primary} />
+            <Text style={[styles.menuText, { color: themeHook.colors.text }]}>Help & Support</Text>
+            <Ionicons name="chevron-forward" size={20} color={themeHook.colors.textTertiary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: themeHook.colors.border }]} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-            <Text style={[styles.menuText, styles.logoutText]}>Sign Out</Text>
+            <Text style={[styles.menuText, { color: '#ef4444' }]}>Sign Out</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount}>
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: themeHook.colors.border }]} onPress={handleDeleteAccount}>
             <Ionicons name="trash-outline" size={20} color="#ef4444" />
-            <Text style={[styles.menuText, styles.logoutText]}>Delete Account</Text>
+            <Text style={[styles.menuText, { color: '#ef4444' }]}>Delete Account</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -612,27 +615,27 @@ export default function ProfileScreen() {
         onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
       >
         <TouchableWithoutFeedback onPress={() => !isDeleting && setShowDeleteModal(false)}>
-          <View style={styles.deleteModalOverlay}>
+          <View style={[styles.deleteModalOverlay, { backgroundColor: themeHook.colors.overlay }]}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.deleteModalContent}>
+              <View style={[styles.deleteModalContent, { backgroundColor: themeHook.colors.surface }]}>
                 <View style={styles.deleteModalHeader}>
                   <Ionicons name="alert-circle" size={48} color="#ef4444" />
-                  <Text style={styles.deleteModalTitle}>Delete Account</Text>
-                  <Text style={styles.deleteModalMessage}>
+                  <Text style={[styles.deleteModalTitle, { color: themeHook.colors.text }]}>Delete Account</Text>
+                  <Text style={[styles.deleteModalMessage, { color: themeHook.colors.textSecondary }]}>
                     This action cannot be undone. This will permanently delete your account and all
                     associated data.
                   </Text>
                 </View>
 
                 <View style={styles.deleteModalInputContainer}>
-                  <Text style={styles.deleteModalInputLabel}>
-                    Type <Text style={styles.deleteModalInputLabelBold}>DELETE</Text> to confirm:
+                  <Text style={[styles.deleteModalInputLabel, { color: themeHook.colors.text }]}>
+                    Type <Text style={[styles.deleteModalInputLabelBold, { color: themeHook.colors.text }]}>DELETE</Text> to confirm:
                   </Text>
                   <TextInput
-                    style={styles.deleteModalInput}
+                    style={[styles.deleteModalInput, { backgroundColor: themeHook.colors.background, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
                     value={deleteConfirmText}
                     onChangeText={setDeleteConfirmText}
-                    placeholderTextColor={theme.colors.neutral[300]}
+                    placeholderTextColor={themeHook.colors.textTertiary}
                     editable={!isDeleting}
                     autoCapitalize="characters"
                   />
@@ -640,11 +643,11 @@ export default function ProfileScreen() {
 
                 <View style={styles.deleteModalButtons}>
                   <TouchableOpacity
-                    style={[styles.deleteModalButton, styles.deleteModalButtonCancel]}
+                    style={[styles.deleteModalButton, styles.deleteModalButtonCancel, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}
                     onPress={() => setShowDeleteModal(false)}
                     disabled={isDeleting}
                   >
-                    <Text style={styles.deleteModalButtonCancelText}>Cancel</Text>
+                    <Text style={[styles.deleteModalButtonCancelText, { color: themeHook.colors.text }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[
@@ -702,7 +705,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[50],
   },
   header: {
     paddingHorizontal: theme.spacing.xl,
@@ -714,7 +716,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#CBD5E1',
     marginBottom: theme.spacing.lg,
     width: '95%',
     alignSelf: 'center',
@@ -723,7 +724,6 @@ const styles = StyleSheet.create({
     ...theme.typography.h1,
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
   },
   headerEditButton: {
     width: 40,
@@ -766,7 +766,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   heroPatternCellAlt: {
-    backgroundColor: theme.colors.primary[50],
     opacity: 0.9,
   },
   heroPatternRadial: {
@@ -778,7 +777,6 @@ const styles = StyleSheet.create({
     marginTop: '-100%',
     marginLeft: '-100%',
     borderRadius: 1000,
-    backgroundColor: theme.colors.primary[50],
     opacity: 0.2,
   },
   heroContent: {
@@ -816,7 +814,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.full,
@@ -825,16 +822,13 @@ const styles = StyleSheet.create({
   heroRatingText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
   },
   heroReviewCount: {
     fontSize: 12,
-    color: theme.colors.neutral[500],
   },
   heroName: {
     fontSize: 28,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.xs,
     textAlign: 'center',
   },
@@ -852,7 +846,6 @@ const styles = StyleSheet.create({
     paddingVertical: theme.spacing.lg,
     paddingHorizontal: theme.spacing.xl,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.neutral[200],
   },
   quickStatsGrid: {
     flexDirection: 'row',
@@ -862,7 +855,6 @@ const styles = StyleSheet.create({
   quickStatCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.lg,
     alignItems: 'center',
@@ -883,11 +875,9 @@ const styles = StyleSheet.create({
   },
   bankAccountStatusCard: {
     marginTop: theme.spacing.md,
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.md,
     borderWidth: 2,
-    borderColor: theme.colors.neutral[200],
   },
   bankAccountStatusRow: {
     flexDirection: 'row',
@@ -897,27 +887,22 @@ const styles = StyleSheet.create({
   bankAccountStatusText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.neutral[900],
   },
   quickStatNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: theme.colors.neutral[900],
   },
   quickStatLabel: {
     fontSize: 12,
-    color: theme.colors.neutral[500],
     fontWeight: '500',
     textAlign: 'center',
   },
   profileSection: {
-    backgroundColor: theme.colors.neutral[50],
     paddingHorizontal: theme.spacing.xl,
     paddingTop: theme.spacing.xl,
     paddingBottom: theme.spacing['2xl'],
   },
   profileCard: {
-    backgroundColor: theme.colors.white,
     borderRadius: theme.radii.lg,
     padding: theme.spacing.xl,
     ...theme.shadows.card,
@@ -952,13 +937,11 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 40,
     fontWeight: '700',
-    color: theme.colors.white,
   },
   userTypeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: theme.spacing.xs,
-    backgroundColor: theme.colors.primary[500],
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.full,
@@ -966,7 +949,6 @@ const styles = StyleSheet.create({
   userTypeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: theme.colors.white,
   },
   profileInfo: {
     alignItems: 'center',
@@ -974,7 +956,6 @@ const styles = StyleSheet.create({
   name: {
     ...theme.typography.display,
     fontSize: 28,
-    color: theme.colors.neutral[900],
     marginBottom: theme.spacing.md,
     textAlign: 'center',
   },
@@ -985,7 +966,6 @@ const styles = StyleSheet.create({
   },
   email: {
     ...theme.typography.body,
-    color: theme.colors.neutral[500],
   },
   menuSection: {
     marginTop: theme.spacing.lg,
@@ -1043,16 +1023,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   specialtyTag: {
-    backgroundColor: theme.colors.primary[50],
     borderWidth: 1,
-    borderColor: theme.colors.primary[500],
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     borderRadius: theme.radii.sm,
   },
   specialtyText: {
     fontSize: 14,
-    color: theme.colors.primary[500],
     fontWeight: '500',
   },
   statsRow: {
@@ -1147,14 +1124,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   deleteModalButtonCancel: {
-    backgroundColor: theme.colors.neutral[100],
     borderWidth: 1,
-    borderColor: theme.colors.neutral[300],
   },
   deleteModalButtonCancelText: {
     ...theme.typography.body,
     fontWeight: '600',
-    color: theme.colors.neutral[700],
   },
   deleteModalButtonConfirm: {
     backgroundColor: '#ef4444',

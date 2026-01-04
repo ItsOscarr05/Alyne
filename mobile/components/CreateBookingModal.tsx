@@ -21,6 +21,7 @@ import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { useModal } from '../hooks/useModal';
 import { AlertModal } from './ui/AlertModal';
 import { theme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import { generateTimeSlots, getDayOfWeek, isTimeSlotAvailable, formatTime12Hour } from '../utils/timeUtils';
 
 interface CreateBookingModalProps {
@@ -39,6 +40,7 @@ export function CreateBookingModal({
   const router = useRouter();
   const { user } = useAuth();
   const modal = useModal();
+  const themeHook = useTheme();
 
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -200,15 +202,15 @@ export function CreateBookingModal({
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.modalOverlay}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={styles.modalContainer}>
+            <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
               {/* Close Button */}
-              <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                <Ionicons name="close" size={28} color="#1e293b" />
+              <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} onPress={onClose}>
+                <Ionicons name="close" size={28} color={themeHook.colors.text} />
               </TouchableOpacity>
 
               {isLoading || !provider ? (
                 <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#2563eb" />
+                  <ActivityIndicator size="large" color={themeHook.colors.primary} />
                 </View>
               ) : (
                 <>
@@ -220,24 +222,24 @@ export function CreateBookingModal({
                     {/* Header */}
                     <View style={styles.header}>
                       <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                        <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                        <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
                       </TouchableOpacity>
-                      <Text style={styles.headerTitle}>Book Session</Text>
+                      <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Book Session</Text>
                       <View style={styles.backButton} />
                     </View>
-                    <View style={styles.headerDivider} />
+                    <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
                     {/* Provider Info */}
-                    <View style={styles.providerCard}>
-                      <Text style={styles.providerName}>{provider.name}</Text>
+                    <View style={[styles.providerCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
+                      <Text style={[styles.providerName, { color: themeHook.colors.text }]}>{provider.name}</Text>
                       {selectedService && (
-                        <Text style={styles.serviceName}>{selectedService.name}</Text>
+                        <Text style={[styles.serviceName, { color: themeHook.colors.textSecondary }]}>{selectedService.name}</Text>
                       )}
                     </View>
 
                     {/* Service Selection */}
                     <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Select Service</Text>
+                      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select Service</Text>
                       <View style={styles.serviceGrid}>
                         {(() => {
                           // Remove potential duplicates (e.g., from seeding or syncing)
@@ -259,7 +261,8 @@ export function CreateBookingModal({
                               key={service.id}
                               style={[
                                 styles.serviceOption,
-                                selectedService?.id === service.id && styles.serviceOptionSelected,
+                                { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.border },
+                                selectedService?.id === service.id && { borderColor: themeHook.colors.primary, backgroundColor: themeHook.colors.primaryLight },
                               ]}
                               onPress={() => {
                                 // Toggle selection: if already selected, deselect; otherwise select
@@ -271,12 +274,12 @@ export function CreateBookingModal({
                               }}
                             >
                               <View style={styles.serviceOptionHeader}>
-                                <Text style={styles.serviceOptionName}>{service.name}</Text>
+                                <Text style={[styles.serviceOptionName, { color: themeHook.colors.text }]}>{service.name}</Text>
                                 {selectedService?.id === service.id && (
-                                  <Ionicons name="checkmark-circle" size={24} color="#2563eb" />
+                                  <Ionicons name="checkmark-circle" size={24} color={themeHook.colors.primary} />
                                 )}
                               </View>
-                              <Text style={styles.serviceOptionDetails}>
+                              <Text style={[styles.serviceOptionDetails, { color: themeHook.colors.textSecondary }]}>
                                 {service.duration} min • ${service.price}/session
                               </Text>
                             </TouchableOpacity>
@@ -287,23 +290,43 @@ export function CreateBookingModal({
 
                     {/* Date Selection */}
                     <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Select Date</Text>
-                      <View style={styles.calendarContainer}>
+                      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select Date</Text>
+                      <View style={[styles.calendarContainer, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
                         <Calendar
-                          onDayPress={(day: { dateString: string }) =>
-                            setSelectedDate(day.dateString)
-                          }
-                          markedDates={{
-                            [selectedDate]: {
-                              selected: true,
-                              selectedColor: '#2563eb',
-                            },
+                          onDayPress={(day: { dateString: string }) => {
+                            // Toggle selection: if already selected, deselect; otherwise select
+                            if (selectedDate === day.dateString) {
+                              setSelectedDate('');
+                              setSelectedTime(''); // Also clear time when date is deselected
+                            } else {
+                              setSelectedDate(day.dateString);
+                              setSelectedTime(''); // Clear time when date changes
+                            }
                           }}
+                          markedDates={
+                            selectedDate
+                              ? {
+                                  [selectedDate]: {
+                                    selected: true,
+                                    selectedColor: themeHook.colors.primary,
+                                  },
+                                }
+                              : {}
+                          }
                           minDate={new Date().toISOString().split('T')[0]}
                           theme={{
-                            todayTextColor: '#2563eb',
-                            arrowColor: '#2563eb',
-                            selectedDayBackgroundColor: '#2563eb',
+                            todayTextColor: themeHook.colors.primary,
+                            arrowColor: themeHook.colors.primary,
+                            selectedDayBackgroundColor: themeHook.colors.primary,
+                            backgroundColor: themeHook.colors.surfaceElevated,
+                            calendarBackground: themeHook.colors.surfaceElevated,
+                            textSectionTitleColor: themeHook.colors.text,
+                            dayTextColor: themeHook.colors.text,
+                            monthTextColor: themeHook.colors.text,
+                            textDayFontWeight: '400',
+                            textMonthFontWeight: '600',
+                            textDayHeaderFontWeight: '600',
+                            textDisabledColor: themeHook.colors.textTertiary,
                           }}
                         />
                       </View>
@@ -312,21 +335,30 @@ export function CreateBookingModal({
                     {/* Time Selection */}
                     {selectedDate && (
                       <View style={styles.section}>
-                        <Text style={styles.sectionTitle}>Select Time</Text>
+                        <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select Time</Text>
                         <View style={styles.timeSlots}>
                           {timeSlots.map((time) => (
                             <TouchableOpacity
                               key={time}
                               style={[
                                 styles.timeSlot,
-                                selectedTime === time && styles.timeSlotSelected,
+                                { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.border },
+                                selectedTime === time && { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary },
                               ]}
-                              onPress={() => setSelectedTime(time)}
+                              onPress={() => {
+                                // Toggle selection: if already selected, deselect; otherwise select
+                                if (selectedTime === time) {
+                                  setSelectedTime('');
+                                } else {
+                                  setSelectedTime(time);
+                                }
+                              }}
                             >
                               <Text
                                 style={[
                                   styles.timeSlotText,
-                                  selectedTime === time && styles.timeSlotTextSelected,
+                                  { color: themeHook.colors.text },
+                                  selectedTime === time && { color: themeHook.colors.white },
                                 ]}
                               >
                                 {formatTime12Hour(time)}
@@ -339,11 +371,11 @@ export function CreateBookingModal({
 
                     {/* Notes */}
                     <View style={styles.section}>
-                      <Text style={styles.sectionTitle}>Additional Notes (Optional)</Text>
+                      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Additional Notes (Optional)</Text>
                       <TextInput
-                        style={styles.notesInput}
+                        style={[styles.notesInput, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
                         placeholder="Add any special requirements or notes..."
-                        placeholderTextColor="#94a3b8"
+                        placeholderTextColor={themeHook.colors.textTertiary}
                         value={notes}
                         onChangeText={setNotes}
                         multiline
@@ -354,15 +386,15 @@ export function CreateBookingModal({
 
                     {/* Booking Summary */}
                     {selectedService && selectedDate && selectedTime && (
-                      <View style={styles.summaryCard}>
-                        <Text style={styles.summaryTitle}>Booking Summary</Text>
+                      <View style={[styles.summaryCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
+                        <Text style={[styles.summaryTitle, { color: themeHook.colors.text }]}>Booking Summary</Text>
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Service:</Text>
-                          <Text style={styles.summaryValue}>{selectedService.name}</Text>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service:</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{selectedService.name}</Text>
                         </View>
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Date:</Text>
-                          <Text style={styles.summaryValue}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Date:</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                             {(() => {
                               // Parse date string (YYYY-MM-DD) without timezone conversion
                               const [year, month, day] = selectedDate.split('-').map(Number);
@@ -377,18 +409,18 @@ export function CreateBookingModal({
                           </Text>
                         </View>
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Time:</Text>
-                          <Text style={styles.summaryValue}>{formatTime12Hour(selectedTime)}</Text>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Time:</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{formatTime12Hour(selectedTime)}</Text>
                         </View>
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Duration:</Text>
-                          <Text style={styles.summaryValue}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Duration:</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                             {selectedService.duration} minutes
                           </Text>
                         </View>
-                        <View style={[styles.summaryRow, styles.summaryTotal]}>
-                          <Text style={styles.summaryLabel}>Total:</Text>
-                          <Text style={styles.summaryTotalValue}>
+                        <View style={[styles.summaryRow, styles.summaryTotal, { borderTopColor: themeHook.colors.border }]}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Total:</Text>
+                          <Text style={[styles.summaryTotalValue, { color: themeHook.colors.primary }]}>
                             ${selectedService.price}/session
                           </Text>
                         </View>
@@ -397,18 +429,19 @@ export function CreateBookingModal({
                   </ScrollView>
 
                   {/* Submit Button */}
-                  <View style={styles.footer}>
+                  <View style={[styles.footer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
                     <TouchableOpacity
                       style={[
                         styles.submitButton,
+                        { backgroundColor: themeHook.colors.primary },
                         (!selectedService || !selectedDate || !selectedTime || isSubmitting) &&
-                          styles.submitButtonDisabled,
+                          { backgroundColor: themeHook.colors.buttonDisabledBackground },
                       ]}
                       onPress={handleCreateBooking}
                       disabled={!selectedService || !selectedDate || !selectedTime || isSubmitting}
                     >
                       {isSubmitting ? (
-                        <ActivityIndicator color="#ffffff" />
+                        <ActivityIndicator color={themeHook.colors.white} />
                       ) : (
                         <Text style={styles.submitButtonText}>
                           {!selectedService || !selectedDate || !selectedTime
