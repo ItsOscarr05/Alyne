@@ -924,6 +924,7 @@ export default function BookingsScreen() {
                 </AnimatedEmptyState>
               ) : (
                 <>
+                  <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Upcoming Bookings</Text>
                   {getPaginatedBookings(upcomingBookings, 'upcoming').map((booking, index) => {
                     const bookingCardData = createBookingCardData(booking);
 
@@ -934,16 +935,16 @@ export default function BookingsScreen() {
                     const actionButton =
                       user?.userType === 'CLIENT' && booking.status === 'CONFIRMED' ? (
                         booking.payment?.status === 'completed' ? (
-                          <View style={styles.paidButton}>
-                            <Ionicons name="checkmark-circle" size={18} color="#64748b" />
-                            <Text style={styles.paidButtonText}>Paid</Text>
+                          <View style={[styles.paidButton, { backgroundColor: themeHook.colors.success + '20', borderColor: themeHook.colors.success }]}>
+                            <Ionicons name="cash" size={18} color={themeHook.colors.success} />
+                            <Text style={[styles.paidButtonText, { color: themeHook.colors.success }]}>Paid</Text>
                           </View>
                         ) : (
                           <TouchableOpacity
-                            style={styles.paymentButton}
+                            style={[styles.paymentButton, { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary }]}
                             onPress={() => handlePayment(booking.id)}
                           >
-                            <Ionicons name="card-outline" size={18} color="#ffffff" />
+                            <Ionicons name="card-outline" size={18} color={themeHook.colors.white} />
                             <Text style={styles.paymentButtonText}>Pay Now</Text>
                           </TouchableOpacity>
                         )
@@ -1136,11 +1137,11 @@ export default function BookingsScreen() {
                     // Determine action button for past bookings
                     const actionButton = canReview ? (
                       <TouchableOpacity
-                        style={styles.reviewButton}
+                        style={[styles.reviewButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                         onPress={() => handleReview(booking)}
                       >
-                        <Ionicons name="star-outline" size={18} color="#2563eb" />
-                        <Text style={styles.reviewButtonText}>Write a Review</Text>
+                        <Ionicons name="star-outline" size={18} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
+                        <Text style={[styles.reviewButtonText, { color: isDark ? themeHook.colors.white : themeHook.colors.primary }]}>Write a Review</Text>
                       </TouchableOpacity>
                     ) : hasReview ? (
                       <View style={styles.reviewedButton}>
@@ -1341,9 +1342,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: theme.radii.full,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 12,
   },
   tabActivePending: {
     borderColor: '#FBBF24', // Yellow
@@ -1446,16 +1447,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: theme.colors.primary[50],
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radii.sm,
     marginTop: theme.spacing.sm,
+    borderWidth: 2,
   },
   reviewButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: theme.colors.primary[500],
   },
   reviewedButton: {
     flexDirection: 'row',
@@ -1480,11 +1480,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: theme.colors.primary[500],
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radii.sm,
     marginTop: theme.spacing.sm,
+    borderWidth: 2,
   },
   paymentButtonText: {
     fontSize: 14,
@@ -1496,16 +1496,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#cbd5e1',
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
     borderRadius: theme.radii.sm,
     marginTop: theme.spacing.sm,
+    borderWidth: 2,
   },
   paidButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748b',
   },
   completeButton: {
     flexDirection: 'row',

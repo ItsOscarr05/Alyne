@@ -322,7 +322,7 @@ export default function PaymentHistoryScreen() {
               {/* Filter and Sort Controls */}
               <View style={[styles.controlsContainer, { backgroundColor: themeHook.colors.surface, borderBottomColor: themeHook.colors.border }]}>
                 <TouchableOpacity
-                  style={[styles.controlButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
+                  style={[styles.controlButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
                   onPress={() => {
                     setShowSortMenu(false); // Close sort menu if open
                     setShowFilterMenu(!showFilterMenu);
@@ -336,7 +336,7 @@ export default function PaymentHistoryScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={[styles.controlButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
+                  style={[styles.controlButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
                   onPress={() => {
                     setShowFilterMenu(false); // Close filter menu if open
                     setShowSortMenu(!showSortMenu);

@@ -60,13 +60,12 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
             {
               borderWidth: cityBorderWidthAnim,
               borderColor: cityBorderColor,
-              backgroundColor: themeHook.colors.inputBackground,
             },
           ]}
           pointerEvents="none"
         />
         <TextInput
-          style={[styles.input, { borderWidth: 0, backgroundColor: themeHook.colors.inputBackground, color: themeHook.colors.text }]}
+          style={[styles.input, { borderWidth: 0, backgroundColor: themeHook.colors.surface, color: themeHook.colors.text }]}
           placeholder={cityPlaceholder}
           value={city}
           onChangeText={onCityChange}
@@ -85,13 +84,12 @@ export const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
             {
               borderWidth: stateBorderWidthAnim,
               borderColor: stateBorderColor,
-              backgroundColor: themeHook.colors.inputBackground,
             },
           ]}
           pointerEvents="none"
         />
         <TextInput
-          style={[styles.input, { borderWidth: 0, backgroundColor: themeHook.colors.inputBackground, color: themeHook.colors.text }]}
+          style={[styles.input, { borderWidth: 0, backgroundColor: themeHook.colors.surface, color: themeHook.colors.text }]}
           placeholder={statePlaceholder}
           value={state}
           onChangeText={onStateChange}
@@ -136,3 +134,4 @@ const styles = StyleSheet.create({
     }),
   },
 });
+

@@ -47,7 +47,7 @@ interface ProviderProfile {
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, deleteAccount, refreshUser } = useAuth();
-  const { theme: themeHook } = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const modal = useModal();
   const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -333,17 +333,15 @@ export default function ProfileScreen() {
                         </>
                       )}
                     </TouchableOpacity>
-                    {providerProfile && providerProfile.rating && providerProfile.rating > 0 && (
+                    {providerProfile && (
                       <View style={[styles.heroRatingBadge, { backgroundColor: themeHook.colors.white }]}>
                         <Ionicons name="star" size={14} color="#fbbf24" />
-                        <Text style={[styles.heroRatingText, { color: themeHook.colors.text }]}>
-                          {providerProfile.rating.toFixed(1)}
+                        <Text style={[styles.heroRatingText, { color: themeHook.colors.black }]}>
+                          {(providerProfile.rating || 0).toFixed(1)}
                         </Text>
-                        {providerProfile.reviewCount && providerProfile.reviewCount > 0 && (
-                          <Text style={[styles.heroReviewCount, { color: themeHook.colors.textSecondary }]}>
-                            ({providerProfile.reviewCount})
-                          </Text>
-                        )}
+                        <Text style={[styles.heroReviewCount, { color: themeHook.colors.black }]}>
+                          ({(providerProfile.reviewCount || 0)})
+                        </Text>
                       </View>
                     )}
                   </View>
@@ -493,9 +491,7 @@ export default function ProfileScreen() {
                   >
                     <Ionicons name="star-outline" size={24} color="#fbbf24" />
                     <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
-                      {providerProfile.rating && providerProfile.rating > 0
-                        ? providerProfile.rating.toFixed(1)
-                        : 'N/A'}
+                      {(providerProfile.rating || 0).toFixed(1)}
                     </Text>
                     <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Rating</Text>
                   </TouchableOpacity>

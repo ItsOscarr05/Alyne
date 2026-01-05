@@ -32,6 +32,7 @@ interface BookingCardProps {
   showOptions?: boolean;
   onMessagePress?: () => void;
   showMessageButton?: boolean;
+  customBackgroundColor?: string;
 }
 
 export function BookingCard({
@@ -45,6 +46,7 @@ export function BookingCard({
   showOptions = false,
   onMessagePress,
   showMessageButton = false,
+  customBackgroundColor,
 }: BookingCardProps) {
   const themeHook = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -136,10 +138,13 @@ export function BookingCard({
     return location;
   };
 
+  // Use blue outline for CONFIRMED (upcoming) bookings
+  const borderColor = booking.status === 'CONFIRMED' ? themeHook.colors.primary : getStatusColor(booking.status);
+
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <TouchableOpacity
-        style={[styles.card, { backgroundColor: themeHook.colors.surface, borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
+        style={[styles.card, { backgroundColor: customBackgroundColor || themeHook.colors.surface, borderColor: borderColor, borderWidth: 2 }]}
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
@@ -171,7 +176,7 @@ export function BookingCard({
         <View style={styles.headerRight}>
           <View style={styles.headerRightTop}>
             <View
-              style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}
+              style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20', borderColor: getStatusColor(booking.status), borderWidth: 2 }]}
             >
               <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
                 {getStatusText(booking.status)}
@@ -326,8 +331,9 @@ export function BookingCard({
 const styles = StyleSheet.create({
   card: {
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    padding: 20,
+    marginBottom: 16,
+    marginHorizontal: 4,
     borderWidth: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },

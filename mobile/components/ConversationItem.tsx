@@ -11,7 +11,7 @@ interface ConversationItemProps {
 }
 
 export function ConversationItem({ conversation, onPress }: ConversationItemProps) {
-  const { theme: themeHook } = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -104,13 +104,13 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
       </View>
 
       {isProvider && (
-        <View style={[styles.providerBadge, { backgroundColor: '#f0fdf4' }]}>
+        <View style={[styles.providerBadge, { backgroundColor: isDark ? themeHook.colors.success + '20' : '#f0fdf4', borderColor: themeHook.colors.success, borderWidth: 1 }]}>
           <Ionicons name="checkmark-circle" size={14} color={themeHook.colors.success} />
           <Text style={[styles.providerBadgeText, { color: themeHook.colors.success }]}>Provider</Text>
         </View>
       )}
       {isClient && (
-        <View style={[styles.clientBadge, { backgroundColor: themeHook.colors.primaryLight }]}>
+        <View style={[styles.clientBadge, { backgroundColor: isDark ? themeHook.colors.primaryLight : themeHook.colors.primaryLight, borderColor: themeHook.colors.primary, borderWidth: 1 }]}>
           <Ionicons name="person" size={14} color={themeHook.colors.primary} />
           <Text style={[styles.clientBadgeText, { color: themeHook.colors.primary }]}>Client</Text>
         </View>
@@ -197,12 +197,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.full,
-    backgroundColor: '#f0fdf4',
   },
   providerBadgeText: {
     fontSize: 11,
     fontWeight: '500',
-    color: theme.colors.semantic.success,
   },
   clientBadge: {
     flexDirection: 'row',
@@ -212,12 +210,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: theme.spacing.xs,
     borderRadius: theme.radii.full,
-    backgroundColor: theme.colors.primary[50],
   },
   clientBadgeText: {
     fontSize: 11,
     fontWeight: '500',
-    color: theme.colors.primary[500],
   },
 });
 

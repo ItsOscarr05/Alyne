@@ -222,10 +222,11 @@ export default function DiscoverScreen() {
 
       let results = await providerService.discover(filters);
 
-      // Apply client-side sorting based on active filter and options
-      if (activeFilter === 'rating' && ratingOption !== null) {
+      // Apply client-side sorting based on filter options
+      // Only sort when an option is actually selected, not just when dropdown is open
+      if (ratingOption !== null) {
         results = results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-      } else if (activeFilter === 'price' && priceOption !== null) {
+      } else if (priceOption !== null) {
         // Sort by starting price based on option
         results = results.sort((a, b) => {
           const aPrice = a.startingPrice || 0;
@@ -236,14 +237,14 @@ export default function DiscoverScreen() {
             return aPrice - bPrice; // ascending
           }
         });
-      } else if (activeFilter === 'distance') {
+      } else if (distanceOption !== null) {
         // Distance sorting is already handled by the backend when lat/lng are provided
         // If no location, sort by rating as fallback
         if (!userLocation) {
           results = results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         }
         // Otherwise keep results as-is (already sorted by distance from backend)
-      } else if (activeFilter === 'reviews' && reviewsOption !== null) {
+      } else if (reviewsOption !== null) {
         // Sort by review count based on option
         if (reviewsOption === 'lowest') {
           results = results.sort((a, b) => (a.reviewCount || 0) - (b.reviewCount || 0));
@@ -251,7 +252,7 @@ export default function DiscoverScreen() {
           results = results.sort((a, b) => (b.reviewCount || 0) - (a.reviewCount || 0)); // highest
         }
       }
-      // 'all' filter doesn't need sorting
+      // 'all' filter (no options selected) doesn't need sorting
 
       setProviders(results);
     } catch (error: any) {
@@ -281,7 +282,6 @@ export default function DiscoverScreen() {
   }, [
     searchQuery,
     userLocation,
-    activeFilter,
     ratingOption,
     priceOption,
     distanceOption,
@@ -563,169 +563,6 @@ export default function DiscoverScreen() {
                   }
                 />
               </TouchableOpacity>
-              
-              {/* Dropdown Menu */}
-              {showDropdown && dropdownFilter && buttonLayouts[dropdownFilter] && (
-                <Animated.View
-                  style={[
-                    styles.dropdownContainer,
-                    {
-                      left: buttonLayouts[dropdownFilter].x,
-                      width: buttonLayouts[dropdownFilter].width,
-                      opacity: dropdownOpacity,
-                      transform: [{ translateY: dropdownTranslateY }],
-                      backgroundColor: themeHook.colors.surface,
-                      borderColor: themeHook.colors.border,
-                    },
-                  ]}
-                >
-                {dropdownFilter === 'rating' && (
-                  <>
-                    {[1, 2, 3, 4, 5].map((stars) => (
-                      <TouchableOpacity
-                        key={stars}
-                        style={[
-                          styles.dropdownOption,
-                          ratingOption === stars && { backgroundColor: themeHook.colors.primaryLight },
-                        ]}
-                        onPress={() => handleOptionSelect(stars)}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownOptionText,
-                            { color: ratingOption === stars ? themeHook.colors.primary : themeHook.colors.text },
-                            ratingOption === stars && { fontWeight: '600' },
-                          ]}
-                        >
-                          {stars} star{stars > 1 ? 's' : ''} & above
-                        </Text>
-                        {ratingOption === stars && (
-                          <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </>
-                )}
-
-                {dropdownFilter === 'price' && (
-                  <>
-                    <TouchableOpacity
-                      style={[
-                        styles.dropdownOption,
-                        priceOption === 'asc' && { backgroundColor: themeHook.colors.primaryLight },
-                      ]}
-                      onPress={() => handleOptionSelect('asc')}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownOptionText,
-                          { color: priceOption === 'asc' ? themeHook.colors.primary : themeHook.colors.text },
-                          priceOption === 'asc' && { fontWeight: '600' },
-                        ]}
-                      >
-                        Ascending
-                      </Text>
-                      {priceOption === 'asc' && (
-                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.dropdownOption,
-                        priceOption === 'desc' && { backgroundColor: themeHook.colors.primaryLight },
-                      ]}
-                      onPress={() => handleOptionSelect('desc')}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownOptionText,
-                          { color: priceOption === 'desc' ? themeHook.colors.primary : themeHook.colors.text },
-                          priceOption === 'desc' && { fontWeight: '600' },
-                        ]}
-                      >
-                        Descending
-                      </Text>
-                      {priceOption === 'desc' && (
-                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
-                      )}
-                    </TouchableOpacity>
-                  </>
-                )}
-
-                {dropdownFilter === 'distance' && (
-                  <>
-                    {[1, 5, 10, 15, 20].map((miles) => (
-                      <TouchableOpacity
-                        key={miles}
-                        style={[
-                          styles.dropdownOption,
-                          distanceOption === miles && { backgroundColor: themeHook.colors.primaryLight },
-                        ]}
-                        onPress={() => handleOptionSelect(miles)}
-                      >
-                        <Text
-                          style={[
-                            styles.dropdownOptionText,
-                            { color: distanceOption === miles ? themeHook.colors.primary : themeHook.colors.text },
-                            distanceOption === miles && { fontWeight: '600' },
-                          ]}
-                        >
-                          {miles === 20 ? '≥ 20 Miles' : `≤ ${miles} Miles`}
-                        </Text>
-                        {distanceOption === miles && (
-                          <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
-                        )}
-                      </TouchableOpacity>
-                    ))}
-                  </>
-                )}
-
-                {dropdownFilter === 'reviews' && (
-                  <>
-                    <TouchableOpacity
-                      style={[
-                        styles.dropdownOption,
-                        reviewsOption === 'highest' && { backgroundColor: themeHook.colors.primaryLight },
-                      ]}
-                      onPress={() => handleOptionSelect('highest')}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownOptionText,
-                          { color: reviewsOption === 'highest' ? themeHook.colors.primary : themeHook.colors.text },
-                          reviewsOption === 'highest' && { fontWeight: '600' },
-                        ]}
-                      >
-                        Highest
-                      </Text>
-                      {reviewsOption === 'highest' && (
-                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
-                      )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[
-                        styles.dropdownOption,
-                        reviewsOption === 'lowest' && { backgroundColor: themeHook.colors.primaryLight },
-                      ]}
-                      onPress={() => handleOptionSelect('lowest')}
-                    >
-                      <Text
-                        style={[
-                          styles.dropdownOptionText,
-                          { color: reviewsOption === 'lowest' ? themeHook.colors.primary : themeHook.colors.text },
-                          reviewsOption === 'lowest' && { fontWeight: '600' },
-                        ]}
-                      >
-                        Lowest
-                      </Text>
-                      {reviewsOption === 'lowest' && (
-                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
-                      )}
-                    </TouchableOpacity>
-                  </>
-                )}
-                </Animated.View>
-              )}
             </View>
             {(ratingOption !== null ||
               priceOption !== null ||
@@ -741,6 +578,170 @@ export default function DiscoverScreen() {
               </TouchableOpacity>
             )}
           </View>
+          
+          {/* Dropdown Menu - rendered outside filterPillsContainer to avoid overlay blocking */}
+          {showDropdown && dropdownFilter && buttonLayouts[dropdownFilter] && (
+            <Animated.View
+              style={[
+                styles.dropdownContainer,
+                {
+                  left: buttonLayouts[dropdownFilter].x,
+                  width: buttonLayouts[dropdownFilter].width,
+                  opacity: dropdownOpacity,
+                  transform: [{ translateY: dropdownTranslateY }],
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.border,
+                  zIndex: 1000,
+                },
+              ]}
+            >
+              {dropdownFilter === 'rating' && (
+                <>
+                  {[1, 2, 3, 4, 5].map((stars) => (
+                    <TouchableOpacity
+                      key={stars}
+                      style={[
+                        styles.dropdownOption,
+                        ratingOption === stars && { backgroundColor: themeHook.colors.primaryLight },
+                      ]}
+                      onPress={() => handleOptionSelect(stars)}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          { color: ratingOption === stars ? themeHook.colors.primary : themeHook.colors.text },
+                          ratingOption === stars && { fontWeight: '600' },
+                        ]}
+                      >
+                        {stars} star{stars > 1 ? 's' : ''} & above
+                      </Text>
+                      {ratingOption === stars && (
+                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {dropdownFilter === 'price' && (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownOption,
+                      priceOption === 'asc' && { backgroundColor: themeHook.colors.primaryLight },
+                    ]}
+                    onPress={() => handleOptionSelect('asc')}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        { color: priceOption === 'asc' ? themeHook.colors.primary : themeHook.colors.text },
+                        priceOption === 'asc' && { fontWeight: '600' },
+                      ]}
+                    >
+                      Ascending
+                    </Text>
+                    {priceOption === 'asc' && (
+                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownOption,
+                      priceOption === 'desc' && { backgroundColor: themeHook.colors.primaryLight },
+                    ]}
+                    onPress={() => handleOptionSelect('desc')}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        { color: priceOption === 'desc' ? themeHook.colors.primary : themeHook.colors.text },
+                        priceOption === 'desc' && { fontWeight: '600' },
+                      ]}
+                    >
+                      Descending
+                    </Text>
+                    {priceOption === 'desc' && (
+                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+
+              {dropdownFilter === 'distance' && (
+                <>
+                  {[1, 5, 10, 15, 20].map((miles) => (
+                    <TouchableOpacity
+                      key={miles}
+                      style={[
+                        styles.dropdownOption,
+                        distanceOption === miles && { backgroundColor: themeHook.colors.primaryLight },
+                      ]}
+                      onPress={() => handleOptionSelect(miles)}
+                    >
+                      <Text
+                        style={[
+                          styles.dropdownOptionText,
+                          { color: distanceOption === miles ? themeHook.colors.primary : themeHook.colors.text },
+                          distanceOption === miles && { fontWeight: '600' },
+                        ]}
+                      >
+                        {miles === 20 ? '≥ 20 Miles' : `≤ ${miles} Miles`}
+                      </Text>
+                      {distanceOption === miles && (
+                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </>
+              )}
+
+              {dropdownFilter === 'reviews' && (
+                <>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownOption,
+                      reviewsOption === 'highest' && { backgroundColor: themeHook.colors.primaryLight },
+                    ]}
+                    onPress={() => handleOptionSelect('highest')}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        { color: reviewsOption === 'highest' ? themeHook.colors.primary : themeHook.colors.text },
+                        reviewsOption === 'highest' && { fontWeight: '600' },
+                      ]}
+                    >
+                      Highest
+                    </Text>
+                    {reviewsOption === 'highest' && (
+                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.dropdownOption,
+                      reviewsOption === 'lowest' && { backgroundColor: themeHook.colors.primaryLight },
+                    ]}
+                    onPress={() => handleOptionSelect('lowest')}
+                  >
+                    <Text
+                      style={[
+                        styles.dropdownOptionText,
+                        { color: reviewsOption === 'lowest' ? themeHook.colors.primary : themeHook.colors.text },
+                        reviewsOption === 'lowest' && { fontWeight: '600' },
+                      ]}
+                    >
+                      Lowest
+                    </Text>
+                    {reviewsOption === 'lowest' && (
+                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+            </Animated.View>
+          )}
           
           {/* Overlay for closing dropdown */}
           {showDropdown && (

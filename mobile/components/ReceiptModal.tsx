@@ -251,7 +251,7 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
                     {/* Footer Info */}
                     <View style={[styles.footerInfo, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}>
                       <Ionicons name="shield-checkmark" size={20} color={themeHook.colors.primary} />
-                      <Text style={[styles.footerText, { color: themeHook.colors.primary }]}>
+                      <Text style={[styles.footerText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>
                         This payment was processed securely by Stripe. Your card details were never
                         stored.
                       </Text>

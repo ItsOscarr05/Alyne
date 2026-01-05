@@ -804,7 +804,7 @@ export default function ProviderDashboardScreen() {
                           styles.statusText,
                           {
                             color:
-                              booking.status === 'COMPLETED' ? '#000000' : themeHook.colors.text,
+                              booking.status === 'COMPLETED' || booking.status === 'PENDING' || booking.status === 'CONFIRMED' || booking.status === 'DECLINED' ? '#000000' : themeHook.colors.text,
                           },
                         ]}
                       >

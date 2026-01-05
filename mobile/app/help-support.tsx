@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { theme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -14,6 +14,9 @@ export default function HelpSupportScreen() {
   const router = useRouter();
   const { theme: themeHook } = useTheme();
   const [expandedFAQ, setExpandedFAQ] = useState<number | null>(null);
+  const animatedHeights = useRef<{ [key: number]: Animated.Value }>({});
+  const animatedOpacities = useRef<{ [key: number]: Animated.Value }>({});
+  const animatedRotations = useRef<{ [key: number]: Animated.Value }>({});
 
   const faqs: FAQItem[] = [
     {
@@ -51,8 +54,96 @@ export default function HelpSupportScreen() {
     },
   ];
 
+
+  // Initialize animation values for each FAQ
+  useEffect(() => {
+    faqs.forEach((_, index) => {
+      if (!animatedHeights.current[index]) {
+        animatedHeights.current[index] = new Animated.Value(0);
+        animatedOpacities.current[index] = new Animated.Value(0);
+        animatedRotations.current[index] = new Animated.Value(0);
+      }
+    });
+  }, []);
+
   const toggleFAQ = (index: number) => {
-    setExpandedFAQ(expandedFAQ === index ? null : index);
+    const isExpanding = expandedFAQ !== index;
+    
+    // Initialize if not already initialized
+    if (!animatedHeights.current[index]) {
+      animatedHeights.current[index] = new Animated.Value(0);
+      animatedOpacities.current[index] = new Animated.Value(0);
+      animatedRotations.current[index] = new Animated.Value(0);
+    }
+    
+    // Close previously expanded FAQ
+    if (expandedFAQ !== null && expandedFAQ !== index) {
+      const prevIndex = expandedFAQ;
+      if (animatedHeights.current[prevIndex]) {
+        Animated.parallel([
+          Animated.timing(animatedHeights.current[prevIndex], {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: false,
+          }),
+          Animated.timing(animatedOpacities.current[prevIndex], {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animatedRotations.current[prevIndex], {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }
+
+    // Animate current FAQ
+    if (isExpanding) {
+      animatedHeights.current[index].setValue(0);
+      animatedOpacities.current[index].setValue(0);
+      
+      Animated.parallel([
+        Animated.timing(animatedHeights.current[index], {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(animatedOpacities.current[index], {
+          toValue: 1,
+          duration: 300,
+          delay: 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedRotations.current[index], {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(animatedHeights.current[index], {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: false,
+        }),
+        Animated.timing(animatedOpacities.current[index], {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(animatedRotations.current[index], {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+
+    setExpandedFAQ(isExpanding ? index : null);
   };
 
   const dynamicStyles = useMemo(() => StyleSheet.create({
@@ -187,26 +278,55 @@ export default function HelpSupportScreen() {
             Find answers to common questions about using Alyne.
           </Text>
 
-          {faqs.map((faq, index) => (
-            <TouchableOpacity
-              key={index}
-              style={dynamicStyles.faqCard}
-              onPress={() => toggleFAQ(index)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.faqHeader}>
-                <Text style={dynamicStyles.faqQuestion}>{faq.question}</Text>
-                <Ionicons
-                  name={expandedFAQ === index ? 'chevron-up' : 'chevron-down'}
-                  size={20}
-                  color={themeHook.colors.textTertiary}
-                />
-              </View>
-              {expandedFAQ === index && (
-                <Text style={dynamicStyles.faqAnswer}>{faq.answer}</Text>
-              )}
-            </TouchableOpacity>
-          ))}
+          {faqs.map((faq, index) => {
+            const isExpanded = expandedFAQ === index;
+            const heightAnim = animatedHeights.current[index] || new Animated.Value(0);
+            const opacityAnim = animatedOpacities.current[index] || new Animated.Value(0);
+            const rotationAnim = animatedRotations.current[index] || new Animated.Value(0);
+
+            const rotateInterpolate = rotationAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['0deg', '180deg'],
+            });
+
+            const maxHeight = heightAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 200], // Adjust based on content height
+            });
+
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[dynamicStyles.faqCard, isExpanded && { borderColor: themeHook.colors.primary, borderWidth: 2 }]}
+                onPress={() => toggleFAQ(index)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.faqHeader}>
+                  <Text style={dynamicStyles.faqQuestion}>{faq.question}</Text>
+                  <Animated.View
+                    style={{
+                      transform: [{ rotate: rotateInterpolate }],
+                    }}
+                  >
+                    <Ionicons
+                      name="chevron-down"
+                      size={20}
+                      color={themeHook.colors.textTertiary}
+                    />
+                  </Animated.View>
+                </View>
+                <Animated.View
+                  style={{
+                    maxHeight: maxHeight,
+                    opacity: opacityAnim,
+                    overflow: 'hidden',
+                  }}
+                >
+                  <Text style={dynamicStyles.faqAnswer}>{faq.answer}</Text>
+                </Animated.View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Quick Links Section */}

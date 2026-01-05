@@ -1464,7 +1464,7 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
       </Text>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? '#064e3b' : '#f0fdf4', borderColor: themeHook.colors.success }]}>
+        <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? themeHook.colors.surface : '#f0fdf4', borderColor: themeHook.colors.success }]}>
           <View style={styles.bankCardHeader}>
             <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
             <View style={styles.bankInfo}>
@@ -1487,7 +1487,7 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
+            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
             onPress={async () => {
               if (plaidLinkToken) {
                 initializePlaidLink(plaidLinkToken);
@@ -2335,9 +2335,7 @@ const styles = StyleSheet.create({
   },
   specialtyInput: {
     flex: 1,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
@@ -2363,7 +2361,6 @@ const styles = StyleSheet.create({
   specialtyTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
@@ -2658,12 +2655,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   bankCardConnected: {
-    backgroundColor: '#f0fdf4',
     borderRadius: 16,
     padding: 24,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#16a34a',
   },
   bankCardHeader: {
     flexDirection: 'row',
@@ -2677,24 +2672,20 @@ const styles = StyleSheet.create({
   bankAccountName: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#0f172a',
     marginBottom: 4,
   },
   bankAccountMask: {
     fontSize: 16,
-    color: '#64748b',
   },
   bankCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
     gap: 6,
   },
   bankCardFooterText: {
     fontSize: 13,
-    color: '#64748b',
   },
   bankCardEmpty: {
     backgroundColor: '#f8fafc',
@@ -2709,25 +2700,21 @@ const styles = StyleSheet.create({
   bankCardEmptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1e293b',
     marginTop: 16,
     marginBottom: 8,
   },
   bankCardEmptyText: {
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   plaidButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     gap: 10,
-    shadowColor: '#2563eb',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -2735,7 +2722,6 @@ const styles = StyleSheet.create({
   },
   plaidButtonText: {
     fontWeight: '600',
-    color: '#ffffff',
     fontSize: 16,
   },
 });

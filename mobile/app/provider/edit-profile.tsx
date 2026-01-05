@@ -20,7 +20,6 @@ import { providerService } from '../../services/provider';
 import { onboardingService } from '../../services/onboarding';
 import { plaidService } from '../../services/plaid';
 import { logger } from '../../utils/logger';
-import { LocationAutocomplete } from '../../components/ui/LocationAutocomplete';
 import { formatTime12Hour, formatTime24Hour } from '../../utils/timeUtils';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../hooks/useAuth';
@@ -42,7 +41,7 @@ export default function EditProviderProfileScreen() {
   const params = useLocalSearchParams<{ section?: Section }>();
   const initialSection = (params.section as Section) || 'profile';
   const { user, refreshUser } = useAuth();
-  const { theme: themeHook } = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const [activeSection, setActiveSection] = useState<Section>(initialSection);
   const sectionOpacityAnim = useRef(new Animated.Value(1)).current;
   const prevSectionRef = useRef<Section>(initialSection);
@@ -1450,19 +1449,34 @@ export default function EditProviderProfileScreen() {
         Set your location and service radius to help clients find you.
       </Text>
 
-      <LocationAutocomplete
-        city={city}
-        state={state}
-        onCityChange={setCity}
-        onStateChange={setState}
-        cityPlaceholder="Enter your city"
-        statePlaceholder="Enter your state"
-      />
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>City</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
+          placeholder="Enter your city"
+          placeholderTextColor={themeHook.colors.textTertiary}
+          value={city}
+          onChangeText={setCity}
+          autoCapitalize="words"
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={[styles.label, { color: themeHook.colors.text }]}>State</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
+          placeholder="Enter your state"
+          placeholderTextColor={themeHook.colors.textTertiary}
+          value={state}
+          onChangeText={setState}
+          autoCapitalize="characters"
+        />
+      </View>
 
       <View style={styles.section}>
         <Text style={[styles.label, { color: themeHook.colors.text }]}>Service Range (mi)</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, serviceRadiusFocused && styles.inputFocused, serviceRadiusFocused && { borderColor: themeHook.colors.primary }]}
+          <TextInput
+            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, serviceRadiusFocused && styles.inputFocused, serviceRadiusFocused && { borderColor: themeHook.colors.primary }]}
           placeholder="15"
           placeholderTextColor={themeHook.colors.textTertiary}
           value={serviceRadius}
@@ -1484,7 +1498,7 @@ export default function EditProviderProfileScreen() {
       </Text>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? '#064e3b' : '#f0fdf4', borderColor: themeHook.colors.success }]}>
+        <View style={[styles.bankCardConnected, { backgroundColor: isDark ? themeHook.colors.background : '#f0fdf4', borderColor: themeHook.colors.success }]}>
           <View style={styles.bankCardHeader}>
             <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
             <View style={styles.bankInfo}>
@@ -1507,7 +1521,7 @@ export default function EditProviderProfileScreen() {
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
+            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
             onPress={async () => {
               if (plaidLinkToken) {
                 initializePlaidLink(plaidLinkToken);
@@ -1570,7 +1584,7 @@ export default function EditProviderProfileScreen() {
         <View style={styles.row}>
           <View style={styles.halfInput}>
             <TextInput
-              style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, firstNameFocused && styles.inputFocused, firstNameFocused && { borderColor: themeHook.colors.primary }]}
+              style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, firstNameFocused && styles.inputFocused, firstNameFocused && { borderColor: themeHook.colors.primary }]}
               placeholder="First name"
               placeholderTextColor={themeHook.colors.textTertiary}
               value={firstName}
@@ -1581,7 +1595,7 @@ export default function EditProviderProfileScreen() {
           </View>
           <View style={styles.halfInput}>
             <TextInput
-              style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, lastNameFocused && styles.inputFocused, lastNameFocused && { borderColor: themeHook.colors.primary }]}
+              style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, lastNameFocused && styles.inputFocused, lastNameFocused && { borderColor: themeHook.colors.primary }]}
               placeholder="Last name"
               placeholderTextColor={themeHook.colors.textTertiary}
               value={lastName}
@@ -1599,7 +1613,7 @@ export default function EditProviderProfileScreen() {
           <Text style={[styles.charCount, { color: themeHook.colors.textTertiary }]}>{bio.length} / 500</Text>
         </View>
         <TextInput
-          style={[styles.textArea, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, bioFocused && styles.textAreaFocused, bioFocused && { borderColor: themeHook.colors.primary }]}
+          style={[styles.textArea, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, bioFocused && styles.textAreaFocused, bioFocused && { borderColor: themeHook.colors.primary }]}
           placeholder="Tell clients about your experience and approach..."
           placeholderTextColor={themeHook.colors.textTertiary}
           value={bio}
@@ -1621,7 +1635,7 @@ export default function EditProviderProfileScreen() {
         <Text style={[styles.label, { color: themeHook.colors.text }]}>Specialties</Text>
         <View style={styles.specialtyInputContainer}>
           <TextInput
-            style={[styles.specialtyInput, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, specialtyInputFocused && styles.inputFocused, specialtyInputFocused && { borderColor: themeHook.colors.primary }]}
+            style={[styles.specialtyInput, { backgroundColor: themeHook.colors.surface, borderColor: specialtyInputFocused ? themeHook.colors.primary : themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, specialtyInputFocused && styles.inputFocused, specialtyInputFocused && { borderColor: themeHook.colors.primary }]}
             placeholder="e.g., Personal Training, Yoga"
             placeholderTextColor={themeHook.colors.textTertiary}
             value={specialtyInput}
@@ -1673,14 +1687,14 @@ export default function EditProviderProfileScreen() {
           </View>
 
           <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
+            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
             placeholder="Service name *"
             placeholderTextColor={themeHook.colors.textTertiary}
             value={service.name}
             onChangeText={(value) => updateService(index, 'name', value)}
           />
           <TextInput
-            style={[styles.input, styles.textArea, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
+            style={[styles.input, styles.textArea, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
             placeholder="Description"
             placeholderTextColor={themeHook.colors.textTertiary}
             value={service.description}
@@ -1691,7 +1705,7 @@ export default function EditProviderProfileScreen() {
           />
           <View style={styles.row}>
             <View style={styles.halfInput}>
-              <View style={[styles.inputWithPrefix, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
+              <View style={[styles.inputWithPrefix, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <Text style={[styles.inputPrefix, { color: themeHook.colors.text }]}>$</Text>
                 <TextInput
                   style={[styles.input, styles.inputWithSuffixInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
@@ -1705,7 +1719,7 @@ export default function EditProviderProfileScreen() {
               </View>
             </View>
             <View style={styles.halfInput}>
-              <View style={[styles.inputWithSuffix, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
+              <View style={[styles.inputWithSuffix, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <TextInput
                   style={[styles.input, styles.inputWithSuffixInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="0"
@@ -1747,14 +1761,14 @@ export default function EditProviderProfileScreen() {
           </View>
 
           <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
+            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
             placeholder="Credential name *"
             placeholderTextColor={themeHook.colors.textTertiary}
             value={credential.name}
             onChangeText={(value) => updateCredential(index, 'name', value)}
           />
           <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
+            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
             placeholder="Issuing organization"
             placeholderTextColor={themeHook.colors.textTertiary}
             value={credential.issuer}
@@ -1763,7 +1777,7 @@ export default function EditProviderProfileScreen() {
           <View style={[styles.row, styles.dateRow]}>
             <View style={styles.halfInput}>
               <Text style={[styles.label, { color: themeHook.colors.text }]}>Issue date</Text>
-              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
+              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <TextInput
                   style={[styles.input, styles.dateInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="MM-DD-YYYY"
@@ -1781,7 +1795,7 @@ export default function EditProviderProfileScreen() {
             </View>
             <View style={styles.halfInput}>
               <Text style={[styles.label, { color: themeHook.colors.text }]}>Expiry date</Text>
-              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
+              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
                 <TextInput
                   style={[styles.input, styles.dateInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
                   placeholder="MM-DD-YYYY"
@@ -1833,7 +1847,7 @@ export default function EditProviderProfileScreen() {
                 <View style={styles.halfInput}>
                   <Text style={[styles.timeLabel, { color: themeHook.colors.textSecondary }]}>Start Time</Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
+                    style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
                     placeholder="9:00 AM"
                     placeholderTextColor={themeHook.colors.textTertiary}
                     value={slot.startTime}
@@ -1843,7 +1857,7 @@ export default function EditProviderProfileScreen() {
                 <View style={styles.halfInput}>
                   <Text style={[styles.timeLabel, { color: themeHook.colors.textSecondary }]}>End Time</Text>
                   <TextInput
-                    style={[styles.input, { backgroundColor: themeHook.colors.inputBackground, borderColor: themeHook.colors.border, color: themeHook.colors.text }]}
+                    style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
                     placeholder="5:00 PM"
                     placeholderTextColor={themeHook.colors.textTertiary}
                     value={slot.endTime}
@@ -1862,7 +1876,7 @@ export default function EditProviderProfileScreen() {
     <>
       <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: themeHook.colors.border }]}>
+        <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
@@ -1871,7 +1885,7 @@ export default function EditProviderProfileScreen() {
         </View>
 
         {/* Tabs */}
-        <View style={[styles.tabs, { backgroundColor: themeHook.colors.surface }]}>
+        <View style={[styles.tabs, { backgroundColor: themeHook.colors.background }]}>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -2113,7 +2127,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    borderBottomWidth: 1,
   },
   headerTitle: {
     fontSize: 20,
@@ -2318,9 +2331,7 @@ const styles = StyleSheet.create({
   },
   specialtyInput: {
     flex: 1,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#1e293b',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
@@ -2346,7 +2357,6 @@ const styles = StyleSheet.create({
   specialtyTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,

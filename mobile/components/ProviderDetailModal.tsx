@@ -41,7 +41,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   const router = useRouter();
   const { user } = useAuth();
   const { onProviderRatingUpdate } = useSocket();
-  const { theme: themeHook } = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>(initialTab);
@@ -654,7 +654,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                 <View style={styles.gridContainer}>
                                   {uniqueServices.map((service) => (
                                     <View key={service.id} style={styles.serviceCardWrapper}>
-                                      <View style={[styles.serviceCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
+                                      <View style={[styles.serviceCard, { backgroundColor: themeHook.isDark ? '#4A6FA5' : themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
                                         <View style={styles.serviceHeader}>
                                           <View style={styles.serviceTitleRow}>
                                             <Text style={[styles.serviceName, { color: themeHook.colors.text }]}>{service.name}</Text>
@@ -704,7 +704,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             <View style={styles.gridContainer}>
                               {provider.reviews.map((review) => (
                                 <View key={review.id} style={styles.reviewCardWrapper}>
-                                  <View style={[styles.reviewCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+                                  <View style={[styles.reviewCard, { backgroundColor: themeHook.isDark ? '#4A6FA5' : themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
                                     <View style={styles.reviewHeader}>
                                       <View style={styles.reviewerInfo}>
                                         <View style={[styles.reviewerAvatar, { backgroundColor: themeHook.colors.primary }]}>

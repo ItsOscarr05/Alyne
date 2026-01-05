@@ -110,8 +110,8 @@ const lightColors: ThemeColors = {
 
 const darkColors: ThemeColors = {
   background: '#0F172A',
-  surface: '#1E293B',
-  surfaceElevated: '#334155',
+  surface: '#1E2C50', // Soft Blue for better visual hierarchy
+  surfaceElevated: '#1E2C50', // Use same soft blue for elevated surfaces (active tabs, etc.)
   text: '#F8FAFC',
   textSecondary: '#CBD5E1',
   textTertiary: '#94A3B8',

@@ -18,6 +18,7 @@ import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { generateTimeSlots, getDayOfWeek, formatTime12Hour } from '../../utils/timeUtils';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function RescheduleBookingScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
@@ -25,6 +26,7 @@ export default function RescheduleBookingScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const modal = useModal();
+  const { theme: themeHook, isDark } = useTheme();
 
   // Redirect providers - they can't reschedule
   useEffect(() => {
@@ -188,54 +190,54 @@ export default function RescheduleBookingScreen() {
 
   if (isLoading || !booking || !provider) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Reschedule Booking</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Reschedule Booking</Text>
           <View style={styles.backButton} />
         </View>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={themeHook.colors.primary} />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Reschedule Booking</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Reschedule Booking</Text>
           <View style={styles.backButton} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
         {/* Current vs New Comparison */}
-        <View style={styles.comparisonCard}>
-          <Text style={styles.comparisonTitle}>Reschedule Details</Text>
+        <View style={[styles.comparisonCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.comparisonTitle, { color: themeHook.colors.text }]}>Reschedule Details</Text>
           <View style={styles.comparisonRow}>
             <View style={styles.comparisonSection}>
-              <Text style={styles.comparisonLabel}>Current Schedule</Text>
-              <Text style={styles.comparisonValue}>
+              <Text style={[styles.comparisonLabel, { color: themeHook.colors.textSecondary }]}>Current Schedule</Text>
+              <Text style={[styles.comparisonValue, { color: themeHook.colors.text }]}>
                 {currentDate ? formatDate(currentDate) : 'N/A'}
               </Text>
-              <Text style={styles.comparisonValue}>
+              <Text style={[styles.comparisonValue, { color: themeHook.colors.text }]}>
                 {currentTime ? formatTime12Hour(currentTime) : 'N/A'}
               </Text>
             </View>
-            <Ionicons name="arrow-forward" size={24} color="#64748b" style={styles.arrowIcon} />
+            <Ionicons name="arrow-forward" size={24} color={themeHook.colors.textSecondary} style={styles.arrowIcon} />
             <View style={styles.comparisonSection}>
-              <Text style={styles.comparisonLabel}>New Schedule</Text>
-              <Text style={styles.comparisonValue}>
+              <Text style={[styles.comparisonLabel, { color: themeHook.colors.textSecondary }]}>New Schedule</Text>
+              <Text style={[styles.comparisonValue, { color: themeHook.colors.text }]}>
                 {selectedDate ? formatDate(selectedDate) : 'Select date'}
               </Text>
-              <Text style={styles.comparisonValue}>
+              <Text style={[styles.comparisonValue, { color: themeHook.colors.text }]}>
                 {selectedTime ? formatTime12Hour(selectedTime) : 'Select time'}
               </Text>
             </View>
@@ -243,19 +245,19 @@ export default function RescheduleBookingScreen() {
         </View>
 
         {/* Provider Info */}
-        <View style={styles.providerCard}>
-          <Text style={styles.providerName}>
+        <View style={[styles.providerCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+          <Text style={[styles.providerName, { color: themeHook.colors.text }]}>
             {provider.name}
           </Text>
           {booking.service && (
-            <Text style={styles.serviceName}>{booking.service.name}</Text>
+            <Text style={[styles.serviceName, { color: themeHook.colors.textSecondary }]}>{booking.service.name}</Text>
           )}
         </View>
 
         {/* Date Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select New Date</Text>
-          <View style={styles.calendarContainer}>
+          <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select New Date</Text>
+          <View style={[styles.calendarContainer, { borderColor: themeHook.colors.primary, backgroundColor: themeHook.colors.surface }]}>
             <Calendar
               onDayPress={(day) => {
                 setSelectedDate(day.dateString);
@@ -264,27 +266,43 @@ export default function RescheduleBookingScreen() {
               markedDates={{
                 [selectedDate]: {
                   selected: true,
-                  selectedColor: '#2563eb',
+                  selectedColor: themeHook.colors.primary,
                 },
                 ...(currentDate && currentDate !== selectedDate
                   ? {
                       [currentDate]: {
                         marked: true,
-                        dotColor: '#64748b',
+                        dotColor: themeHook.colors.textSecondary,
                       },
                     }
                   : {}),
               }}
               minDate={new Date().toISOString().split('T')[0]}
               theme={{
-                todayTextColor: '#2563eb',
-                arrowColor: '#2563eb',
-                selectedDayBackgroundColor: '#2563eb',
+                backgroundColor: themeHook.colors.surface,
+                calendarBackground: themeHook.colors.surface,
+                textSectionTitleColor: themeHook.colors.text,
+                selectedDayBackgroundColor: themeHook.colors.primary,
+                selectedDayTextColor: themeHook.colors.white,
+                todayTextColor: themeHook.colors.primary,
+                dayTextColor: themeHook.colors.text,
+                textDisabledColor: themeHook.colors.textTertiary,
+                dotColor: themeHook.colors.primary,
+                selectedDotColor: themeHook.colors.white,
+                arrowColor: themeHook.colors.primary,
+                monthTextColor: themeHook.colors.text,
+                indicatorColor: themeHook.colors.primary,
+                textDayFontWeight: '500',
+                textMonthFontWeight: '600',
+                textDayHeaderFontWeight: '500',
+                textDayFontSize: 14,
+                textMonthFontSize: 16,
+                textDayHeaderFontSize: 13,
               }}
             />
           </View>
           {currentDate && (
-            <Text style={styles.hintText}>
+            <Text style={[styles.hintText, { color: themeHook.colors.textSecondary }]}>
               Gray dot indicates current booking date
             </Text>
           )}
@@ -293,11 +311,11 @@ export default function RescheduleBookingScreen() {
         {/* Time Selection */}
         {selectedDate && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select New Time</Text>
+            <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Select New Time</Text>
             {timeSlots.length === 0 ? (
-              <View style={styles.noSlotsContainer}>
-                <Ionicons name="calendar-outline" size={48} color="#cbd5e1" />
-                <Text style={styles.noSlotsText}>
+              <View style={[styles.noSlotsContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+                <Ionicons name="calendar-outline" size={48} color={themeHook.colors.textTertiary} />
+                <Text style={[styles.noSlotsText, { color: themeHook.colors.textSecondary }]}>
                   No available time slots for this date
                 </Text>
               </View>
@@ -308,22 +326,24 @@ export default function RescheduleBookingScreen() {
                     key={time}
                     style={[
                       styles.timeSlot,
-                      selectedTime === time && styles.timeSlotSelected,
-                      currentTime === time && styles.timeSlotCurrent,
+                      { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+                      selectedTime === time && { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary },
+                      currentTime === time && { borderColor: themeHook.colors.textSecondary, borderStyle: 'dashed' },
                     ]}
                     onPress={() => setSelectedTime(time)}
                   >
                     <Text
                       style={[
                         styles.timeSlotText,
-                        selectedTime === time && styles.timeSlotTextSelected,
-                        currentTime === time && styles.timeSlotTextCurrent,
+                        { color: themeHook.colors.text },
+                        selectedTime === time && { color: themeHook.colors.white },
+                        currentTime === time && { color: themeHook.colors.textSecondary },
                       ]}
                     >
                       {formatTime12Hour(time)}
                     </Text>
                     {currentTime === time && (
-                      <Text style={styles.currentLabel}>(Current)</Text>
+                      <Text style={[styles.currentLabel, { color: themeHook.colors.textSecondary }]}>(Current)</Text>
                     )}
                   </TouchableOpacity>
                 ))}
@@ -334,40 +354,41 @@ export default function RescheduleBookingScreen() {
 
         {/* Booking Summary */}
         {selectedDate && selectedTime && booking.service && (
-          <View style={styles.summaryCard}>
-            <Text style={styles.summaryTitle}>New Booking Summary</Text>
+          <View style={[styles.summaryCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+            <Text style={[styles.summaryTitle, { color: themeHook.colors.text }]}>New Booking Summary</Text>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Service:</Text>
-              <Text style={styles.summaryValue}>{booking.service.name}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{booking.service.name}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>New Date:</Text>
-              <Text style={styles.summaryValue}>{formatDate(selectedDate)}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>New Date:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{formatDate(selectedDate)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>New Time:</Text>
-              <Text style={styles.summaryValue}>{formatTime12Hour(selectedTime)}</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>New Time:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{formatTime12Hour(selectedTime)}</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Duration:</Text>
-              <Text style={styles.summaryValue}>{booking.service.duration} minutes</Text>
+              <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Duration:</Text>
+              <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>{booking.service.duration} minutes</Text>
             </View>
           </View>
         )}
       </ScrollView>
 
       {/* Submit Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
         <TouchableOpacity
           style={[
             styles.submitButton,
-            (!selectedDate || !selectedTime || isSubmitting) && styles.submitButtonDisabled,
+            { backgroundColor: themeHook.colors.primary },
+            (!selectedDate || !selectedTime || isSubmitting) && { backgroundColor: themeHook.colors.textTertiary, opacity: 0.6 },
           ]}
           onPress={handleReschedule}
           disabled={!selectedDate || !selectedTime || isSubmitting}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={themeHook.colors.white} />
           ) : (
             <Text style={styles.submitButtonText}>Confirm Reschedule</Text>
           )}
@@ -393,7 +414,6 @@ export default function RescheduleBookingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   header: {
     flexDirection: 'row',
@@ -405,7 +425,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -418,7 +437,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   scrollView: {
     flex: 1,
@@ -432,17 +450,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   comparisonCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#2563eb',
   },
   comparisonTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
     textAlign: 'center',
   },
@@ -457,14 +472,12 @@ const styles = StyleSheet.create({
   },
   comparisonLabel: {
     fontSize: 12,
-    color: '#64748b',
     marginBottom: 8,
     fontWeight: '500',
   },
   comparisonValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -472,12 +485,10 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   providerCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 16,
     padding: 18,
     marginBottom: 24,
     borderWidth: 2,
-    borderColor: '#2563eb',
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
@@ -487,12 +498,10 @@ const styles = StyleSheet.create({
   providerName: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 4,
   },
   serviceName: {
     fontSize: 14,
-    color: '#64748b',
   },
   section: {
     marginBottom: 32,
@@ -500,19 +509,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
   },
   calendarContainer: {
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#2563eb',
     overflow: 'hidden',
-    backgroundColor: '#ffffff',
   },
   hintText: {
     fontSize: 12,
-    color: '#64748b',
     marginTop: 8,
     textAlign: 'center',
   },
@@ -525,62 +530,42 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: 8,
-    backgroundColor: '#ffffff',
     borderWidth: 2,
-    borderColor: '#000000',
     alignItems: 'center',
   },
-  timeSlotSelected: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
-  },
-  timeSlotCurrent: {
-    borderColor: '#64748b',
-    borderStyle: 'dashed',
-  },
+  timeSlotSelected: {},
+  timeSlotCurrent: {},
   timeSlotText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
-  timeSlotTextSelected: {
-    color: '#ffffff',
-  },
-  timeSlotTextCurrent: {
-    color: '#64748b',
-  },
+  timeSlotTextSelected: {},
+  timeSlotTextCurrent: {},
   currentLabel: {
     fontSize: 10,
-    color: '#64748b',
     marginTop: 2,
   },
   noSlotsContainer: {
     alignItems: 'center',
     padding: 32,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     borderStyle: 'dashed',
   },
   noSlotsText: {
     fontSize: 14,
-    color: '#64748b',
     marginTop: 12,
     textAlign: 'center',
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 20,
     marginTop: 8,
     borderWidth: 2,
-    borderColor: '#2563eb',
   },
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
   },
   summaryRow: {
@@ -590,28 +575,21 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   footer: {
     padding: 24,
-    backgroundColor: '#ffffff',
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
   },
   submitButton: {
-    backgroundColor: '#2563eb',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
   },
-  submitButtonDisabled: {
-    backgroundColor: '#cbd5e1',
-  },
+  submitButtonDisabled: {},
   submitButtonText: {
     color: '#ffffff',
     fontSize: 16,

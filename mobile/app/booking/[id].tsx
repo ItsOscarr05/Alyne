@@ -114,14 +114,14 @@ export default function BookingDetailScreen() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'CONFIRMED':
-        return themeHook.colors.success;
+        return '#9333EA'; // Purple
       case 'PENDING':
-        return themeHook.colors.warning;
+        return themeHook.colors.warning; // Yellow/Amber - already ok
       case 'COMPLETED':
-        return themeHook.colors.primary;
+        return '#16A34A'; // Green
       case 'CANCELLED':
       case 'DECLINED':
-        return themeHook.colors.error;
+        return themeHook.colors.error; // Red - already ok
       default:
         return themeHook.colors.textTertiary;
     }
@@ -153,16 +153,16 @@ export default function BookingDetailScreen() {
 
   if (!booking) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color="#1e293b" />
+              <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Booking Details</Text>
+            <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Booking Details</Text>
             <View style={styles.backButton} />
           </View>
-          <View style={styles.headerDivider} />
+          <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.loadingContainer}>
             <Text style={[styles.errorText, { color: themeHook.colors.textSecondary }]}>Booking not found</Text>
           </View>
@@ -176,14 +176,14 @@ export default function BookingDetailScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#1e293b" />
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Booking Details</Text>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Booking Details</Text>
           <View style={styles.backButton} />
         </View>
-        <View style={styles.headerDivider} />
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
         {/* Status Badge */}
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20' }]}>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) + '20', borderColor: getStatusColor(booking.status), borderWidth: 2 }]}>
           <View style={[styles.statusDot, { backgroundColor: getStatusColor(booking.status) }]} />
           <Text style={[styles.statusText, { color: getStatusColor(booking.status) }]}>
             {getStatusLabel(booking.status)}
@@ -193,7 +193,7 @@ export default function BookingDetailScreen() {
         {/* Service Info */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Service</Text>
-          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
             <Text style={[styles.serviceName, { color: themeHook.colors.text }]}>{booking.service?.name || 'Service'}</Text>
             {booking.service?.description && (
               <Text style={[styles.serviceDescription, { color: themeHook.colors.textSecondary }]}>{booking.service.description}</Text>
@@ -232,7 +232,7 @@ export default function BookingDetailScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
             {user?.userType === 'CLIENT' && booking.provider ? (
               <>
                 <Text style={[styles.name, { color: themeHook.colors.text }]}>
@@ -258,7 +258,7 @@ export default function BookingDetailScreen() {
         {/* Schedule */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Schedule</Text>
-          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
             <View style={styles.scheduleRow}>
               <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
               <Text style={[styles.scheduleText, { color: themeHook.colors.text }]}>{formatDate(booking.scheduledDate)}</Text>
@@ -284,7 +284,7 @@ export default function BookingDetailScreen() {
         {booking.notes && (
           <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Notes</Text>
-            <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+            <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
               <Text style={[styles.notesText, { color: themeHook.colors.text }]}>{booking.notes}</Text>
             </View>
           </View>
@@ -302,7 +302,7 @@ export default function BookingDetailScreen() {
             return (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Payment</Text>
-                <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+                <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
                   <View style={styles.paymentRow}>
                     <Text style={[styles.paymentLabel, { color: themeHook.colors.textSecondary }]}>Status:</Text>
                     <Text
@@ -326,7 +326,7 @@ export default function BookingDetailScreen() {
         {/* Booking ID */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Booking Information</Text>
-          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <View style={[styles.infoCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
             <Text style={[styles.infoLabel, { color: themeHook.colors.textSecondary }]}>Booking ID</Text>
             <Text style={[styles.infoValue, { color: themeHook.colors.text }]}>{booking.id}</Text>
             <Text style={[styles.infoLabel, { color: themeHook.colors.textSecondary }]}>Created</Text>
@@ -344,8 +344,8 @@ export default function BookingDetailScreen() {
                 style={[styles.rescheduleButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                 onPress={() => router.push({ pathname: '/booking/reschedule', params: { id } })}
               >
-                <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
-                <Text style={[styles.rescheduleButtonText, { color: themeHook.colors.primary }]}>Reschedule Booking</Text>
+                <Ionicons name="calendar-outline" size={20} color={themeHook.colors.white} />
+                <Text style={[styles.rescheduleButtonText, { color: themeHook.colors.white }]}>Reschedule Booking</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    marginBottom: 24,
+    marginBottom: 28,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -435,6 +435,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
+    marginBottom: 12,
   },
   messageButton: {
     flexDirection: 'row',
@@ -465,8 +466,9 @@ const styles = StyleSheet.create({
   },
   infoCard: {
     borderRadius: 16,
-    padding: 18,
-    borderWidth: 1,
+    padding: 20,
+    marginBottom: 4,
+    borderWidth: 2,
     shadowColor: '#000000',
     shadowOpacity: 0.04,
     shadowRadius: 10,
