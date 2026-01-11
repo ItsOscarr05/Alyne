@@ -49,8 +49,10 @@ apiClient.interceptors.response.use(
     }
     
     if (error.response?.status === 401) {
-      // TODO: Handle unauthorized - redirect to login
-      logger.warn('Unauthorized - redirecting to login');
+      // Mark as unauthorized for component-level handling
+      // Components should handle 401 by redirecting to login
+      error.isUnauthorized = true;
+      logger.warn('Unauthorized access detected - component should handle redirect');
     }
     
     logger.error('API Error', {

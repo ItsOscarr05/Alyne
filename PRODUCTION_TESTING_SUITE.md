@@ -1031,62 +1031,106 @@ PLAID_ENV=sandbox
 
 **Test E1.1: Offline Handling**
 
-- [ ] Disconnect network
-- [ ] Attempt to load data
-- [ ] Verify appropriate error message
-- [ ] Verify app doesn't crash
-- [ ] Reconnect network
-- [ ] Verify app recovers gracefully
+- [x] Disconnect network
+- [x] Attempt to load data (Discover tab, Bookings, Profile, etc.)
+- [x] Verify NetworkErrorModal appears with "No Connection" message
+- [x] Verify app doesn't crash
+- [x] Verify "Retry" button appears (if retry function provided)
+- [x] Click "Retry" button
+- [x] Verify retry attempts to reload data
+- [x] Reconnect network
+- [x] Verify app recovers gracefully
+- [x] Verify data loads successfully after reconnection
+- [x] **Note:** Messages automatically retry when connection is restored
 
 **Test E1.2: Slow Network**
 
-- [ ] Throttle network (slow 3G)
-- [ ] Test loading screens display
-- [ ] Test timeout handling
-- [ ] Verify user can retry failed requests
+- [ ] Throttle network (slow 3G in browser DevTools)
+- [ ] Test loading screens display (ActivityIndicator shows)
+- [ ] Test timeout handling (10 second timeout configured)
+- [ ] Verify timeout shows network error modal
+- [ ] Verify user can retry failed requests (Retry button in NetworkErrorModal)
+- [ ] Test with multiple screens (Discover, Bookings, Profile, Messages)
+- [ ] Verify loading states don't hang indefinitely
 
 **Test E1.3: API Errors**
 
-- [ ] Simulate 500 server error
-- [ ] Simulate 404 not found
-- [ ] Simulate 401 unauthorized
-- [ ] Verify appropriate error messages
-- [ ] Verify user-friendly error handling
+- [ ] Simulate 500 server error (modify backend to return 500 or use test endpoint)
+- [ ] Verify AlertModal appears with title "Server Error" and message "Our servers are experiencing issues. Please try again in a few moments."
+- [ ] Simulate 404 not found (access non-existent resource)
+- [ ] Verify AlertModal appears with title "Not Found" and message "The requested item could not be found."
+- [ ] Simulate 401 unauthorized (expire token: clear auth_token from storage or use invalid token)
+- [ ] Verify AlertModal appears with title "Session Expired" and message "Your session has expired. Please log in again."
+- [ ] Verify 401 errors have `error.isUnauthorized === true` (check in error handler)
+- [ ] Test 403 forbidden error (attempt unauthorized action)
+- [ ] Verify AlertModal appears with title "Access Denied" and message "You don't have permission to perform this action."
+- [ ] Test 429 rate limiting error (make many rapid requests)
+- [ ] Verify AlertModal appears with title "Too Many Requests" and message "Too many requests. Please wait a moment and try again."
+- [ ] Verify all error messages displayed are user-friendly (no technical jargon like "ERR_NETWORK", "ECONNREFUSED", etc.)
+- [ ] Verify error modals use AlertModal component (check visually - should match app theme, not native OS alert)
 
 ### Test Suite E2: Input Validation
 
 **Test E2.1: Form Validation**
 
-- [ ] Test all forms with invalid input
-- [ ] Test with empty fields
-- [ ] Test with special characters
-- [ ] Test with SQL injection attempts
-- [ ] Test with XSS attempts
-- [ ] Verify proper sanitization
+- [ ] Test registration form with invalid email format
+- [ ] Test registration form with weak password
+- [ ] Test registration form with empty fields
+- [ ] Test provider onboarding with empty bio (should show error)
+- [ ] Test service creation with invalid price (non-numeric)
+- [ ] Test credential date inputs with invalid format
+- [ ] Test with special characters in text fields
+- [ ] Test with SQL injection attempts (e.g., `'; DROP TABLE users; --`)
+- [ ] Test with XSS attempts (e.g., `<script>alert('xss')</script>`)
+- [ ] Verify backend rejects malicious input
+- [ ] Verify error messages are user-friendly (not technical)
 
 **Test E2.2: Edge Case Inputs**
 
-- [ ] Very long text inputs
-- [ ] Special characters in names
-- [ ] Unicode characters
-- [ ] Emoji in text fields
-- [ ] Verify proper handling
+- [ ] Very long text inputs (bio, review comments)
+- [ ] Test bio at 500 character limit
+- [ ] Test bio over 500 characters (should be prevented)
+- [ ] Special characters in names (hyphens, apostrophes, accents)
+- [ ] Unicode characters (emojis, non-ASCII)
+- [ ] Emoji in text fields (bio, reviews, messages)
+- [ ] Very long email addresses
+- [ ] Very long service names/descriptions
+- [ ] Verify proper handling and display
+- [ ] Verify database stores correctly
 
 ### Test Suite E3: State Management
 
+**Implementation Status:**
+
+- ✅ Modal state management (useModal hook)
+- ✅ Payment processing state (PaymentContext prevents concurrent payments)
+- ✅ Loading states prevent duplicate actions
+- ✅ Error state management (error modals don't stack)
+- ✅ Navigation state (Expo Router handles navigation)
+- ⚠️ Concurrent modal prevention (not explicitly prevented, but modals typically replace each other)
+
 **Test E3.1: Concurrent Actions**
 
-- [ ] Open multiple modals simultaneously
-- [ ] Perform actions rapidly
+- [ ] Open multiple modals simultaneously (e.g., booking modal + payment modal)
+- [ ] Verify only one modal displays at a time
+- [ ] Perform actions rapidly (click buttons multiple times quickly)
+- [ ] Verify loading states prevent duplicate submissions
+- [ ] Test payment processing (should show "Payment Already in Progress" error)
 - [ ] Verify state doesn't conflict
-- [ ] Verify proper cleanup
+- [ ] Close modals and verify proper cleanup
+- [ ] Test rapid tab switching in bookings
+- [ ] Verify animations don't conflict
 
 **Test E3.2: Navigation Edge Cases**
 
-- [ ] Navigate rapidly between screens
-- [ ] Press back button multiple times
-- [ ] Test deep linking
-- [ ] Test navigation state persistence
+- [ ] Navigate rapidly between screens (tabs, modals, detail pages)
+- [ ] Press back button multiple times rapidly
+- [ ] Verify navigation doesn't break
+- [ ] Test deep linking (e.g., `/booking/[id]` with valid ID)
+- [ ] Test invalid deep links (should handle gracefully)
+- [ ] Test navigation state persistence (refresh page, verify state maintained)
+- [ ] Test navigation with unsaved changes (profile edit, should show confirmation)
+- [ ] Test navigation during API calls (should handle cancellation)
 
 ---
 

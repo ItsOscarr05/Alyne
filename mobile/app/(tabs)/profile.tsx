@@ -17,8 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useState, useEffect, useRef } from 'react';
 import { providerService } from '../../services/provider';
+import { bookingService, BookingDetail } from '../../services/booking';
+import { paymentService } from '../../services/payment';
 import { logger } from '../../utils/logger';
-import { getUserFriendlyError } from '../../utils/errorMessages';
+import { getUserFriendlyError, isNetworkError, getErrorTitle } from '../../utils/errorMessages';
+import { NetworkErrorModal } from '../../components/ui/NetworkErrorModal';
 import { theme } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useModal } from '../../hooks/useModal';
@@ -59,12 +62,109 @@ export default function ProfileScreen() {
   const [scrollToAvailability, setScrollToAvailability] = useState(false);
   const [isUpdatingPhoto, setIsUpdatingPhoto] = useState(false);
   const [isHoveringPhoto, setIsHoveringPhoto] = useState(false);
+  const [networkErrorModal, setNetworkErrorModal] = useState<{
+    visible: boolean;
+    message: string;
+    onRetry?: () => void;
+  }>({
+    visible: false,
+    message: '',
+  });
+
+  // Client profile state
+  const [clientStats, setClientStats] = useState<{
+    totalBookings: number;
+    upcomingBookings: number;
+    completedBookings: number;
+    totalSpent: number;
+  } | null>(null);
+  const [recentBookings, setRecentBookings] = useState<BookingDetail[]>([]);
+  const [isLoadingClientData, setIsLoadingClientData] = useState(false);
+  const [hasPaymentMethod, setHasPaymentMethod] = useState(false);
 
   useEffect(() => {
     if (user?.userType === 'PROVIDER') {
       loadProviderProfile();
+    } else if (user?.userType === 'CLIENT') {
+      loadClientData();
     }
   }, [user]);
+
+  const loadClientData = async () => {
+    if (!user?.id) return;
+
+    setIsLoadingClientData(true);
+    try {
+      // Load all bookings for the client
+      const allBookings = await bookingService.getMyBookings(undefined, 'client');
+      
+      // Calculate stats
+      const now = new Date();
+      const totalBookings = allBookings.length;
+      const upcomingBookings = allBookings.filter(
+        (b) => b.status === 'CONFIRMED' && new Date(b.scheduledDate) >= now
+      ).length;
+      const completedBookings = allBookings.filter((b) => b.status === 'COMPLETED').length;
+      
+      // Calculate total spent from completed payments
+      const completedPayments = allBookings
+        .filter((b) => b.status === 'COMPLETED' && b.payment?.status === 'completed')
+        .map((b) => b.payment?.amount || 0);
+      const totalSpent = completedPayments.reduce((sum, amount) => sum + amount, 0);
+
+      setClientStats({
+        totalBookings,
+        upcomingBookings,
+        completedBookings,
+        totalSpent,
+      });
+
+      // Get recent bookings (upcoming or completed, limit 3)
+      const recent = allBookings
+        .filter((b) => b.status === 'CONFIRMED' || b.status === 'COMPLETED')
+        .sort((a, b) => {
+          const dateA = new Date(a.scheduledDate).getTime();
+          const dateB = new Date(b.scheduledDate).getTime();
+          return dateB - dateA; // Most recent first
+        })
+        .slice(0, 3);
+      setRecentBookings(recent);
+
+      // Check if client has payment method (has made at least one payment)
+      const hasMadePayment = allBookings.some((b) => b.payment?.status === 'completed');
+      setHasPaymentMethod(hasMadePayment);
+    } catch (error: any) {
+      logger.error('Error loading client data', error);
+      
+      // Handle network errors with retry option
+      if (isNetworkError(error)) {
+        setNetworkErrorModal({
+          visible: true,
+          message: getUserFriendlyError(error),
+          onRetry: loadClientData,
+        });
+      } else {
+        // Other errors - show alert
+        modal.showAlert({
+          title: getErrorTitle(error),
+          message: getUserFriendlyError(error),
+          type: 'error',
+        });
+      }
+      
+      // Set defaults on error
+      setClientStats({
+        totalBookings: 0,
+        upcomingBookings: 0,
+        completedBookings: 0,
+        totalSpent: 0,
+      });
+      setRecentBookings([]);
+      setHasPaymentMethod(false);
+    } finally {
+      setIsLoadingClientData(false);
+    }
+  };
 
 
   const loadProviderProfile = async () => {
@@ -128,7 +228,23 @@ export default function ProfileScreen() {
       }
     } catch (error: any) {
       logger.error('Error loading provider profile', error);
-      // Profile might not exist yet, that's okay
+      
+      // Handle network errors with retry option
+      if (isNetworkError(error)) {
+        setNetworkErrorModal({
+          visible: true,
+          message: getUserFriendlyError(error),
+          onRetry: loadProviderProfile,
+        });
+      } else if (error?.response?.status !== 404) {
+        // 404 is okay (profile might not exist), but show other errors
+        modal.showAlert({
+          title: getErrorTitle(error),
+          message: getUserFriendlyError(error),
+          type: 'error',
+        });
+      }
+      // Profile might not exist yet (404), that's okay
     } finally {
       setIsLoadingProfile(false);
     }
@@ -355,79 +471,95 @@ export default function ProfileScreen() {
                 </View>
               </View>
             ) : (
-              <View style={[styles.profileSection, { backgroundColor: themeHook.colors.background }]}>
-                <View style={[styles.profileCard, { backgroundColor: themeHook.colors.surface }]}>
-                  <View style={styles.profileHeader}>
-                    <View style={styles.avatarWrapper}>
-                      <TouchableOpacity
-                        style={[styles.avatar, { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.surface }]}
-                        onPress={pickImage}
-                        disabled={isUpdatingPhoto}
-                        onMouseEnter={() => Platform.OS === 'web' && setIsHoveringPhoto(true)}
-                        onMouseLeave={() => Platform.OS === 'web' && setIsHoveringPhoto(false)}
-                        activeOpacity={0.8}
-                      >
-                        {user.profilePhoto ? (
-                          <>
-                            <Image
-                              source={{ uri: user.profilePhoto }}
-                              style={styles.avatarImage}
-                              contentFit="cover"
-                            />
-                            {(isHoveringPhoto || isUpdatingPhoto) && (
-                              <View style={styles.photoOverlay}>
-                                {isUpdatingPhoto ? (
-                                  <ActivityIndicator size="small" color="#ffffff" />
-                                ) : (
-                                  <>
-                                    <Ionicons name="camera" size={20} color="#ffffff" />
-                                    <Text style={styles.photoOverlayTextSmall}>Change</Text>
-                                  </>
-                                )}
-                              </View>
-                            )}
-                          </>
-                        ) : (
-                          <>
-                            <Text style={[styles.avatarText, { color: themeHook.colors.white }]}>
-                              {user.firstName[0]}
-                              {user.lastName[0]}
-                            </Text>
-                            {(isHoveringPhoto || isUpdatingPhoto) && (
-                              <View style={styles.photoOverlay}>
-                                {isUpdatingPhoto ? (
-                                  <ActivityIndicator size="small" color="#ffffff" />
-                                ) : (
-                                  <>
-                                    <Ionicons name="camera" size={20} color="#ffffff" />
-                                    <Text style={styles.photoOverlayTextSmall}>Add Photo</Text>
-                                  </>
-                                )}
-                              </View>
-                            )}
-                          </>
-                        )}
-                      </TouchableOpacity>
-                      <View style={[styles.userTypeBadge, { backgroundColor: themeHook.colors.primary }]}>
-                        <Ionicons name="person" size={12} color={themeHook.colors.white} />
-                        <Text style={[styles.userTypeText, { color: themeHook.colors.white }]}>Client</Text>
-                      </View>
+              <View style={styles.heroSection}>
+                {/* Background Pattern */}
+                <View style={styles.heroPattern}>
+                  {/* Subtle grid pattern */}
+                  {Array.from({ length: 8 }).map((_, rowIndex) => (
+                    <View key={`row-${rowIndex}`} style={styles.heroPatternRow}>
+                      {Array.from({ length: 10 }).map((_, colIndex) => (
+                        <View
+                          key={`col-${colIndex}`}
+                          style={[
+                            styles.heroPatternCell,
+                            (rowIndex + colIndex) % 2 === 0 && styles.heroPatternCellAlt,
+                            (rowIndex + colIndex) % 2 === 0 && { backgroundColor: themeHook.colors.primaryLight },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  ))}
+                  {/* Radial gradient effect */}
+                  <View style={[styles.heroPatternRadial, { backgroundColor: themeHook.colors.primaryLight }]} />
+                </View>
+                <View style={styles.heroContent}>
+                  <View style={styles.heroAvatarContainer}>
+                    <TouchableOpacity
+                      style={styles.heroAvatar}
+                      onPress={pickImage}
+                      disabled={isUpdatingPhoto}
+                      onMouseEnter={() => Platform.OS === 'web' && setIsHoveringPhoto(true)}
+                      onMouseLeave={() => Platform.OS === 'web' && setIsHoveringPhoto(false)}
+                      activeOpacity={0.8}
+                    >
+                      {user.profilePhoto ? (
+                        <>
+                          <Image
+                            source={{ uri: user.profilePhoto }}
+                            style={styles.heroAvatarImage}
+                            contentFit="cover"
+                          />
+                          {(isHoveringPhoto || isUpdatingPhoto) && (
+                            <View style={styles.photoOverlay}>
+                              {isUpdatingPhoto ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                              ) : (
+                                <>
+                                  <Ionicons name="camera" size={24} color="#ffffff" />
+                                  <Text style={styles.photoOverlayText}>Change Photo</Text>
+                                </>
+                              )}
+                            </View>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Text style={styles.heroAvatarText}>
+                            {user.firstName[0]}
+                            {user.lastName[0]}
+                          </Text>
+                          {(isHoveringPhoto || isUpdatingPhoto) && (
+                            <View style={styles.photoOverlay}>
+                              {isUpdatingPhoto ? (
+                                <ActivityIndicator size="small" color="#ffffff" />
+                              ) : (
+                                <>
+                                  <Ionicons name="camera" size={24} color="#ffffff" />
+                                  <Text style={styles.photoOverlayText}>Add Photo</Text>
+                                </>
+                              )}
+                            </View>
+                          )}
+                        </>
+                      )}
+                    </TouchableOpacity>
+                    <View style={[styles.userTypeBadge, { backgroundColor: themeHook.colors.primary }]}>
+                      <Ionicons name="person" size={12} color={themeHook.colors.white} />
+                      <Text style={[styles.userTypeText, { color: themeHook.colors.white }]}>Client</Text>
                     </View>
                   </View>
-                  <View style={styles.profileInfo}>
-                    <Text style={[styles.name, { color: themeHook.colors.text }]}>
-                      {user.firstName} {user.lastName}
-                    </Text>
-                    <View style={styles.emailContainer}>
-                      <Ionicons name="mail-outline" size={16} color={themeHook.colors.textSecondary} />
-                      <Text style={[styles.email, { color: themeHook.colors.textSecondary }]}>{user.email}</Text>
-                    </View>
+                  <Text style={[styles.heroName, { color: themeHook.colors.text }]}>
+                    {user.firstName} {user.lastName}
+                  </Text>
+                  <View style={styles.heroEmailContainer}>
+                    <Ionicons name="mail-outline" size={14} color={themeHook.colors.textSecondary} />
+                    <Text style={[styles.heroEmail, { color: themeHook.colors.textSecondary }]}>{user.email}</Text>
                   </View>
                 </View>
               </View>
             )}
 
-            {/* Quick Stats - Provider Only */}
+            {/* Quick Stats - Provider */}
             {user.userType === 'PROVIDER' && providerProfile && (
               <View style={[styles.quickStatsSection, { borderTopColor: themeHook.colors.border }]}>
                 <View style={styles.quickStatsGrid}>
@@ -510,6 +642,151 @@ export default function ProfileScreen() {
                         : "Not Connected"}
                     </Text>
                   </View>
+                </View>
+              </View>
+            )}
+
+            {/* Quick Stats - Client */}
+            {user.userType === 'CLIENT' && (
+              isLoadingClientData ? (
+                <View style={[styles.quickStatsSection, { borderTopColor: themeHook.colors.border }]}>
+                  <ActivityIndicator size="small" color={themeHook.colors.primary} />
+                </View>
+              ) : clientStats ? (
+              <View style={[styles.quickStatsSection, { borderTopColor: themeHook.colors.border }]}>
+                <View style={styles.quickStatsGrid}>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
+                    onPress={() => router.push('/(tabs)/bookings')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons
+                      name="calendar-outline"
+                      size={24}
+                      color={themeHook.colors.primary}
+                    />
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
+                      {clientStats.totalBookings}
+                    </Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Total Bookings</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: '#9333EA' }]}
+                    onPress={() => router.push('/(tabs)/bookings?tab=upcoming')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="time-outline" size={24} color="#9333EA" />
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
+                      {clientStats.upcomingBookings}
+                    </Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Upcoming</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: '#16A34A' }]}
+                    onPress={() => router.push('/(tabs)/bookings?tab=past')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="checkmark-circle-outline" size={24} color="#16A34A" />
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
+                      {clientStats.completedBookings}
+                    </Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Completed</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.quickStatCard, { backgroundColor: themeHook.colors.surface, borderColor: '#fbbf24' }]}
+                    onPress={() => router.push('/payment/history')}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="cash-outline" size={24} color="#fbbf24" />
+                    <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
+                      ${clientStats.totalSpent.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Text>
+                    <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Total Spent</Text>
+                  </TouchableOpacity>
+                </View>
+                {/* Payment Method Status */}
+                <View style={[styles.bankAccountStatusCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+                  <View style={styles.bankAccountStatusRow}>
+                    <Ionicons
+                      name={hasPaymentMethod ? "checkmark-circle" : "close-circle"}
+                      size={20}
+                      color={hasPaymentMethod ? "#16a34a" : "#ef4444"}
+                    />
+                    <Text style={[styles.bankAccountStatusText, { color: themeHook.colors.text }]}>
+                      Payment Method: {hasPaymentMethod ? "Connected" : "Not Set Up"}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              ) : null
+            )}
+
+            {/* Recent Activity - Client */}
+            {user.userType === 'CLIENT' && recentBookings.length > 0 && (
+              <View style={[styles.recentActivitySection, { backgroundColor: themeHook.colors.background }]}>
+                <View style={styles.recentActivityHeader}>
+                  <Text style={[styles.recentActivityTitle, { color: themeHook.colors.text }]}>Recent Activity</Text>
+                  <TouchableOpacity onPress={() => router.push('/(tabs)/bookings')}>
+                    <Text style={[styles.viewAllText, { color: themeHook.colors.primary }]}>View All</Text>
+                  </TouchableOpacity>
+                </View>
+                {recentBookings.map((booking) => (
+                  <TouchableOpacity
+                    key={booking.id}
+                    style={[styles.recentActivityCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
+                    onPress={() => router.push(`/booking/${booking.id}`)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.recentActivityContent}>
+                      <View style={styles.recentActivityInfo}>
+                        <Text style={[styles.recentActivityProviderName, { color: themeHook.colors.text }]}>
+                          {booking.provider?.firstName} {booking.provider?.lastName}
+                        </Text>
+                        <Text style={[styles.recentActivityServiceName, { color: themeHook.colors.textSecondary }]}>
+                          {booking.service?.name}
+                        </Text>
+                        <Text style={[styles.recentActivityDate, { color: themeHook.colors.textTertiary }]}>
+                          {new Date(booking.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {booking.scheduledTime}
+                        </Text>
+                      </View>
+                      <View style={styles.recentActivityRight}>
+                        <View style={[
+                          styles.recentActivityStatusBadge,
+                          booking.status === 'COMPLETED' && { backgroundColor: '#16A34A' + '20', borderColor: '#16A34A' },
+                          booking.status === 'CONFIRMED' && { backgroundColor: '#9333EA' + '20', borderColor: '#9333EA' },
+                          booking.status === 'PENDING' && { backgroundColor: '#fbbf24' + '20', borderColor: '#fbbf24' },
+                        ]}>
+                          <Text style={[
+                            styles.recentActivityStatusText,
+                            { color: themeHook.colors.text }
+                          ]}>
+                            {booking.status}
+                          </Text>
+                        </View>
+                        {booking.payment?.amount && (
+                          <Text style={[styles.recentActivityAmount, { color: themeHook.colors.text }]}>
+                            ${booking.payment.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
+            {/* Recent Activity Empty State - Client */}
+            {user.userType === 'CLIENT' && !isLoadingClientData && recentBookings.length === 0 && (
+              <View style={[styles.recentActivitySection, { backgroundColor: themeHook.colors.background }]}>
+                <Text style={[styles.recentActivityTitle, { color: themeHook.colors.text }]}>Recent Activity</Text>
+                <View style={[styles.recentActivityEmptyState, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+                  <Ionicons name="calendar-outline" size={48} color={themeHook.colors.textTertiary} />
+                  <Text style={[styles.recentActivityEmptyText, { color: themeHook.colors.text }]}>
+                    No bookings yet
+                  </Text>
+                  <Text style={[styles.recentActivityEmptySubtext, { color: themeHook.colors.textSecondary }]}>
+                    Your recent bookings will appear here
+                  </Text>
                 </View>
               </View>
             )}
@@ -694,6 +971,14 @@ export default function ProfileScreen() {
           scrollToAvailability={scrollToAvailability}
         />
       )}
+
+      {/* Network Error Modal */}
+      <NetworkErrorModal
+        visible={networkErrorModal.visible}
+        onClose={() => setNetworkErrorModal({ visible: false, message: '' })}
+        onRetry={networkErrorModal.onRetry}
+        message={networkErrorModal.message}
+      />
     </View>
   );
 }
@@ -1161,5 +1446,100 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     marginTop: 2,
+  },
+  // Recent Activity Section (Client)
+  recentActivitySection: {
+    marginTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.xl,
+    paddingBottom: theme.spacing.lg,
+  },
+  recentActivityHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  recentActivityTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  viewAllText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  recentActivityCard: {
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderWidth: 2,
+  },
+  recentActivityContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  recentActivityInfo: {
+    flex: 1,
+  },
+  recentActivityProviderName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: theme.spacing.xs,
+  },
+  recentActivityServiceName: {
+    fontSize: 14,
+    marginBottom: theme.spacing.xs,
+  },
+  recentActivityDate: {
+    fontSize: 12,
+  },
+  recentActivityRight: {
+    alignItems: 'flex-end',
+    gap: theme.spacing.xs,
+  },
+  recentActivityStatusBadge: {
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.radii.sm,
+    borderWidth: 1,
+  },
+  recentActivityStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  recentActivityAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  recentActivityEmptyState: {
+    borderRadius: theme.radii.lg,
+    padding: theme.spacing['2xl'],
+    alignItems: 'center',
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  recentActivityEmptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.xs,
+  },
+  recentActivityEmptySubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  userTypeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.full,
+    marginTop: theme.spacing.sm,
+  },
+  userTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });
