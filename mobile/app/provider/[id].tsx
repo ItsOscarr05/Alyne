@@ -10,6 +10,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService, ProviderDetail, Service, Review } from '../../services/provider';
 import { reviewService } from '../../services/review';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,11 +20,13 @@ import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { formatTime12Hour } from '../../utils/timeUtils';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { theme } from '../../theme';
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { onProviderRatingUpdate } = useSocket();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -211,7 +214,7 @@ export default function ProviderDetailScreen() {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.profileHeader}>
           <View style={styles.profileHeaderRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -244,8 +247,8 @@ export default function ProviderDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }} showsVerticalScrollIndicator={false}>
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={styles.profileHeaderRow}>
@@ -897,17 +900,16 @@ const styles = StyleSheet.create({
     color: '#64748b',
   },
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: 12,
   },
   serviceCardWrapper: {
-    width: '48%',
+    width: '100%',
   },
   serviceCard: {
     backgroundColor: '#f8fafc',
     borderRadius: 16,
-    padding: 18,
+    padding: 16,
     borderWidth: 2,
     borderColor: '#2563eb',
     shadowColor: '#000000',
@@ -918,18 +920,18 @@ const styles = StyleSheet.create({
     minHeight: 180,
   },
   serviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    gap: 8,
   },
   serviceTitleRow: {
     flex: 1,
-    marginRight: 12,
+    minWidth: 0,
   },
   serviceName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#1e293b',
+    flexWrap: 'wrap',
   },
   serviceDurationChip: {
     marginTop: 4,
@@ -942,10 +944,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   servicePriceTag: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   servicePriceAmount: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
     color: '#2563eb',
   },
@@ -957,7 +959,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewCardWrapper: {
-    width: '48%',
+    width: '100%',
   },
   reviewCard: {
     padding: 16,
@@ -992,9 +994,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     flex: 1,
+    minWidth: 0,
   },
   reviewerTextBlock: {
     flex: 1,
+    minWidth: 0,
   },
   reviewerAvatar: {
     width: 40,
@@ -1019,6 +1023,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   reviewRatingPill: {
     flexDirection: 'row',

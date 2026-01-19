@@ -11,6 +11,7 @@ import {
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
 import { bookingService, BookingDetail } from '../../services/booking';
@@ -91,6 +92,7 @@ export default function ProviderDashboardScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { onBookingUpdate } = useSocket();
   const { theme: themeHook } = useTheme();
+  const insets = useSafeAreaInsets();
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
@@ -379,10 +381,10 @@ export default function ProviderDashboardScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>

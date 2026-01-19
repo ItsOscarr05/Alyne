@@ -1,7 +1,8 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { FormField } from '../../components/ui/FormField';
@@ -18,6 +19,7 @@ export default function ChangePasswordScreen() {
   const modal = useModal();
   const { logout } = useAuth();
   const { theme: themeHook } = useTheme();
+  const insets = useSafeAreaInsets();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isNewPasswordFocused, setIsNewPasswordFocused] = useState(false);
@@ -128,8 +130,12 @@ export default function ChangePasswordScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -224,7 +230,7 @@ export default function ChangePasswordScreen() {
           onButtonPress={modal.alertOptions.onButtonPress}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

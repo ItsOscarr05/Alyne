@@ -14,6 +14,7 @@ import {
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { useState, useEffect, useRef } from 'react';
 import { providerService } from '../../services/provider';
@@ -51,6 +52,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { user, logout, deleteAccount, refreshUser } = useAuth();
   const { theme: themeHook, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const modal = useModal();
   const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -365,8 +367,8 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing['2xl']) + 80 }]}>
         <View style={styles.header}>
           <Text style={[styles.title, { color: themeHook.colors.text }]}>
             {user?.userType === 'PROVIDER' ? 'Provider Profile' : 'Profile'}
@@ -890,7 +892,7 @@ export default function ProfileScreen() {
         <TouchableWithoutFeedback onPress={() => !isDeleting && setShowDeleteModal(false)}>
           <View style={[styles.deleteModalOverlay, { backgroundColor: themeHook.colors.overlay }]}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.deleteModalContent, { backgroundColor: themeHook.colors.surface }]}>
+              <View style={[styles.deleteModalContent, { backgroundColor: themeHook.colors.surface, marginBottom: insets.bottom }]}>
                 <View style={styles.deleteModalHeader}>
                   <Ionicons name="alert-circle" size={48} color="#ef4444" />
                   <Text style={[styles.deleteModalTitle, { color: themeHook.colors.text }]}>Delete Account</Text>

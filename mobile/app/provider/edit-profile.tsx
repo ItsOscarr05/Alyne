@@ -12,10 +12,12 @@ import {
   Platform,
   Image,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService } from '../../services/provider';
 import { onboardingService } from '../../services/onboarding';
 import { plaidService } from '../../services/plaid';
@@ -42,6 +44,7 @@ export default function EditProviderProfileScreen() {
   const initialSection = (params.section as Section) || 'profile';
   const { user, refreshUser } = useAuth();
   const { theme: themeHook, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [activeSection, setActiveSection] = useState<Section>(initialSection);
   const sectionOpacityAnim = useRef(new Animated.Value(1)).current;
   const prevSectionRef = useRef<Section>(initialSection);
@@ -1874,7 +1877,11 @@ export default function EditProviderProfileScreen() {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+      >
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
@@ -1943,7 +1950,7 @@ export default function EditProviderProfileScreen() {
                     </TouchableOpacity>
                   </View>
                 </View>
-      </View>
+      </KeyboardAvoidingView>
 
       <AlertModal
         visible={alertModal.visible}

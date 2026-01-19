@@ -74,8 +74,14 @@ export const storage = {
       if (webStorage) {
         // Use tab-specific key for web
         const tabKey = getTabKey(key);
-        webStorage.setItem(tabKey, value);
-        return;
+        try {
+          webStorage.setItem(tabKey, value);
+          // Return a resolved promise for consistency
+          return Promise.resolve();
+        } catch (error) {
+          logger.error('Error setting item in web storage', error);
+          throw error;
+        }
       }
       // Fallback to AsyncStorage
       await AsyncStorage.setItem(key, value);

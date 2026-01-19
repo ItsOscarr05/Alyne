@@ -9,6 +9,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { bookingService, BookingDetail } from '../../services/booking';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
@@ -17,12 +18,14 @@ import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { useTheme } from '../../contexts/ThemeContext';
+import { theme } from '../../theme';
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
   const themeHook = useTheme();
+  const insets = useSafeAreaInsets();
   const { onBookingUpdate } = useSocket();
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,8 +175,8 @@ export default function BookingDetailScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />

@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Animated
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -231,8 +232,8 @@ export default function HelpSupportScreen() {
   }), [themeHook]);
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing['2xl']) }]}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}

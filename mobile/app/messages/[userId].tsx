@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { useSocket } from '../../hooks/useSocket';
 import { logger } from '../../utils/logger';
@@ -27,6 +28,7 @@ export default function ChatScreen() {
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
   const { theme: themeHook } = useTheme();
+  const insets = useSafeAreaInsets();
   const { socket, joinConversation, leaveConversation, sendMessage, onMessage, onMessagesRead, isConnected } = useSocket();
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
@@ -548,9 +550,9 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: themeHook.colors.background }]}
+      style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
     >
       {/* Fixed Header */}
       <View style={[styles.header, { backgroundColor: themeHook.colors.surface }]}>
@@ -598,7 +600,7 @@ export default function ChatScreen() {
         }
       />
 
-      <View style={[styles.inputContainer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border }]}>
+      <View style={[styles.inputContainer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.border, paddingBottom: Math.max(insets.bottom, 16) }]}>
         <TextInput
           ref={inputRef}
           style={[styles.input, { backgroundColor: themeHook.colors.background, color: themeHook.colors.text }]}

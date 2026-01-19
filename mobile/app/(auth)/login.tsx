@@ -11,6 +11,8 @@ import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { validateEmail } from '../../utils/passwordValidation';
 import { storage } from '../../utils/storage';
+import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
+import { logger } from '../../utils/logger';
 
 const REMEMBERED_EMAIL_KEY = 'remembered_email';
 const REMEMBERED_PASSWORD_KEY = 'remembered_password';
@@ -86,9 +88,10 @@ export default function LoginScreen() {
         router.replace('/(tabs)'); // Defaults to discover/index for clients
       }
     } catch (error: any) {
+      logger.error('Login error', error);
       modal.showAlert({
-        title: 'Login Failed',
-        message: error.response?.data?.error?.message || error.message || 'An error occurred',
+        title: getErrorTitle(error) || 'Login Failed',
+        message: getUserFriendlyError(error) || 'An error occurred during login. Please try again.',
         type: 'error',
       });
     } finally {

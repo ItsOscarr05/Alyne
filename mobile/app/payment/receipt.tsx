@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { paymentService } from '../../services/payment';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
@@ -17,11 +18,13 @@ import { formatTime12Hour } from '../../utils/timeUtils';
 import { bookingService } from '../../services/booking';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { useTheme } from '../../contexts/ThemeContext';
+import { theme } from '../../theme';
 
 export default function ReceiptScreen() {
   const router = useRouter();
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const themeHook = useTheme();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<any>(null);
   const [payment, setPayment] = useState<any>(null);
@@ -80,6 +83,26 @@ export default function ReceiptScreen() {
     return formatTime12Hour(timeString);
   };
 
+  const getStatusColor = (status: string) => {
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case 'completed':
+      case 'succeeded':
+      case 'success':
+        return themeHook.colors.success;
+      case 'pending':
+        return themeHook.colors.warning;
+      case 'failed':
+        return themeHook.colors.error;
+      case 'refunded':
+      case 'canceled':
+      case 'cancelled':
+        return themeHook.colors.textSecondary;
+      default:
+        return themeHook.colors.textSecondary;
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.container}>
@@ -102,8 +125,8 @@ export default function ReceiptScreen() {
 
   if (!booking || !payment) {
     return (
-      <View style={styles.container}>
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={24} color="#1e293b" />
@@ -128,8 +151,8 @@ export default function ReceiptScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
@@ -169,7 +192,7 @@ export default function ReceiptScreen() {
 
           <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
             <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Payment Status</Text>
-            <View style={[styles.statusBadge, { backgroundColor: themeHook.colors.success }]}>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(payment.status) }]}>
               <Text style={styles.statusText}>
                 {payment.status ? payment.status.toUpperCase() : 'UNKNOWN'}
               </Text>

@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
@@ -7,6 +8,7 @@ import { theme } from '../../theme';
 export default function TabsLayout() {
   const { user, isLoading } = useAuth();
   const { theme: themeHook } = useTheme();
+  const insets = useSafeAreaInsets();
   const isProvider = user?.userType === 'PROVIDER';
 
   // Build options objects conditionally
@@ -50,6 +52,8 @@ export default function TabsLayout() {
           borderTopColor: themeHook.colors.primary,
           borderTopWidth: 2,
           backgroundColor: themeHook.colors.surface,
+          paddingBottom: Math.max(insets.bottom, 8),
+          height: 60 + Math.max(insets.bottom, 8),
         },
       }}
     >

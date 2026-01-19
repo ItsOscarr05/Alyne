@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { paymentService } from '../../services/payment';
 import { bookingService } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
@@ -378,6 +380,7 @@ export default function PaymentCheckoutScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
   const { user } = useAuth();
   const themeHook = useTheme();
+  const insets = useSafeAreaInsets();
   const { startPayment, endPayment, isProcessing: globalIsProcessing, currentBookingId } = usePaymentContext();
   
   // Redirect providers - they don't make payments
@@ -741,8 +744,12 @@ export default function PaymentCheckoutScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
@@ -957,7 +964,7 @@ export default function PaymentCheckoutScreen() {
         message={alertModal.message}
         type={alertModal.type}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

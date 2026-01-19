@@ -94,6 +94,27 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
     return formatTime12Hour(timeString);
   };
 
+  const getStatusColor = (status: string) => {
+    const normalizedStatus = status?.toLowerCase();
+    switch (normalizedStatus) {
+      case 'completed':
+      case 'succeeded':
+      case 'success':
+        return themeHook.colors.success;
+      case 'pending':
+        return themeHook.colors.warning;
+      case 'failed':
+      case 'failed':
+        return themeHook.colors.error;
+      case 'refunded':
+      case 'canceled':
+      case 'cancelled':
+        return themeHook.colors.textSecondary;
+      default:
+        return themeHook.colors.textSecondary;
+    }
+  };
+
   return (
     <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -156,7 +177,7 @@ export function ReceiptModal({ visible, bookingId, onClose }: ReceiptModalProps)
 
                       <View style={[styles.detailRow, { borderBottomColor: themeHook.colors.border }]}>
                         <Text style={[styles.detailLabel, { color: themeHook.colors.textSecondary }]}>Payment Status</Text>
-                        <View style={[styles.statusBadge, { backgroundColor: themeHook.colors.success }]}>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(payment.status) }]}>
                           <Text style={styles.statusText}>
                             {payment.status ? payment.status.toUpperCase() : 'UNKNOWN'}
                           </Text>

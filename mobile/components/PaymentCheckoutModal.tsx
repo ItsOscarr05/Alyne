@@ -9,9 +9,11 @@ import {
   Platform,
   Modal as RNModal,
   TouchableWithoutFeedback,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { paymentService } from '../services/payment';
 import { bookingService } from '../services/booking';
 import { plaidService } from '../services/plaid';
@@ -314,6 +316,7 @@ interface PaymentCheckoutModalProps {
 export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentCheckoutModalProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
   const { startPayment, endPayment, isProcessing: globalIsProcessing, currentBookingId } = usePaymentContext();
 
   const [loading, setLoading] = useState(true);
@@ -886,9 +889,14 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     <>
       <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
         <TouchableWithoutFeedback onPress={onClose}>
-          <View style={styles.modalOverlay}>
+          <View style={[styles.modalOverlay, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={styles.modalContainer}>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+              >
+                <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
                 {/* Close Button */}
                 <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                   <Ionicons name="close" size={28} color="#1e293b" />
@@ -1127,7 +1135,8 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                     </ScrollView>
                   </>
                 )}
-              </View>
+                </View>
+              </KeyboardAvoidingView>
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>

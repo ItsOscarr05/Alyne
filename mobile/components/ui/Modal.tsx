@@ -8,6 +8,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { theme } from '../../theme';
 import { ANIMATION_DURATIONS, ANIMATION_EASING } from '../../utils/animations';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -21,6 +22,7 @@ interface ModalProps {
 
 export function Modal({ visible, onClose, children, dismissible = true }: ModalProps) {
   const themeHook = useTheme();
+  const insets = useSafeAreaInsets();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
 
@@ -73,7 +75,7 @@ export function Modal({ visible, onClose, children, dismissible = true }: ModalP
       statusBarTranslucent
     >
       <TouchableWithoutFeedback onPress={dismissible ? onClose : undefined}>
-        <Animated.View style={[styles.overlay, { opacity: fadeAnim, backgroundColor: themeHook.colors.overlay }]}>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim, backgroundColor: themeHook.colors.overlay, paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
             <Animated.View
               style={[
@@ -84,6 +86,7 @@ export function Modal({ visible, onClose, children, dismissible = true }: ModalP
                   backgroundColor: themeHook.colors.surface,
                   borderColor: themeHook.colors.primary,
                   borderWidth: 2,
+                  maxHeight: '90%',
                 },
               ]}
             >

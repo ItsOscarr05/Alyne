@@ -14,6 +14,7 @@ import {
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookingCard, BookingCardData } from '../../components/BookingCard';
 import { AnimatedCardWrapper } from '../../components/AnimatedCardWrapper';
 import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
@@ -42,6 +43,7 @@ export default function BookingsScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const { theme: themeHook, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { onBookingUpdate, onReviewDeleted } = useSocket();
   const { isProcessing: paymentProcessing, currentBookingId } = usePaymentContext();
   const modal = useModal();
@@ -558,8 +560,8 @@ export default function BookingsScreen() {
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-        <ScrollView style={styles.content} contentContainerStyle={styles.listContent}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+        <ScrollView style={styles.content} contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: themeHook.colors.text }]}>
               {user?.userType === 'PROVIDER' ? 'Booking Requests' : 'My Bookings'}
@@ -630,10 +632,10 @@ export default function BookingsScreen() {
 
   if (bookings.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
         <ScrollView
           style={styles.content}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         >
           <View style={styles.header}>
@@ -740,10 +742,10 @@ export default function BookingsScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <View style={styles.header}>
@@ -1294,7 +1296,7 @@ export default function BookingsScreen() {
         >
           <View style={[styles.optionsModalOverlay, { backgroundColor: themeHook.colors.overlay }]}>
             <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-              <View style={[styles.optionsModalContainer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.error }]}>
+              <View style={[styles.optionsModalContainer, { backgroundColor: themeHook.colors.surface, borderTopColor: themeHook.colors.error, paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
                 <TouchableOpacity
                   style={styles.optionsModalItem}
                   onPress={handleRemoveFromHistory}

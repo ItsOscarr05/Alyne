@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { onboardingService } from '../../services/onboarding';
 import { plaidService } from '../../services/plaid';
@@ -35,6 +37,7 @@ type Step =
 export default function ProviderOnboardingScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<Step>('location');
   const [loading, setLoading] = useState(false);
 
@@ -1309,7 +1312,11 @@ export default function ProviderOnboardingScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#1e293b" />
@@ -1337,7 +1344,7 @@ export default function ProviderOnboardingScreen() {
       {currentStep === 'credentials' && renderCredentialsStep()}
       {currentStep === 'availability' && renderAvailabilityStep()}
       {currentStep === 'complete' && renderCompleteStep()}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

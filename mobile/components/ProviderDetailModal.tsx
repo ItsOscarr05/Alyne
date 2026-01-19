@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService, ProviderDetail, Service, Review } from '../services/provider';
 import { reviewService } from '../services/review';
 import { useAuth } from '../hooks/useAuth';
@@ -42,6 +43,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   const { user } = useAuth();
   const { onProviderRatingUpdate } = useSocket();
   const { theme: themeHook, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'about' | 'services' | 'reviews'>(initialTab);
@@ -320,9 +322,9 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   return (
     <RNModal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.modalOverlay, { backgroundColor: themeHook.colors.overlay }]}>
+        <View style={[styles.modalOverlay, { backgroundColor: themeHook.colors.overlay, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
-            <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
+            <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary, maxHeight: '90%' }]}>
               {/* Close Button */}
               <TouchableOpacity style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} onPress={onClose}>
                 <Ionicons name="close" size={28} color={themeHook.colors.text} />
@@ -1115,12 +1117,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: theme.spacing.md,
   },
   serviceCardWrapper: {
-    width: '48%',
+    width: '100%',
   },
   serviceCard: {
     borderRadius: theme.radii.lg,
@@ -1134,17 +1135,17 @@ const styles = StyleSheet.create({
     minHeight: 180,
   },
   serviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    gap: 8,
   },
   serviceTitleRow: {
     flex: 1,
-    marginRight: 12,
+    minWidth: 0,
   },
   serviceName: {
     fontSize: 16,
     fontWeight: '600',
+    flexWrap: 'wrap',
   },
   serviceDurationChip: {
     marginTop: 3,
@@ -1155,7 +1156,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   servicePriceTag: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
   },
   servicePriceAmount: {
     fontSize: 16,
@@ -1167,7 +1168,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reviewCardWrapper: {
-    width: '48%',
+    width: '100%',
   },
   reviewCard: {
     borderRadius: 16,
@@ -1219,7 +1220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
   },
   reviewRatingPill: {
     flexDirection: 'row',

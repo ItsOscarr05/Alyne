@@ -7,18 +7,23 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { reviewService } from '../../services/review';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
+import { theme } from '../../theme';
 
 export default function SubmitReviewScreen() {
   const router = useRouter();
   const modal = useModal();
+  const insets = useSafeAreaInsets();
   const { bookingId, providerId, providerName } = useLocalSearchParams<{
     bookingId: string;
     providerId: string;
@@ -200,8 +205,12 @@ export default function SubmitReviewScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back" size={24} color="#1e293b" />
@@ -267,7 +276,7 @@ export default function SubmitReviewScreen() {
           onButtonPress={modal.alertOptions.onButtonPress}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

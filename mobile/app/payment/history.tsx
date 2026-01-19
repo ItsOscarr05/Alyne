@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { paymentService } from '../../services/payment';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
@@ -55,6 +56,7 @@ export default function PaymentHistoryScreen() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { theme: themeHook } = useTheme();
+  const insets = useSafeAreaInsets();
   const [payments, setPayments] = useState<PaymentWithBooking[]>([]);
   const [allPayments, setAllPayments] = useState<PaymentWithBooking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -267,9 +269,9 @@ export default function PaymentHistoryScreen() {
 
   // Show loading while checking auth or loading payments
   if (authLoading || loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+  return (
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
@@ -287,9 +289,9 @@ export default function PaymentHistoryScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
       {allPayments.length === 0 ? (
-        <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+        <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()}>
               <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
@@ -308,6 +310,7 @@ export default function PaymentHistoryScreen() {
         </ScrollView>
       ) : (
         <FlatList
+          contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }}
           ListHeaderComponent={
             <>
               <View style={styles.header}>

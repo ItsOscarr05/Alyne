@@ -70,12 +70,38 @@ app.use(
   })
 );
 app.use(compression());
-// CORS configuration for production
+// CORS configuration
+const getAllowedOrigins = (): string[] => {
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.FRONTEND_URL?.split(',').filter(Boolean) || [];
+  }
+  // Development: Allow common localhost ports
+  const defaultOrigins = [
+    'http://localhost:8081',
+    'http://localhost:19006', // Expo web default port
+    'http://localhost:3000', // Alternative web port
+    'http://127.0.0.1:8081',
+    'http://127.0.0.1:19006',
+    'http://127.0.0.1:3000',
+  ];
+  const envOrigins = process.env.FRONTEND_URL?.split(',').filter(Boolean) || [];
+  return [...new Set([...envOrigins, ...defaultOrigins])]; // Remove duplicates
+};
+
 const corsOptions = {
-  origin:
-    process.env.NODE_ENV === 'production'
-      ? process.env.FRONTEND_URL?.split(',') || [] // Allow multiple origins in production
-      : process.env.FRONTEND_URL || 'http://localhost:8081',
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    const allowedOrigins = getAllowedOrigins();
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin || allowedOrigins.length === 0) {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn(`CORS blocked origin: ${origin}. Allowed origins: ${allowedOrigins.join(', ')}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -377,10 +403,11 @@ if (process.env.NODE_ENV === 'production') {
   keyRotationManager.checkRotationReminders();
 }
 
-// Start server
-httpServer.listen(PORT, () => {
+// Start server - listen on all interfaces (0.0.0.0) to allow emulator/device connections
+httpServer.listen(PORT, '0.0.0.0', () => {
   logger.info(`Server running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`Server accessible at http://localhost:${PORT} and http://0.0.0.0:${PORT}`);
   logger.info(`Socket.io server ready at http://localhost:${PORT}/socket.io/`);
   logger.info(`CORS origin: ${process.env.FRONTEND_URL || 'http://localhost:8081'}`);
 });

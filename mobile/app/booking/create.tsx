@@ -6,11 +6,14 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService, ProviderDetail, Service } from '../../services/provider';
 import { bookingService, CreateBookingData } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
@@ -27,6 +30,7 @@ export default function CreateBookingScreen() {
   const { user } = useAuth();
   const modal = useModal();
   const themeHook = useTheme();
+  const insets = useSafeAreaInsets();
   
   // Redirect providers - they can't create bookings
   useEffect(() => {
@@ -196,8 +200,12 @@ export default function CreateBookingScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         {/* Header (scrolls with content) */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -415,7 +423,7 @@ export default function CreateBookingScreen() {
           onButtonPress={modal.alertOptions.onButtonPress}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

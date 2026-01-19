@@ -5,11 +5,14 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect } from 'react';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService, ProviderDetail } from '../../services/provider';
 import { bookingService, BookingDetail } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
@@ -27,6 +30,7 @@ export default function RescheduleBookingScreen() {
   const { user } = useAuth();
   const modal = useModal();
   const { theme: themeHook, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Redirect providers - they can't reschedule
   useEffect(() => {
@@ -190,7 +194,11 @@ export default function RescheduleBookingScreen() {
 
   if (isLoading || !booking || !provider) {
     return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+      >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
@@ -201,13 +209,17 @@ export default function RescheduleBookingScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={themeHook.colors.primary} />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
+      <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -407,7 +419,7 @@ export default function RescheduleBookingScreen() {
           onButtonPress={modal.alertOptions.onButtonPress}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

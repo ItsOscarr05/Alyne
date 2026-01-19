@@ -8,10 +8,12 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
@@ -28,6 +30,7 @@ export default function ClientOnboardingScreen() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const modal = useModal();
+  const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<Step>('location');
   const [loading, setLoading] = useState(false);
 
@@ -464,10 +467,14 @@ export default function ClientOnboardingScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+    >
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Progress Indicator */}
@@ -507,7 +514,7 @@ export default function ClientOnboardingScreen() {
           onButtonPress={modal.alertOptions.onButtonPress}
         />
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

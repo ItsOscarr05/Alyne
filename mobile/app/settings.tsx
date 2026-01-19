@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 're
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../contexts/ThemeContext';
 import { theme } from '../theme'; // Static theme for spacing, radii, etc.
@@ -10,6 +11,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme: themeHook, themeMode, setThemeMode, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
 
   // Settings state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -18,8 +20,8 @@ export default function SettingsScreen() {
   const [bookingReminders, setBookingReminders] = useState(true);
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
+      <ScrollView style={styles.content} contentContainerStyle={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, theme.spacing['2xl']) }]}>
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => router.back()}

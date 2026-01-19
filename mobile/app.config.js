@@ -42,7 +42,9 @@ export default {
       'expo-notifications',
     ],
     extra: {
-      API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
+      // API_BASE_URL will be determined at runtime in api.ts based on platform
+      // This is just a fallback - api.ts will use localhost for web, 10.0.2.2 for Android emulator
+      API_BASE_URL: process.env.API_BASE_URL || process.env.EXPO_PUBLIC_API_BASE_URL || undefined,
       STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY || process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
       eas: {
         projectId: '84def064-6507-421d-babd-c078f78c09cb',

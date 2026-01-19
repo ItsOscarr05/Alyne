@@ -11,6 +11,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SearchBar } from '../../components/SearchBar';
 import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
 import { ProviderDetailModal } from '../../components/ProviderDetailModal';
@@ -34,6 +35,7 @@ export default function DiscoverScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const themeHook = useTheme();
+  const insets = useSafeAreaInsets();
   const { onProviderRatingUpdate } = useSocket();
   const [searchQuery, setSearchQuery] = useState('');
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
@@ -407,7 +409,7 @@ export default function DiscoverScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
       <View style={styles.content}>
         <SearchBar
           value={searchQuery}
@@ -585,8 +587,8 @@ export default function DiscoverScreen() {
               style={[
                 styles.dropdownContainer,
                 {
-                  left: buttonLayouts[dropdownFilter].x,
-                  width: buttonLayouts[dropdownFilter].width,
+                  left: Math.max(insets.left + theme.spacing.xl, buttonLayouts[dropdownFilter].x),
+                  width: Math.min(buttonLayouts[dropdownFilter].width, 200),
                   opacity: dropdownOpacity,
                   transform: [{ translateY: dropdownTranslateY }],
                   backgroundColor: themeHook.colors.surface,
@@ -770,9 +772,10 @@ export default function DiscoverScreen() {
           </AnimatedEmptyState>
         ) : (
           <FlatList
+            key="single-column"
             data={providers}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={1}
             renderItem={({ item, index }) => (
               <AnimatedCardWrapper index={index} style={styles.cardWrapper}>
                 <ProviderCard provider={item} onPress={() => handleProviderPress(item.id)} />
@@ -787,7 +790,7 @@ export default function DiscoverScreen() {
                 <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
               </>
             }
-            contentContainerStyle={styles.listContent}
+            contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
             showsVerticalScrollIndicator={false}
             refreshing={isLoading}
             onRefresh={loadProviders}
@@ -875,6 +878,7 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
     zIndex: 10,
+    rowGap: theme.spacing.sm,
   },
   filterPill: {
     flexDirection: 'row',
@@ -898,8 +902,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   cardWrapper: {
-    flex: 1,
-    maxWidth: '50%',
+    width: '100%',
     paddingHorizontal: theme.spacing.xs,
     marginBottom: theme.spacing.lg,
   },

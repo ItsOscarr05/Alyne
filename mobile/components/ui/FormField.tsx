@@ -17,14 +17,17 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const isPasswordField = secureTextEntry;
-  const borderWidthAnim = useRef(new Animated.Value(1)).current;
+  const borderWidthAnim = useRef(new Animated.Value(2)).current; // Start with 2px for better visibility
 
   // Animate border on focus/blur
   useEffect(() => {
-    if (hasError) return; // Don't animate if there's an error (error state takes priority)
+    if (hasError) {
+      borderWidthAnim.setValue(2); // Keep error border at 2px
+      return;
+    }
 
     Animated.timing(borderWidthAnim, {
-      toValue: isFocused ? 2 : 1,
+      toValue: isFocused ? 2.5 : 2, // Always visible: 2px unfocused, 2.5px focused
       duration: ANIMATION_DURATIONS.FAST,
       easing: ANIMATION_EASING.easeInOut,
       useNativeDriver: false, // borderWidth can't use native driver
@@ -34,7 +37,7 @@ export const FormField: React.FC<FormFieldProps> = ({ label, error, style, secur
   // Reset animations when error changes
   useEffect(() => {
     if (hasError) {
-      borderWidthAnim.setValue(1);
+      borderWidthAnim.setValue(2); // Error border at 2px
     }
   }, [hasError, borderWidthAnim]);
 

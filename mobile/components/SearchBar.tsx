@@ -57,8 +57,10 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     paddingVertical: theme.spacing.md,
     paddingHorizontal: theme.spacing.sm,
+    paddingRight: theme.spacing.md,
     fontSize: 16,
   },
   clearButton: {

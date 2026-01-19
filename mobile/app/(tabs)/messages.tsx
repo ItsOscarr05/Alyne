@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, LayoutAnimation, Plat
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConversationItem } from '../../components/ConversationItem';
 import { SearchBar } from '../../components/SearchBar';
 import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
@@ -23,6 +24,7 @@ export default function MessagesScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { theme: themeHook } = useTheme();
+  const insets = useSafeAreaInsets();
   const { onMessage } = useSocket();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,7 +151,7 @@ export default function MessagesScreen() {
 
   if (loading && conversations.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
         <FlatList
           data={[]}
           ListHeaderComponent={
@@ -176,7 +178,7 @@ export default function MessagesScreen() {
               </Text>
             </View>
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
         />
       </View>
     );
@@ -184,7 +186,7 @@ export default function MessagesScreen() {
 
   if (conversations.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
         <FlatList
           data={[]}
           ListHeaderComponent={
@@ -211,7 +213,7 @@ export default function MessagesScreen() {
               </Text>
             </View>
           }
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
           }
@@ -221,7 +223,7 @@ export default function MessagesScreen() {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
       <FlatList
         data={filteredConversations}
         keyExtractor={(item) => item.id}
@@ -246,7 +248,7 @@ export default function MessagesScreen() {
             </View>
           </>
         }
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) + 80 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
