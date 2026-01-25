@@ -290,6 +290,13 @@ export default function RescheduleBookingScreen() {
                   : {}),
               }}
               minDate={new Date().toISOString().split('T')[0]}
+              renderArrow={(direction) => (
+                <Ionicons
+                  name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+                  size={20}
+                  color={themeHook.colors.primary}
+                />
+              )}
               theme={{
                 backgroundColor: themeHook.colors.surface,
                 calendarBackground: themeHook.colors.surface,

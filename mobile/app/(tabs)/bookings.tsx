@@ -838,16 +838,6 @@ export default function BookingsScreen() {
                         <BookingCard
                           booking={bookingCardData}
                           onPress={() => handleBookingPress(booking.id)}
-                          onAccept={
-                            user?.userType === 'PROVIDER' && booking.status === 'PENDING'
-                              ? () => handleAccept(booking.id)
-                              : undefined
-                          }
-                          onDecline={
-                            user?.userType === 'PROVIDER' && booking.status === 'PENDING'
-                              ? () => handleDecline(booking.id)
-                              : undefined
-                          }
                           showMessageButton={user?.userType === 'PROVIDER' ? true : false}
                           onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
                         />
@@ -1329,6 +1319,7 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     marginTop: theme.spacing.lg,
+    marginHorizontal: -theme.spacing.xl + 4, // Extend beyond header padding to match card position (cards are at listContent padding + 4px margin)
     flexDirection: 'row',
     borderRadius: theme.radii.full,
     borderWidth: 1,

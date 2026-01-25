@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Animated,
+  ScrollView,
 } from 'react-native';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'expo-router';
@@ -418,7 +419,12 @@ export default function DiscoverScreen() {
         />
         <View style={styles.filtersContainer}>
           <View style={styles.filterRow}>
-            <View style={styles.filterPillsContainer}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterPillsContainer}
+              style={styles.filterPillsScrollView}
+            >
               <TouchableOpacity
                 style={[
                   styles.filterPill,
@@ -565,7 +571,7 @@ export default function DiscoverScreen() {
                   }
                 />
               </TouchableOpacity>
-            </View>
+            </ScrollView>
             {(ratingOption !== null ||
               priceOption !== null ||
               distanceOption !== null ||
@@ -868,17 +874,20 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: theme.spacing.sm,
+    justifyContent: 'flex-start', // Changed from space-between to flex-start
+    gap: theme.spacing.xs, // Reduced gap
+    flexWrap: 'nowrap', // Ensure row doesn't wrap
   },
-  filterPillsContainer: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    flexWrap: 'wrap',
+  filterPillsScrollView: {
     flex: 1,
     position: 'relative',
     zIndex: 10,
-    rowGap: theme.spacing.sm,
+  },
+  filterPillsContainer: {
+    flexDirection: 'row',
+    gap: theme.spacing.xs, // Reduced gap to fit more buttons
+    alignItems: 'center', // Align items vertically
+    paddingRight: theme.spacing.sm, // Add padding for scroll
   },
   filterPill: {
     flexDirection: 'row',
@@ -891,11 +900,11 @@ const styles = StyleSheet.create({
   filterPillActive: {
   },
   filterPillText: {
-    fontSize: 13,
+    fontSize: 12, // Slightly smaller font
     fontWeight: '500',
   },
   filterPillTextActive: {
-    fontSize: 13,
+    fontSize: 12, // Slightly smaller font
     fontWeight: '600',
   },
   listContent: {

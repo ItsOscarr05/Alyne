@@ -362,6 +362,9 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                               transition={200}
                               placeholder={{ blurhash: 'LGF5]+Yk^6#M@-5c,1J5@[or[Q6.' }}
                               cachePolicy="memory-disk"
+                              onError={() => {
+                                // Silently handle image load errors
+                              }}
                             />
                           ) : (
                             <View style={[styles.profileAvatarPlaceholder, { backgroundColor: themeHook.colors.primaryLight }]}>

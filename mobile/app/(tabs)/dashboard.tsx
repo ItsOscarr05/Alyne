@@ -20,6 +20,7 @@ import { logger } from '../../utils/logger';
 import { theme } from '../../theme';
 import { useTheme } from '../../contexts/ThemeContext';
 import { formatTime12Hour } from '../../utils/timeUtils';
+import { isSmallScreen, SCREEN_DIMENSIONS } from '../../utils/dimensions';
 
 // Animated bar component for smooth transitions
 function AnimatedBar({
@@ -31,6 +32,9 @@ function AnimatedBar({
   onPressIn,
   onPressOut,
   textColor,
+  barWrapperHeight,
+  hasData,
+  isCurrentMonth,
 }: {
   height: number;
   color: string;
@@ -40,6 +44,9 @@ function AnimatedBar({
   onPressIn: () => void;
   onPressOut: () => void;
   textColor: string;
+  barWrapperHeight: number;
+  hasData: boolean;
+  isCurrentMonth?: boolean;
 }) {
   const animatedHeight = useRef(new Animated.Value(height)).current;
   const animatedScale = useRef(new Animated.Value(1)).current;
@@ -54,7 +61,7 @@ function AnimatedBar({
 
   useEffect(() => {
     Animated.timing(animatedScale, {
-      toValue: isFocused ? 1.1 : 1,
+      toValue: isFocused ? 1.15 : 1,
       duration: 200,
       useNativeDriver: true,
     }).start();
@@ -65,24 +72,44 @@ function AnimatedBar({
       style={styles.chartBarContainer}
       onPressIn={onPressIn}
       onPressOut={onPressOut}
-      activeOpacity={1}
+      activeOpacity={hasData ? 0.8 : 1}
+      disabled={!hasData}
     >
-      <View style={styles.chartBarWrapper}>
+      <View style={[
+        styles.chartBarWrapper, 
+        { height: barWrapperHeight, maxHeight: barWrapperHeight }
+      ]}>
         <Animated.View
           style={[
             styles.chartBar,
             {
               height: animatedHeight.interpolate({
                 inputRange: [0, 100],
-                outputRange: [0, 80], // 80 is the chartBarWrapper height
+                outputRange: [0, barWrapperHeight],
               }),
               backgroundColor: color,
               transform: [{ scaleX: animatedScale }],
+              opacity: hasData 
+                ? (isCurrentMonth ? (isFocused ? 1 : 0.95) : (isFocused ? 1 : 0.9))
+                : 0.4,
+              ...(isCurrentMonth && hasData && {
+                borderWidth: 1.5,
+                borderColor: color,
+                borderBottomWidth: 0,
+              }),
             },
           ]}
         />
       </View>
-      <Text style={[styles.chartLabel, { color: textColor }]}>{monthName}</Text>
+      <Text style={[
+        styles.chartLabel, 
+        { color: textColor }, 
+        isSmallScreen() && { fontSize: 9 },
+        hasData && { fontWeight: '600' },
+        isCurrentMonth && { fontWeight: '700' }
+      ]}>
+        {monthName}
+      </Text>
     </TouchableOpacity>
   );
 }
@@ -413,18 +440,39 @@ export default function ProviderDashboardScreen() {
               { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary },
             ]}
           >
-            <View style={styles.heroContent}>
-              <View style={styles.heroMain}>
-                <Text style={[styles.heroLabel, { color: themeHook.colors.textSecondary }]}>
-                  Total Earnings
-                </Text>
-                <Text style={[styles.heroValue, { color: themeHook.colors.text }]}>
-                  $
-                  {stats.totalEarnings.toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </Text>
+            <View style={[styles.heroContent, isSmallScreen() && styles.heroContentMobile]}>
+              <View style={[
+                styles.heroMain, 
+                isSmallScreen() && { width: '100%', flex: 0, marginBottom: theme.spacing.md, minWidth: '100%' }
+              ]}>
+                <View style={{ width: '100%' }}>
+                  <Text 
+                    style={[
+                      styles.heroLabel, 
+                      { color: themeHook.colors.textSecondary }
+                    ]}
+                    numberOfLines={1}
+                  >
+                    Total Earnings
+                  </Text>
+                </View>
+                <View style={{ width: '100%' }}>
+                  <Text 
+                    style={[
+                      styles.heroValue, 
+                      { color: themeHook.colors.text },
+                      isSmallScreen() && { fontSize: 24 }
+                    ]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit={true}
+                    minimumFontScale={0.7}
+                  >
+                    ${stats.totalEarnings.toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}
+                  </Text>
+                </View>
                 {stats.averageRating > 0 && (
                   <View style={styles.heroRatingInline}>
                     <Ionicons name="star" size={16} color="#fbbf24" />
@@ -447,9 +495,18 @@ export default function ProviderDashboardScreen() {
                   </View>
                 )}
               </View>
-              <View style={[styles.heroChart, { marginLeft: theme.spacing.lg }]}>
-                <View style={styles.chartHeader}>
-                  <Text style={[styles.chartTitle, { color: themeHook.colors.text }]}>
+              <View style={[
+                styles.heroChart,
+                !isSmallScreen() && { marginLeft: theme.spacing.lg },
+                isSmallScreen() && { marginTop: theme.spacing.md, width: '100%', alignItems: 'stretch' },
+                !isSmallScreen() && { maxWidth: '50%', flex: 1 },
+              ]}>
+                <View style={[styles.chartHeader, isSmallScreen() && { alignItems: 'flex-start' }]}>
+                  <Text style={[
+                    styles.chartTitle, 
+                    { color: themeHook.colors.text }, 
+                    isSmallScreen() && { textAlign: 'left', fontSize: 11 }
+                  ]}>
                     Last {timeRange}M
                   </Text>
                   <View style={styles.timeRangePills}>
@@ -464,6 +521,7 @@ export default function ProviderDashboardScreen() {
                             backgroundColor: themeHook.colors.surfaceElevated,
                           },
                           index > 0 && { marginLeft: theme.spacing.xs },
+                          isSmallScreen() && { paddingHorizontal: theme.spacing.xs, paddingVertical: 3 },
                         ]}
                         onPress={() => setTimeRange(months)}
                         activeOpacity={0.7}
@@ -474,6 +532,7 @@ export default function ProviderDashboardScreen() {
                             { color: themeHook.colors.textSecondary },
                             timeRange === months && styles.timeRangePillTextActive,
                             timeRange === months && { color: themeHook.colors.text },
+                            isSmallScreen() && { fontSize: 10 },
                           ]}
                         >
                           {months}M
@@ -482,19 +541,43 @@ export default function ProviderDashboardScreen() {
                     ))}
                   </View>
                 </View>
-                <View style={styles.chartContainer}>
+                <View style={[
+                  styles.chartContainer,
+                  isSmallScreen() && { 
+                    height: 90, 
+                    paddingHorizontal: theme.spacing.xs,
+                    paddingLeft: theme.spacing.xs,
+                    paddingRight: theme.spacing.xs,
+                  }
+                ]}>
+                  {/* Baseline indicator */}
+                  <View style={[
+                    styles.chartBaseline,
+                    { backgroundColor: themeHook.colors.border }
+                  ]} />
+                  
                   {tooltipData && (
                     <View
                       style={[
                         styles.tooltip,
                         {
+                          backgroundColor: themeHook.colors.surfaceElevated || themeHook.colors.surface,
+                          borderColor: themeHook.colors.primary,
                           left: tooltipData.x - 50,
-                          bottom: tooltipData.y + 10,
+                          bottom: tooltipData.y + 15,
                         },
                       ]}
                     >
-                      <Text style={styles.tooltipMonth}>{tooltipData.monthName}</Text>
-                      <Text style={styles.tooltipAmount}>
+                      <Text style={[
+                        styles.tooltipMonth,
+                        { color: themeHook.colors.textSecondary }
+                      ]}>
+                        {tooltipData.monthName}
+                      </Text>
+                      <Text style={[
+                        styles.tooltipAmount,
+                        { color: themeHook.colors.text }
+                      ]}>
                         $
                         {tooltipData.earnings.toLocaleString('en-US', {
                           minimumFractionDigits: 2,
@@ -520,12 +603,28 @@ export default function ProviderDashboardScreen() {
                       'Dec',
                     ];
                     const currentDate = new Date();
+                    const currentYear = currentDate.getFullYear();
                     const maxEarnings =
                       monthlyEarnings.length > 0 ? Math.max(...monthlyEarnings, 1) : 1;
 
+                    // Helper function to format month labels with year when needed
+                    const formatMonthLabel = (monthIndex: number, monthYear: number, currentYear: number) => {
+                      const monthName = monthNames[monthIndex];
+                      if (monthYear !== currentYear) {
+                        return `${monthName} '${monthYear.toString().slice(-2)}`;
+                      }
+                      return monthName;
+                    };
+
                     // Create array of 12 months, with earnings data for the selected range
                     const allMonths = Array.from({ length: 12 }, (_, index) => {
-                      const monthIndex = (currentDate.getMonth() - 11 + index + 12) % 12;
+                      // Calculate actual date for this month (11 months ago + index)
+                      const monthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 11 + index, 1);
+                      const monthIndex = monthDate.getMonth();
+                      const monthYear = monthDate.getFullYear();
+                      const isCurrentMonth = monthDate.getMonth() === currentDate.getMonth() && 
+                                           monthDate.getFullYear() === currentDate.getFullYear();
+                      
                       // Check if this month is within the selected time range
                       const monthsFromEnd = 11 - index;
                       const hasData =
@@ -536,38 +635,72 @@ export default function ProviderDashboardScreen() {
 
                       return {
                         monthIndex,
-                        monthName: monthNames[monthIndex],
+                        monthYear,
+                        monthName: formatMonthLabel(monthIndex, monthYear, currentYear),
                         earnings,
                         hasData,
+                        isCurrentMonth,
                       };
                     });
 
                     return allMonths.map((month, index) => {
                       const height = maxEarnings > 0 ? (month.earnings / maxEarnings) * 100 : 0;
-                      const barHeight = month.hasData ? Math.max(height, 2) : 2;
+                      // Minimum bar height for visibility, but distinguish between zero and no data
+                      const barHeight = month.hasData 
+                        ? (month.earnings > 0 ? Math.max(height, 5) : 3) 
+                        : 2;
+                      
+                      // Better color distinction: primary for earnings, muted for zero, border for no data
+                      // Current month gets enhanced color (lighter/more saturated)
+                      const basePrimaryColor = month.isCurrentMonth && month.hasData && month.earnings > 0
+                        ? themeHook.colors.primaryLight || themeHook.colors.primary
+                        : themeHook.colors.primary;
+                      
                       const barColor =
                         month.hasData && month.earnings > 0
-                          ? themeHook.colors.primary
+                          ? basePrimaryColor
+                          : month.hasData && month.earnings === 0
+                          ? themeHook.colors.textTertiary || themeHook.colors.border
                           : themeHook.colors.border;
 
+                      const barSpacing = isSmallScreen() ? 2 : 4;
+                      const barWidth = isSmallScreen() ? 20 : 28;
+                      const barWrapperHeight = isSmallScreen() ? 70 : 85;
+
                       return (
-                        <View key={index} style={index > 0 ? { marginLeft: theme.spacing.sm } : {}}>
+                        <View 
+                          key={index} 
+                          style={[
+                            styles.chartBarContainer,
+                            index > 0 && { marginLeft: barSpacing },
+                            isSmallScreen() && { minWidth: 20, maxWidth: 24 }
+                          ]}
+                        >
                           <AnimatedBar
                             height={barHeight}
                             color={barColor}
                             monthName={month.monthName}
                             earnings={month.earnings}
                             isFocused={focusedBarIndex === index}
-                            textColor={themeHook.colors.textSecondary}
+                            textColor={month.hasData && month.earnings > 0 
+                              ? (month.isCurrentMonth ? themeHook.colors.primary : themeHook.colors.text)
+                              : themeHook.colors.textTertiary || themeHook.colors.textSecondary}
+                            barWrapperHeight={barWrapperHeight}
+                            hasData={month.hasData && month.earnings > 0}
+                            isCurrentMonth={month.isCurrentMonth}
                             onPressIn={() => {
-                              if (month.hasData && month.earnings > 0) {
+                              if (month.hasData) {
                                 setFocusedBarIndex(index);
                                 // Calculate tooltip position (approximate)
-                                const barWidth = 24; // Approximate bar width
-                                const spacing = 4; // Gap between bars
+                                const spacing = isSmallScreen() ? 2 : 4;
                                 const x = index * (barWidth + spacing) + barWidth / 2;
+                                // Format full month name with year for tooltip
+                                const fullMonthName = monthNames[month.monthIndex];
+                                const tooltipMonthLabel = month.monthYear !== currentYear
+                                  ? `${fullMonthName} ${month.monthYear}`
+                                  : fullMonthName;
                                 setTooltipData({
-                                  monthName: month.monthName,
+                                  monthName: tooltipMonthLabel,
                                   earnings: month.earnings,
                                   x,
                                   y: barHeight, // Position above the bar
@@ -586,7 +719,10 @@ export default function ProviderDashboardScreen() {
                 </View>
               </View>
             </View>
-            <View style={styles.heroMetrics}>
+            <View style={[
+              styles.heroMetrics,
+              { borderTopColor: themeHook.colors.border }
+            ]}>
               <View style={styles.heroMetric}>
                 <Text style={[styles.heroMetricLabel, { color: themeHook.colors.textSecondary }]}>
                   This Month
@@ -906,18 +1042,27 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0,
     borderBottomColor: 'transparent',
   },
+  heroContentMobile: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
   heroMain: {
     flex: 1,
+    minWidth: 120,
+    flexShrink: 0,
   },
   heroLabel: {
     ...theme.typography.body,
     fontSize: 14,
     marginBottom: theme.spacing.xs,
+    width: '100%',
   },
   heroValue: {
     ...theme.typography.display,
     fontSize: 36,
     fontWeight: '700',
+    width: '100%',
+    flexShrink: 1,
   },
   heroRatingInline: {
     flexDirection: 'row',
@@ -934,7 +1079,8 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   heroChart: {
-    width: 400,
+    flex: 1,
+    maxWidth: 400,
     alignItems: 'flex-end',
     borderBottomWidth: 0,
   },
@@ -972,54 +1118,68 @@ const styles = StyleSheet.create({
   chartContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 100,
+    height: 110,
     width: '100%',
     position: 'relative',
     borderBottomWidth: 0,
+  },
+  chartBaseline: {
+    position: 'absolute',
+    bottom: theme.spacing.xs + 11, // Align with label height
+    left: 0,
+    right: 0,
+    height: 1,
+    opacity: 0.3,
   },
   chartBarContainer: {
     flex: 1,
     alignItems: 'center',
     height: '100%',
     justifyContent: 'flex-end',
+    minWidth: 0,
   },
   chartBarWrapper: {
     width: '100%',
-    height: 80,
+    maxWidth: '100%',
+    height: 85,
     justifyContent: 'flex-end',
     marginBottom: theme.spacing.xs,
   },
   chartBar: {
     width: '100%',
     minHeight: 2,
-    borderRadius: theme.radii.sm,
-    borderTopLeftRadius: theme.radii.sm,
-    borderTopRightRadius: theme.radii.sm,
+    borderRadius: theme.radii.md,
+    borderTopLeftRadius: theme.radii.md,
+    borderTopRightRadius: theme.radii.md,
   },
   chartLabel: {
     ...theme.typography.caption,
     fontSize: 11,
     textAlign: 'center',
+    marginTop: 2,
   },
   tooltip: {
     position: 'absolute',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.radii.md,
-    minWidth: 80,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.lg,
+    minWidth: 90,
     alignItems: 'center',
     zIndex: 1000,
+    borderWidth: 1,
     ...theme.shadows.card,
   },
   tooltipMonth: {
     ...theme.typography.caption,
     fontSize: 11,
-    marginBottom: 2,
-    fontWeight: '600',
+    marginBottom: 4,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   tooltipAmount: {
     ...theme.typography.body,
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: '700',
   },
   chartEmpty: {
@@ -1035,6 +1195,9 @@ const styles = StyleSheet.create({
   heroMetrics: {
     flexDirection: 'row',
     marginTop: theme.spacing.md,
+    paddingTop: theme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'transparent',
   },
   heroMetric: {
     flex: 1,

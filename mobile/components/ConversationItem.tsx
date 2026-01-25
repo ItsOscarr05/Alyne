@@ -75,6 +75,9 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
             source={{ uri: conversation.otherUser.profilePhoto }}
             style={styles.avatarImage}
             contentFit="cover"
+            onError={() => {
+              // Silently handle image load errors
+            }}
           />
         ) : (
           <Text style={[styles.avatarText, { color: themeHook.colors.white }]}>

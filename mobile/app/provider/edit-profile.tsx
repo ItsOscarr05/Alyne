@@ -1567,6 +1567,9 @@ export default function EditProviderProfileScreen() {
                 source={{ uri: profilePhoto }}
                 style={styles.photoPreviewImage}
                 resizeMode="cover"
+                onError={() => {
+                  // Silently handle image load errors
+                }}
               />
               <View style={styles.photoOverlay}>
                 <Ionicons name="camera" size={24} color="#ffffff" />

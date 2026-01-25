@@ -45,13 +45,60 @@ export const bookingService = {
       throw createError('Service not found or does not belong to provider', 404);
     }
 
-    // Create booking
+    // Check for conflicting bookings (same provider, same date, overlapping time)
+    const scheduledDateTime = new Date(scheduledDate + 'T' + scheduledTime + ':00');
+    const startOfDay = new Date(scheduledDateTime);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(scheduledDateTime);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    // Calculate booking end time considering service duration
+    const [timeHour, timeMinute] = scheduledTime.split(':').map(Number);
+    const timeTotalMinutes = timeHour * 60 + timeMinute;
+    const endTimeTotalMinutes = timeTotalMinutes + service.duration;
+    const endHour = Math.floor(endTimeTotalMinutes / 60);
+    const endMinute = endTimeTotalMinutes % 60;
+    const endTimeString = `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
+
+    // Check for conflicting bookings
+    const conflictingBookings = await prisma.booking.findMany({
+      where: {
+        providerId,
+        status: { in: ['PENDING', 'CONFIRMED'] }, // Only check active bookings
+        scheduledDate: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: {
+        service: true,
+      },
+    });
+
+    // Check for time overlap
+    const hasConflict = conflictingBookings.some(existingBooking => {
+      const [existingStartHour, existingStartMinute] = existingBooking.scheduledTime.split(':').map(Number);
+      const existingStartTotalMinutes = existingStartHour * 60 + existingStartMinute;
+      const existingDuration = existingBooking.service.duration;
+      const existingEndTotalMinutes = existingStartTotalMinutes + existingDuration;
+
+      // Check if time ranges overlap
+      return (
+        (timeTotalMinutes < existingEndTotalMinutes && endTimeTotalMinutes > existingStartTotalMinutes)
+      );
+    });
+
+    if (hasConflict) {
+      throw createError('This time slot is already booked. Please choose another time.', 400);
+    }
+
+    // Create booking with CONFIRMED status (auto-confirmed)
     const booking = await prisma.booking.create({
       data: {
         clientId,
         providerId,
         serviceId,
-        status: 'PENDING',
+        status: 'CONFIRMED',
         scheduledDate: new Date(scheduledDate),
         scheduledTime,
         location: location ? location : undefined,

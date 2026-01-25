@@ -15,7 +15,7 @@ import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService, ProviderDetail, Service } from '../../services/provider';
-import { bookingService, CreateBookingData } from '../../services/booking';
+import { bookingService, CreateBookingData, BookingDetail } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
@@ -49,12 +49,22 @@ export default function CreateBookingScreen() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [existingBookings, setExistingBookings] = useState<BookingDetail[]>([]);
 
   useEffect(() => {
     if (providerId) {
       loadProvider();
     }
   }, [providerId]);
+
+  // Fetch existing bookings for the provider when date changes
+  useEffect(() => {
+    if (providerId && selectedDate) {
+      loadExistingBookings();
+    } else {
+      setExistingBookings([]);
+    }
+  }, [providerId, selectedDate]);
 
   const loadProvider = async () => {
     if (!providerId) return;
@@ -77,6 +87,31 @@ export default function CreateBookingScreen() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadExistingBookings = async () => {
+    if (!providerId || !selectedDate) return;
+
+    try {
+      // Fetch all bookings for the provider
+      const bookings = await bookingService.getMyBookings(undefined, 'provider');
+      
+      // Filter bookings for the selected date and provider
+      const selectedDateObj = new Date(selectedDate + 'T00:00:00');
+      const filteredBookings = bookings.filter(booking => {
+        if (booking.providerId !== providerId) return false;
+        if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') return false;
+        
+        const bookingDate = new Date(booking.scheduledDate);
+        return bookingDate.toDateString() === selectedDateObj.toDateString();
+      });
+
+      setExistingBookings(filteredBookings);
+    } catch (error: any) {
+      logger.error('Error loading existing bookings', error);
+      // Don't show error to user, just log it - filtering will still work
+      setExistingBookings([]);
     }
   };
 
@@ -121,7 +156,7 @@ export default function CreateBookingScreen() {
       // Show success message
       modal.showAlert({
         title: 'Success',
-        message: 'Booking request sent!',
+        message: 'Booking confirmed!',
         type: 'success',
         onButtonPress: () => {
           router.replace('/(tabs)/bookings');
@@ -147,6 +182,7 @@ export default function CreateBookingScreen() {
   };
 
   // Generate time slots based on provider availability for selected date
+  // Filter out slots that conflict with existing bookings
   const getAvailableTimeSlots = () => {
     if (!provider || !selectedDate) {
       // Default slots if no provider or date selected
@@ -177,7 +213,36 @@ export default function CreateBookingScreen() {
     });
 
     // Remove duplicates and sort
-    return [...new Set(allSlots)].sort((a, b) => a.localeCompare(b));
+    const uniqueSlots = [...new Set(allSlots)].sort((a, b) => a.localeCompare(b));
+
+    // Filter out slots that conflict with existing bookings
+    if (existingBookings.length === 0 || !selectedService) {
+      return uniqueSlots;
+    }
+
+    const serviceDuration = selectedService.duration;
+    const availableSlots = uniqueSlots.filter(slot => {
+      const [slotHour, slotMinute] = slot.split(':').map(Number);
+      const slotStartMinutes = slotHour * 60 + slotMinute;
+      const slotEndMinutes = slotStartMinutes + serviceDuration;
+
+      // Check if this slot conflicts with any existing booking
+      const hasConflict = existingBookings.some(booking => {
+        const [bookingHour, bookingMinute] = booking.scheduledTime.split(':').map(Number);
+        const bookingStartMinutes = bookingHour * 60 + bookingMinute;
+        const bookingDuration = booking.service?.duration || 30; // Default to 30 if not available
+        const bookingEndMinutes = bookingStartMinutes + bookingDuration;
+
+        // Check if time ranges overlap
+        return (
+          (slotStartMinutes < bookingEndMinutes && slotEndMinutes > bookingStartMinutes)
+        );
+      });
+
+      return !hasConflict;
+    });
+
+    return availableSlots;
   };
 
   const timeSlots = getAvailableTimeSlots();
@@ -279,6 +344,13 @@ export default function CreateBookingScreen() {
                 },
               }}
               minDate={new Date().toISOString().split('T')[0]}
+              renderArrow={(direction) => (
+                <Ionicons
+                  name={direction === 'left' ? 'chevron-back' : 'chevron-forward'}
+                  size={20}
+                  color={themeHook.colors.primary}
+                />
+              )}
               theme={{
                 todayTextColor: themeHook.colors.primary,
                 arrowColor: themeHook.colors.primary,
@@ -391,21 +463,20 @@ export default function CreateBookingScreen() {
             styles.submitButton,
             { backgroundColor: themeHook.colors.primary },
             (!selectedService || !selectedDate || !selectedTime || isSubmitting) &&
-              { backgroundColor: themeHook.colors.buttonDisabledBackground },
+              { backgroundColor: themeHook.colors.buttonDisabledBackground || themeHook.colors.textTertiary },
           ]}
-          onPress={() => {
-            console.log('Button pressed!');
-            handleCreateBooking();
-          }}
+          onPress={handleCreateBooking}
           disabled={!selectedService || !selectedDate || !selectedTime || isSubmitting}
+          activeOpacity={(!selectedService || !selectedDate || !selectedTime || isSubmitting) ? 1 : 0.8}
         >
           {isSubmitting ? (
             <ActivityIndicator color={themeHook.colors.white} />
           ) : (
-            <Text style={styles.submitButtonText}>
-              {!selectedService || !selectedDate || !selectedTime
-                ? 'Book Session'
-                : 'Request Booking'}
+            <Text style={[
+              styles.submitButtonText,
+              { color: (!selectedService || !selectedDate || !selectedTime) ? themeHook.colors.textSecondary : themeHook.colors.white }
+            ]}>
+              Book Session
             </Text>
           )}
         </TouchableOpacity>
@@ -524,12 +595,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'flex-start',
   },
   timeSlot: {
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 8,
     borderWidth: 2,
+    width: '31%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   timeSlotSelected: {
   },

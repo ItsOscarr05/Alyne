@@ -158,6 +158,9 @@ export function BookingCard({
                 source={{ uri: booking.providerPhoto }}
                 style={styles.avatarImage}
                 contentFit="cover"
+                onError={() => {
+                  // Silently handle image load errors
+                }}
               />
             ) : (
               <Text style={[styles.avatarText, { color: themeHook.colors.white }]}>

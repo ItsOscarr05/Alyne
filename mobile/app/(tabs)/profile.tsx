@@ -416,6 +416,9 @@ export default function ProfileScreen() {
                             source={{ uri: user.profilePhoto }}
                             style={styles.heroAvatarImage}
                             contentFit="cover"
+                            onError={() => {
+                              // Silently handle image load errors
+                            }}
                           />
                           {(isHoveringPhoto || isUpdatingPhoto) && (
                             <View style={styles.photoOverlay}>
@@ -510,6 +513,9 @@ export default function ProfileScreen() {
                             source={{ uri: user.profilePhoto }}
                             style={styles.heroAvatarImage}
                             contentFit="cover"
+                            onError={() => {
+                              // Silently handle image load errors
+                            }}
                           />
                           {(isHoveringPhoto || isUpdatingPhoto) && (
                             <View style={styles.photoOverlay}>

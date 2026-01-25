@@ -277,6 +277,9 @@ export default function EditProfileScreen() {
                   source={{ uri: profilePhoto }}
                   style={styles.profilePhoto}
                   resizeMode="cover"
+                  onError={() => {
+                    // Silently handle image load errors
+                  }}
                 />
                 <View style={[styles.profilePhotoOverlay, { backgroundColor: themeHook.colors.overlay }]}>
                   <Ionicons name="camera" size={24} color={themeHook.colors.white} />
