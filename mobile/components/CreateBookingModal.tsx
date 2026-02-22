@@ -59,7 +59,6 @@ export function CreateBookingModal({
     if (visible && providerId) {
       loadProvider();
     } else {
-      // Reset state when modal closes
       setProvider(null);
       setSelectedService(null);
       setSelectedDate('');
@@ -249,7 +248,7 @@ export function CreateBookingModal({
           <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+              style={styles.modalOverlayContent}
               keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             >
               <View style={[styles.modalContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary, maxHeight: '90%' }]}>
@@ -278,14 +277,6 @@ export function CreateBookingModal({
                       <View style={styles.backButton} />
                     </View>
                     <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
-
-                    {/* Provider Info */}
-                    <View style={[styles.providerCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
-                      <Text style={[styles.providerName, { color: themeHook.colors.text }]}>{provider.name}</Text>
-                      {selectedService && (
-                        <Text style={[styles.serviceName, { color: themeHook.colors.textSecondary }]}>{selectedService.name}</Text>
-                      )}
-                    </View>
 
                     {/* Service Selection */}
                     <View style={styles.section}>
@@ -525,12 +516,12 @@ export function CreateBookingModal({
                   onButtonPress={modal.alertOptions.onButtonPress}
                 />
               )}
-              </View>
-            </KeyboardAvoidingView>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
-    </RNModal>
+            </View>
+          </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </View>
+    </TouchableWithoutFeedback>
+  </RNModal>
   );
 }
 
@@ -538,6 +529,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalOverlayContent: {
+    flex: 1,
+    width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -610,29 +607,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#1e293b',
-  },
-  providerCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: '#2563eb',
-    shadowColor: '#000000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  providerName: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 4,
-  },
-  serviceName: {
-    fontSize: 14,
-    color: '#64748b',
   },
   section: {
     marginBottom: 32,

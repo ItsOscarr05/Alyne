@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SearchBar } from '../../components/SearchBar';
 import { ProviderCard, ProviderCardData } from '../../components/ProviderCard';
 import { ProviderDetailModal } from '../../components/ProviderDetailModal';
+import { CreateBookingModal } from '../../components/CreateBookingModal';
 import { AnimatedCardWrapper } from '../../components/AnimatedCardWrapper';
 import { providerService, DiscoveryFilters } from '../../services/provider';
 import { useAuth } from '../../hooks/useAuth';
@@ -58,6 +59,7 @@ export default function DiscoverScreen() {
   const [reviewsOption, setReviewsOption] = useState<'highest' | 'lowest' | null>(null);
   const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
   const [isProviderModalVisible, setIsProviderModalVisible] = useState(false);
+  const [bookingModalProviderId, setBookingModalProviderId] = useState<string | null>(null);
   const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     visible: boolean;
@@ -812,6 +814,18 @@ export default function DiscoverScreen() {
           setIsProviderModalVisible(false);
           setSelectedProviderId(null);
         }}
+        onBookSession={(providerId) => {
+          setIsProviderModalVisible(false);
+          setSelectedProviderId(null);
+          setBookingModalProviderId(providerId);
+        }}
+      />
+
+      {/* Book Session Modal (replaces provider modal so only one modal at a time) */}
+      <CreateBookingModal
+        visible={!!bookingModalProviderId}
+        providerId={bookingModalProviderId}
+        onClose={() => setBookingModalProviderId(null)}
       />
 
       {/* Network Error Modal */}

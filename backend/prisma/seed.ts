@@ -335,7 +335,7 @@ async function main() {
           dayOfWeek: date.getDay(),
           startTime: `${hour.toString().padStart(2, '0')}:00`,
           endTime: `${(hour + 1).toString().padStart(2, '0')}:00`,
-          isRecurring: day === 0,
+          isRecurring: true, // Emily available every day of the week
         });
       }
     }
@@ -377,7 +377,28 @@ async function main() {
         await prisma.booking.createMany({ data: bookings });
       }
 
-      // Create 5 upcoming/confirmed bookings
+      // Create taken slots on the same day for demo (so user sees blocked times when picking that date)
+      const demoDate = new Date(now);
+      demoDate.setDate(demoDate.getDate() + 1); // Tomorrow
+      demoDate.setHours(0, 0, 0, 0);
+      const demoDayOfWeek = demoDate.getDay();
+      const takenTimes = ['10:00', '11:30', '14:00', '15:00']; // 60-min services will block adjacent slots
+      for (let i = 0; i < takenTimes.length; i++) {
+        const svc = services[i % services.length];
+        await prisma.booking.create({
+          data: {
+            clientId: clientUser.id,
+            providerId: provider3.id,
+            serviceId: svc.id,
+            scheduledDate: demoDate,
+            scheduledTime: takenTimes[i],
+            status: 'CONFIRMED' as const,
+            price: svc.price,
+          },
+        });
+      }
+
+      // Create 5 upcoming/confirmed bookings (spread across days)
       for (let i = 0; i < 5; i++) {
         const bookingDate = new Date(now);
         bookingDate.setDate(bookingDate.getDate() + i + 3);

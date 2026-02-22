@@ -23,7 +23,6 @@ import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { formatTime12Hour } from '../utils/timeUtils';
 import { theme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import { CreateBookingModal } from './CreateBookingModal';
 import { EditReviewModal } from './EditReviewModal';
 import { AlertModal } from './ui/AlertModal';
 import { ConfirmModal } from './ui/ConfirmModal';
@@ -36,9 +35,11 @@ interface ProviderDetailModalProps {
   onClose: () => void;
   initialTab?: 'about' | 'services' | 'reviews';
   scrollToAvailability?: boolean;
+  /** When user taps "Book Session", called with providerId so parent can open booking modal (after closing this one). */
+  onBookSession?: (providerId: string) => void;
 }
 
-export function ProviderDetailModal({ visible, providerId, onClose, initialTab = 'about', scrollToAvailability = false }: ProviderDetailModalProps) {
+export function ProviderDetailModal({ visible, providerId, onClose, initialTab = 'about', scrollToAvailability = false, onBookSession }: ProviderDetailModalProps) {
   const router = useRouter();
   const { user } = useAuth();
   const { onProviderRatingUpdate } = useSocket();
@@ -53,7 +54,6 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
   const scrollAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   const currentScrollYRef = useRef(0);
   const tabOpacityAnim = useRef(new Animated.Value(1)).current;
-  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
   const [isEditReviewModalVisible, setIsEditReviewModalVisible] = useState(false);
   const [selectedReview, setSelectedReview] = useState<{
     reviewId: string;
@@ -248,7 +248,10 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
 
   const handleBookSession = () => {
     if (!providerId) return;
-    setIsBookingModalVisible(true);
+    if (onBookSession) {
+      onBookSession(providerId);
+      onClose();
+    }
   };
 
   const handleFlagReview = async (reviewId: string) => {
@@ -826,9 +829,11 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                         <Text style={[styles.messageButtonText, { color: themeHook.colors.primary }]}>Message</Text>
                       </TouchableOpacity>
                     )}
-                    <TouchableOpacity style={[styles.bookButton, { backgroundColor: themeHook.colors.primary }]} onPress={handleBookSession}>
-                      <Text style={[styles.bookButtonText, { color: themeHook.colors.white }]}>Book Session</Text>
-                    </TouchableOpacity>
+                    {onBookSession && (
+                      <TouchableOpacity style={[styles.bookButton, { backgroundColor: themeHook.colors.primary }]} onPress={handleBookSession}>
+                        <Text style={[styles.bookButtonText, { color: themeHook.colors.white }]}>Book Session</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </>
               )}
@@ -836,13 +841,6 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
           </TouchableWithoutFeedback>
         </View>
       </TouchableWithoutFeedback>
-
-      {/* Create Booking Modal */}
-      <CreateBookingModal
-        visible={isBookingModalVisible}
-        providerId={providerId}
-        onClose={() => setIsBookingModalVisible(false)}
-      />
 
       {/* Edit Review Modal */}
       <EditReviewModal
