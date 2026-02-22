@@ -16,9 +16,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { paymentService } from '../services/payment';
 import { bookingService } from '../services/booking';
-import { plaidService } from '../services/plaid';
 import { useAuth } from '../hooks/useAuth';
 import { usePaymentContext } from '../contexts/PaymentContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { logger } from '../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../utils/errorMessages';
 import { formatTime12Hour } from '../utils/timeUtils';
@@ -36,31 +36,63 @@ const loadStripeWeb = async () => {
     return false;
   }
 
+  // Check if Stripe is already loaded
+  if ((window as any).Stripe) {
+    logger.debug('Stripe.js already loaded');
+    loadStripe = (publishableKey: string, options?: any) => {
+      return Promise.resolve((window as any).Stripe(publishableKey, options));
+    };
+    return true;
+  }
+
+  // Check if script is already being loaded
+  const existingScript = document.querySelector('script[src="https://js.stripe.com/v3/"]');
+  if (existingScript) {
+    logger.debug('Stripe.js script already exists, waiting for load...');
+    // Wait for existing script to load
+    return new Promise<boolean>((resolve) => {
+      const checkStripe = setInterval(() => {
+        if ((window as any).Stripe) {
+          clearInterval(checkStripe);
+          loadStripe = (publishableKey: string, options?: any) => {
+            return Promise.resolve((window as any).Stripe(publishableKey, options));
+          };
+          logger.debug('Stripe.js loaded from existing script');
+          resolve(true);
+        }
+      }, 100);
+      
+      // Timeout after 5 seconds
+      setTimeout(() => {
+        clearInterval(checkStripe);
+        resolve(false);
+      }, 5000);
+    });
+  }
+
   logger.debug('Starting to load Stripe web modules from CDN...');
 
   try {
     // Load Stripe.js from CDN
-    if (!(window as any).Stripe) {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://js.stripe.com/v3/';
-        script.async = true;
-        script.onload = () => {
-          logger.debug('Stripe.js CDN script loaded');
-          resolve();
-        };
-        script.onerror = () => {
-          logger.error('Failed to load Stripe.js from CDN');
-          reject(new Error('Failed to load Stripe.js'));
-        };
-        document.head.appendChild(script);
-      });
-    }
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://js.stripe.com/v3/';
+      script.async = true;
+      script.onload = () => {
+        logger.debug('Stripe.js CDN script loaded');
+        resolve();
+      };
+      script.onerror = () => {
+        logger.error('Failed to load Stripe.js from CDN');
+        reject(new Error('Failed to load Stripe.js'));
+      };
+      document.head.appendChild(script);
+    });
 
     // Create loadStripe function using CDN Stripe
     if ((window as any).Stripe) {
-      loadStripe = (publishableKey: string) => {
-        return Promise.resolve((window as any).Stripe(publishableKey));
+      loadStripe = (publishableKey: string, options?: any) => {
+        return Promise.resolve((window as any).Stripe(publishableKey, options));
       };
       logger.debug('Using CDN Stripe directly');
       return true;
@@ -119,6 +151,9 @@ function WebPaymentForm({
   onSubmitRef,
   hideButton = false,
   onError,
+  onInvalidClientSecret,
+  themeHook,
+  isDark,
 }: {
   clientSecret: string;
   booking: any;
@@ -130,35 +165,164 @@ function WebPaymentForm({
   onSubmitRef?: React.MutableRefObject<(() => Promise<void>) | null>;
   hideButton?: boolean;
   onError?: (title: string, message: string) => void;
+  onInvalidClientSecret?: () => void;
+  themeHook?: any;
+  isDark?: boolean;
 }) {
   const [processing, setProcessing] = useState(false);
   const [elements, setElements] = useState<any>(null);
   const paymentElementRef = useRef<any>(null);
+  const paymentElementInstanceRef = useRef<any>(null);
+  const elementsInstanceRef = useRef<any>(null);
+  const isInitializingRef = useRef(false);
+  const lastClientSecretRef = useRef<string | null>(null);
+  const onErrorRef = useRef(onError);
+  const onInvalidClientSecretRef = useRef(onInvalidClientSecret);
+  
+  // Keep refs updated without triggering re-initialization
+  useEffect(() => {
+    onErrorRef.current = onError;
+    onInvalidClientSecretRef.current = onInvalidClientSecret;
+  }, [onError, onInvalidClientSecret]);
 
   // Initialize Stripe Elements when Stripe instance is ready
   useEffect(() => {
+    // Only initialize if clientSecret changed or element doesn't exist
     if (Platform.OS === 'web' && stripeInstance && clientSecret && paymentElementRef.current) {
+      // Skip if already initialized with the same clientSecret
+      if (lastClientSecretRef.current === clientSecret && paymentElementInstanceRef.current) {
+        logger.debug('Payment element already initialized with same clientSecret, skipping...');
+        return;
+      }
+
+      // Prevent multiple simultaneous initializations
+      if (isInitializingRef.current) {
+        logger.debug('Payment element initialization already in progress, skipping...');
+        return;
+      }
+
+      // Clean up previous element if clientSecret changed
+      if (lastClientSecretRef.current !== clientSecret && paymentElementInstanceRef.current) {
+        try {
+          const element = paymentElementInstanceRef.current;
+          try {
+            element.unmount();
+          } catch (e: any) {
+            // Ignore unmount errors
+          }
+          paymentElementInstanceRef.current = null;
+          elementsInstanceRef.current = null;
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+
+      isInitializingRef.current = true;
+      lastClientSecretRef.current = clientSecret;
       logger.debug('Initializing Stripe Elements directly...');
 
-      const elementsInstance = stripeInstance.elements({
-        clientSecret,
-        appearance: {
-          theme: 'stripe',
-        },
-      });
+      const initializeElement = async () => {
+        try {
+          elementsInstanceRef.current = stripeInstance.elements({
+            clientSecret,
+            appearance: {
+              theme: isDark ? 'night' : 'stripe',
+              variables: {
+                colorBackground: themeHook?.colors?.surface || '#ffffff',
+                colorText: themeHook?.colors?.text || '#1e293b',
+                colorDanger: themeHook?.colors?.error || '#dc2626',
+                colorPrimary: themeHook?.colors?.primary || '#2563eb',
+                borderRadius: '12px',
+              },
+            },
+          });
 
-      const paymentElement = elementsInstance.create('payment');
-      paymentElement.mount(paymentElementRef.current);
+          const paymentElement = elementsInstanceRef.current.create('payment');
+          paymentElementInstanceRef.current = paymentElement;
+          
+          // Add error handler for payment element
+          paymentElement.on('loaderror', (event: any) => {
+            logger.error('Payment Element load error', event);
+            const errorMessage = event.error?.message || '';
+            const errorType = event.error?.type || '';
+            
+            // Check if it's an invalid client secret error
+            if (errorType === 'invalid_request_error' && errorMessage.includes('client_secret')) {
+              logger.warn('Invalid client secret detected, will retry with new payment intent');
+              // Clear the refs and client secret to trigger re-initialization
+              paymentElementInstanceRef.current = null;
+              elementsInstanceRef.current = null;
+              isInitializingRef.current = false;
+              lastClientSecretRef.current = null;
+              // Clear client secret to force new payment intent creation
+              if (onInvalidClientSecretRef.current) {
+                onInvalidClientSecretRef.current();
+              }
+              if (onErrorRef.current) {
+                onErrorRef.current(
+                  'Payment Form Error',
+                  'The payment form expired. Please close and reopen the payment modal to try again.'
+                );
+              }
+            } else {
+              // Clear the refs on error so we can retry
+              paymentElementInstanceRef.current = null;
+              elementsInstanceRef.current = null;
+              isInitializingRef.current = false;
+              lastClientSecretRef.current = null;
+              if (onErrorRef.current) {
+                onErrorRef.current('Payment Form Error', errorMessage || 'Failed to load payment form. Please refresh the page and try again.');
+              }
+            }
+          });
 
-      setElements(elementsInstance);
+          // Wait a bit to ensure DOM element is ready
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          if (paymentElementRef.current && paymentElementInstanceRef.current) {
+            paymentElementInstanceRef.current.mount(paymentElementRef.current);
+            setElements(elementsInstanceRef.current);
+            isInitializingRef.current = false;
+          }
+        } catch (error: any) {
+          logger.error('Error initializing Stripe Elements', error);
+          isInitializingRef.current = false;
+          paymentElementInstanceRef.current = null;
+          elementsInstanceRef.current = null;
+          lastClientSecretRef.current = null;
+          if (onErrorRef.current) {
+            onErrorRef.current('Initialization Error', error.message || 'Failed to initialize payment form. Please try again.');
+          }
+        }
+      };
+
+      initializeElement();
 
       return () => {
-        if (paymentElement) {
-          paymentElement.unmount();
+        isInitializingRef.current = false;
+        try {
+          const element = paymentElementInstanceRef.current;
+          if (element) {
+            try {
+              // Check if element is still mounted before unmounting
+              element.unmount();
+            } catch (unmountError: any) {
+              // Element may already be destroyed, which is fine - ignore this specific error
+              const errorMsg = unmountError?.message || '';
+              if (!errorMsg.includes('already been destroyed') && !errorMsg.includes('destroyed')) {
+                logger.debug('Error unmounting payment element (non-critical)', unmountError);
+              }
+            }
+            paymentElementInstanceRef.current = null;
+          }
+          elementsInstanceRef.current = null;
+        } catch (error: any) {
+          // Ignore cleanup errors
+          logger.debug('Cleanup error (non-critical)', error);
         }
       };
     }
-  }, [stripeInstance, clientSecret]);
+  }, [stripeInstance, clientSecret, isDark, themeHook]);
 
   const handleSubmit = async (e: any) => {
     e?.preventDefault?.();
@@ -266,20 +430,35 @@ function WebPaymentForm({
     <View style={styles.paymentForm}>
       {Platform.OS === 'web' && (
         <View
-          style={[styles.stripeElementContainer, { minHeight: 200 }]}
+          style={[
+            styles.stripeElementContainer,
+            { 
+              minHeight: 200,
+              backgroundColor: themeHook?.colors?.surface || '#ffffff',
+              borderColor: themeHook?.colors?.border || '#e2e8f0'
+            }
+          ]}
           ref={(el) => {
-            if (Platform.OS === 'web' && el && typeof (el as any)._domNode !== 'undefined') {
-              paymentElementRef.current = (el as any)._domNode;
-            } else if (Platform.OS === 'web' && el) {
-              const findDOMNode = (node: any): any => {
-                if (node && typeof node === 'object') {
-                  if (node.nodeType === 1) return node;
-                  if (node._domNode) return node._domNode;
-                  if (node._nativeNode) return node._nativeNode;
+            if (Platform.OS === 'web' && el) {
+              // Only update ref if it's different to avoid triggering re-initialization
+              const domNode = (() => {
+                if (typeof (el as any)._domNode !== 'undefined') {
+                  return (el as any)._domNode;
                 }
-                return null;
-              };
-              paymentElementRef.current = findDOMNode(el);
+                const findDOMNode = (node: any): any => {
+                  if (node && typeof node === 'object') {
+                    if (node.nodeType === 1) return node;
+                    if (node._domNode) return node._domNode;
+                    if (node._nativeNode) return node._nativeNode;
+                  }
+                  return null;
+                };
+                return findDOMNode(el);
+              })();
+              
+              if (domNode && paymentElementRef.current !== domNode) {
+                paymentElementRef.current = domNode;
+              }
             }
           }}
         />
@@ -288,6 +467,7 @@ function WebPaymentForm({
         <TouchableOpacity
           style={[
             styles.payButton,
+            { backgroundColor: themeHook?.colors?.primary || '#2563eb' },
             (!stripeInstance || !elements || processing) && styles.payButtonDisabled,
           ]}
           onPress={(e) => {
@@ -297,7 +477,7 @@ function WebPaymentForm({
           disabled={!stripeInstance || !elements || processing}
         >
           {processing ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={themeHook?.colors?.white || '#ffffff'} />
           ) : (
             <Text style={styles.payButtonText}>Pay ${amount.toFixed(2)}</Text>
           )}
@@ -316,6 +496,7 @@ interface PaymentCheckoutModalProps {
 export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentCheckoutModalProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme: themeHook, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { startPayment, endPayment, isProcessing: globalIsProcessing, currentBookingId } = usePaymentContext();
 
@@ -331,11 +512,8 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
     providerAmount: number;
     platformFee: number;
   } | null>(null);
-  const [requiresPlaidPayment, setRequiresPlaidPayment] = useState(false);
   const [stripePaymentComplete, setStripePaymentComplete] = useState(false);
-  const [plaidPaymentComplete, setPlaidPaymentComplete] = useState(false);
-  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
-  const [plaidLoading, setPlaidLoading] = useState(false);
+  const [connectedAccountId, setConnectedAccountId] = useState<string | null>(null);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [errorModal, setErrorModal] = useState<{
     visible: boolean;
@@ -351,6 +529,8 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
   // Native Stripe hooks
   const stripeNative = useStripeNative ? useStripeNative() : null;
+  const initializingPaymentRef = useRef(false);
+  const lastBookingIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (visible && bookingId) {
@@ -366,27 +546,15 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         return;
       }
       
-      initializePayment();
+      // Only initialize if not already initializing and bookingId changed
+      if (!initializingPaymentRef.current && lastBookingIdRef.current !== bookingId) {
+        initializePayment();
+      }
       // Initialize Stripe for web
       if (Platform.OS === 'web') {
         loadStripeWeb()
           .then((loaded) => {
-            if (loaded && loadStripe && STRIPE_PUBLISHABLE_KEY) {
-              try {
-                const promise = loadStripe(STRIPE_PUBLISHABLE_KEY);
-                setStripePromise(promise);
-                promise
-                  .then((stripeInst: any) => {
-                    setStripeInstance(stripeInst);
-                    setStripeModulesLoaded(true);
-                  })
-                  .catch((error: any) => {
-                    console.error('Failed to create Stripe instance:', error);
-                  });
-              } catch (error: any) {
-                console.error('Error calling loadStripe:', error);
-              }
-            }
+            if (loaded) setStripeModulesLoaded(true);
           })
           .catch((error) => {
             console.error('Error in loadStripeWeb:', error);
@@ -396,25 +564,46 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       // Reset state when modal closes
       if (!visible) {
         endPayment(); // End payment processing when modal closes
+        initializingPaymentRef.current = false;
+        lastBookingIdRef.current = null;
       }
       setBooking(null);
       setClientSecret(null);
       setStripeInstance(null);
       setStripeModulesLoaded(false);
       setPaymentAmounts(null);
-      setRequiresPlaidPayment(false);
       setStripePaymentComplete(false);
-      setPlaidPaymentComplete(false);
-      setPlaidLinkToken(null);
-      setPlaidLoading(false);
+      setConnectedAccountId(null);
       setShowReceiptModal(false);
       setLoading(true);
       setProcessing(false);
     }
   }, [visible, bookingId, globalIsProcessing, currentBookingId, startPayment, endPayment, onClose]);
 
+  // When Stripe.js is loaded and we know the connected account, create a scoped Stripe instance.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!stripeModulesLoaded) return;
+    if (!connectedAccountId) return;
+    if (stripeInstance) return;
+    if (!loadStripe || !STRIPE_PUBLISHABLE_KEY) return;
+
+    try {
+      const promise = loadStripe(STRIPE_PUBLISHABLE_KEY, { stripeAccount: connectedAccountId });
+      setStripePromise(promise);
+      promise
+        .then((stripeInst: any) => setStripeInstance(stripeInst))
+        .catch((error: any) => console.error('Failed to create Stripe instance:', error));
+    } catch (error: any) {
+      console.error('Error creating Stripe instance:', error);
+    }
+  }, [stripeModulesLoaded, connectedAccountId, stripeInstance]);
+
   const initializePayment = async () => {
-    if (!bookingId) return;
+    if (!bookingId || initializingPaymentRef.current) return;
+
+    initializingPaymentRef.current = true;
+    lastBookingIdRef.current = bookingId;
 
     try {
       setLoading(true);
@@ -424,6 +613,7 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
       if (bookingData.payment?.status === 'completed') {
         setLoading(false);
+        initializingPaymentRef.current = false;
         onClose();
         return;
       }
@@ -437,21 +627,35 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           message: statusMessage,
         });
         setLoading(false);
+        initializingPaymentRef.current = false;
         onClose();
         return;
       }
 
+      // Clear any existing client secret before creating a new one
+      setClientSecret(null);
+      
       const paymentIntent = await paymentService.createPaymentIntent(bookingId);
       console.log('Payment intent response:', paymentIntent);
 
       const secret = paymentIntent?.clientSecret;
+      const acctId = paymentIntent?.stripeAccountId;
 
       if (!secret) {
         console.error('No client secret found in payment intent:', paymentIntent);
+        initializingPaymentRef.current = false;
         throw new Error('Payment intent created but no client secret returned');
       }
+      if (Platform.OS === 'web' && !acctId) {
+        initializingPaymentRef.current = false;
+        throw new Error('Provider payout is not set up (missing connected account id)');
+      }
 
-      setClientSecret(secret);
+      // Only set client secret if we're still initializing the same booking
+      if (lastBookingIdRef.current === bookingId) {
+        setClientSecret(secret);
+        if (acctId) setConnectedAccountId(acctId);
+      }
 
       const calculatedPlatformFee = paymentIntent.platformFee ?? bookingData.price * 0.075;
       const calculatedProviderAmount = paymentIntent.providerAmount ?? bookingData.price;
@@ -464,15 +668,20 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
         platformFee: calculatedPlatformFee,
       });
 
-      if (paymentIntent.requiresPlaidPayment) {
-        setRequiresPlaidPayment(true);
-        // Pre-fetch Plaid link token so it's ready when user clicks Pay Now
+      // Create Stripe instance scoped to the provider's connected account (Connect direct charge)
+      if (Platform.OS === 'web' && stripeModulesLoaded && loadStripe && STRIPE_PUBLISHABLE_KEY && acctId) {
         try {
-          const linkToken = await plaidService.getPaymentLinkToken(bookingId);
-          setPlaidLinkToken(linkToken);
+          const promise = loadStripe(STRIPE_PUBLISHABLE_KEY, { stripeAccount: acctId });
+          setStripePromise(promise);
+          promise
+            .then((stripeInst: any) => {
+              setStripeInstance(stripeInst);
+            })
+            .catch((error: any) => {
+              console.error('Failed to create Stripe instance:', error);
+            });
         } catch (error: any) {
-          console.error('Error pre-fetching Plaid link token:', error);
-          // Don't show error to user yet, will retry when they click Pay Now
+          console.error('Error calling loadStripe:', error);
         }
       }
 
@@ -496,9 +705,12 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
       }
 
       setLoading(false);
+      initializingPaymentRef.current = false;
     } catch (error: any) {
       logger.error('Error initializing payment', error);
       endPayment(); // End payment processing on error
+      initializingPaymentRef.current = false;
+      lastBookingIdRef.current = null;
       const errorMessage = getUserFriendlyError(error);
       const errorTitle = getErrorTitle(error);
 
@@ -570,302 +782,20 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
 
   const handleStripePaymentSuccess = async () => {
     setStripePaymentComplete(true);
-    
-    // Check if both payments are complete
-    if (!requiresPlaidPayment || plaidPaymentComplete) {
-      handlePaymentSuccess();
-    }
-    // If Plaid payment is still pending, it will be handled by the unified payment flow
-  };
-
-  // Initialize Plaid Link for web
-  const initializePlaidLink = (linkToken: string, onSuccess: () => void) => {
-    console.log('initializePlaidLink called', { linkToken: linkToken?.substring(0, 20) + '...' });
-    
-    if (Platform.OS !== 'web' || typeof window === 'undefined') {
-      console.error('Plaid Link only works on web');
-      setErrorModal({
-        visible: true,
-        type: 'warning',
-        title: 'Plaid Unavailable',
-        message: 'Plaid payment is only available on web. Please use a web browser.',
-      });
-      return;
-    }
-
-    // Check if Plaid script is already loaded
-    if ((window as any).Plaid) {
-      console.log('Plaid already loaded, creating handler');
-      createPlaidHandler(linkToken, onSuccess);
-    } else {
-      console.log('Loading Plaid script from CDN');
-      // Load Plaid Link from CDN
-      const script = document.createElement('script');
-      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
-      script.async = true;
-      script.onload = () => {
-        console.log('Plaid script loaded');
-        if ((window as any).Plaid) {
-          createPlaidHandler(linkToken, onSuccess);
-        } else {
-          console.error('Plaid object not available after script load');
-          setErrorModal({
-            visible: true,
-            type: 'error',
-            title: 'Initialization Failed',
-            message: 'Failed to initialize Plaid. Please refresh the page.',
-          });
-          setProcessing(false);
-        }
-      };
-      script.onerror = (error) => {
-        console.error('Failed to load Plaid Link script', error);
-        logger.error('Failed to load Plaid Link script');
-        setProcessing(false);
-        setErrorModal({
-          visible: true,
-          type: 'error',
-          title: 'Load Failed',
-          message: 'Failed to load payment system. Please check your internet connection and refresh the page.',
-        });
-      };
-      document.body.appendChild(script);
-    }
-  };
-
-  const createPlaidHandler = (linkToken: string, onSuccess: () => void) => {
-    console.log('createPlaidHandler called', { hasPlaid: !!(window as any).Plaid, hasToken: !!linkToken });
-    
-    if (!(window as any).Plaid) {
-      console.error('Plaid object not available');
-      setProcessing(false);
-      setErrorModal({
-        visible: true,
-        type: 'error',
-        title: 'Plaid Unavailable',
-        message: 'Plaid is not available. Please refresh the page.',
-      });
-      return;
-    }
-
-    if (!linkToken) {
-      console.error('No link token provided');
-      setProcessing(false);
-      setErrorModal({
-        visible: true,
-        type: 'error',
-        title: 'Token Missing',
-        message: 'Payment token is missing. Please try again.',
-      });
-      return;
-    }
-
-    try {
-      console.log('Creating Plaid handler');
-      const handler = (window as any).Plaid.create({
-          token: linkToken,
-          onSuccess: async (publicToken: string, metadata: any) => {
-            logger.info('Plaid Link successful', { publicToken, metadata });
-            
-            try {
-              // Note: With Plaid Payment Initiation, the payment is automatically created
-              // when the user completes Plaid Link. We just need to track it.
-              // For now, we'll use the existing processProviderPayment which uses Transfer API
-              // In the future, we can implement proper Payment Initiation flow
-              
-              // Exchange the public token and process the payment
-              // The payment is already initiated by Plaid, we just need to confirm it
-              await paymentService.processProviderPayment(bookingId!);
-              
-              logger.info('Plaid payment processed successfully');
-              setPlaidPaymentComplete(true);
-              
-              // Check if both payments are complete
-              if (stripePaymentComplete) {
-                // Both payments complete, show success
-                setTimeout(() => {
-                  handlePaymentSuccess();
-                }, 500);
-              }
-              
-              // Call the onSuccess callback
-              onSuccess();
-            } catch (error: any) {
-              logger.error('Error processing Plaid payment', error);
-              setProcessing(false);
-              setErrorModal({
-                visible: true,
-                type: 'error',
-                title: 'Provider Payment Error',
-                message: error.message || 'Unknown error',
-              });
-            }
-          },
-          onExit: (err: any, metadata: any) => {
-            logger.debug('Plaid exit', { err, metadata });
-            setProcessing(false);
-            if (err) {
-              const errorMsg = err.error_message || err.message || 'Unknown error';
-              setErrorModal({
-                visible: true,
-                type: 'error',
-                title: 'Payment Error',
-                message: errorMsg,
-              });
-            }
-          },
-          onEvent: (eventName: string, metadata: any) => {
-            logger.debug('Plaid event', { eventName, metadata });
-          },
-        });
-        (window as any).plaidHandler = handler;
-        console.log('Plaid handler created, opening...');
-        handler.open();
-      } catch (error: any) {
-        console.error('Error creating Plaid handler:', error);
-        logger.error('Error initializing Plaid', error);
-        endPayment(); // End payment processing on error
-        setProcessing(false);
-        setErrorModal({
-          visible: true,
-          type: 'error',
-          title: 'Initialization Failed',
-          message: error.message || 'Unknown error',
-        });
-      }
-  };
-
-  const handlePlaidPayment = async () => {
-    console.log('handlePlaidPayment called', { plaidLinkToken, bookingId });
-    
-    if (!plaidLinkToken) {
-      console.error('No Plaid link token available');
-      setErrorModal({
-        visible: true,
-        type: 'warning',
-        title: 'Payment Not Ready',
-        message: 'Plaid payment is not ready. Please wait a moment or refresh the page.',
-      });
-      return;
-    }
-
-    if (Platform.OS === 'web') {
-      try {
-        setProcessing(true);
-        console.log('Initializing Plaid Link with token:', plaidLinkToken.substring(0, 20) + '...');
-        initializePlaidLink(plaidLinkToken, () => {
-          // Payment completed, show success
-          console.log('Plaid payment flow completed');
-          handlePaymentSuccess();
-        });
-      } catch (error: any) {
-        console.error('Error in handlePlaidPayment:', error);
-        endPayment(); // End payment processing on error
-        setProcessing(false);
-        setErrorModal({
-          visible: true,
-          type: 'error',
-          title: 'Payment Start Failed',
-          message: error.message || 'Unknown error',
-        });
-      }
-    } else {
-      // For native, you would use Plaid React Native SDK
-      setErrorModal({
-        visible: true,
-        type: 'info',
-        title: 'Info',
-        message: 'Plaid payment on mobile is not yet implemented. Please use web version.',
-      });
-    }
-  };
-
-  const handleUnifiedPayment = async () => {
-    // Check if another payment is processing
-    if (globalIsProcessing && currentBookingId !== bookingId) {
-      setErrorModal({
-        visible: true,
-        title: 'Payment Already in Progress',
-        message: 'Another payment is currently being processed. Please wait for it to complete before starting a new payment.',
-      });
-      return;
-    }
-    
-    if (Platform.OS === 'web') {
-      setProcessing(true);
-
-      // Ensure we have Plaid token if needed
-      if (requiresPlaidPayment && !plaidLinkToken) {
-        try {
-          setPlaidLoading(true);
-          const linkToken = await plaidService.getPaymentLinkToken(bookingId!);
-          setPlaidLinkToken(linkToken);
-          setPlaidLoading(false);
-        } catch (error: any) {
-          console.error('Error getting Plaid link token:', error);
-          endPayment(); // End payment processing on error
-          setPlaidLoading(false);
-          setProcessing(false);
-          setErrorModal({
-            visible: true,
-            title: 'Payment Initialization Error',
-            message: error.response?.data?.message || error.message || 'Failed to initialize provider payment. Please try again.',
-          });
-          return;
-        }
-      }
-
-      // Start Stripe payment first (platform fee)
-      if (stripeSubmitRef.current && !stripePaymentComplete) {
-        try {
-          await stripeSubmitRef.current();
-          // Stripe payment success is handled by handleStripePaymentSuccess
-        } catch (error: any) {
-          console.error('Stripe payment error:', error);
-          endPayment(); // End payment processing on error
-          setProcessing(false);
-          setErrorModal({
-            visible: true,
-            title: 'Payment Failed',
-            message: error.message || 'Platform fee payment failed. Please try again.',
-          });
-          return;
-        }
-      }
-
-      // Start Plaid payment (provider amount) simultaneously or right after Stripe
-      if (requiresPlaidPayment && !plaidPaymentComplete && plaidLinkToken) {
-        try {
-          // Initialize Plaid Link - this will open a modal for user to complete
-          // The payment completion is handled in the onSuccess callback
-          initializePlaidLink(plaidLinkToken, () => {
-            console.log('Plaid payment flow completed');
-            // Check if both are complete
-            if (stripePaymentComplete) {
-              handlePaymentSuccess();
-            }
-          });
-        } catch (error: any) {
-          console.error('Error initializing Plaid:', error);
-          endPayment(); // End payment processing on error
-          setProcessing(false);
-          setErrorModal({
-            visible: true,
-            type: 'error',
-            title: 'Provider Payment Failed',
-            message: error.message || 'Unknown error',
-          });
-        }
-      } else if (!requiresPlaidPayment) {
-        // No Plaid payment needed, just wait for Stripe
-        // handleStripePaymentSuccess will handle completion
-      }
-    } else {
-      handlePayment();
-    }
+    handlePaymentSuccess();
   };
 
   const stripeSubmitRef = useRef<(() => Promise<void>) | null>(null);
+
+  const handlePayNow = async () => {
+    if (!stripeSubmitRef.current) return;
+    try {
+      setProcessing(true);
+      await stripeSubmitRef.current();
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   const handlePaymentSuccess = () => {
     // End payment processing when payment succeeds
@@ -896,15 +826,21 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                 style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
               >
-                <View style={[styles.modalContainer, { maxHeight: '90%' }]}>
+                <View style={[
+                  styles.modalContainer, 
+                  { maxHeight: '90%', backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }
+                ]}>
                 {/* Close Button */}
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                  <Ionicons name="close" size={28} color="#1e293b" />
+                <TouchableOpacity 
+                  style={[styles.closeButton, { backgroundColor: themeHook.colors.surfaceElevated }]} 
+                  onPress={onClose}
+                >
+                  <Ionicons name="close" size={28} color={themeHook.colors.text} />
                 </TouchableOpacity>
 
                 {loading || !booking ? (
                   <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#2563eb" />
+                    <ActivityIndicator size="large" color={themeHook.colors.primary} />
                   </View>
                 ) : (
                   <>
@@ -916,26 +852,29 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                       {/* Header */}
                       <View style={styles.header}>
                         <TouchableOpacity onPress={onClose} style={styles.backButton}>
-                          <Ionicons name="arrow-back" size={24} color="#1e293b" />
+                          <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
                         </TouchableOpacity>
-                        <Text style={styles.headerTitle}>Complete Payment</Text>
+                        <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Complete Payment</Text>
                         <View style={styles.backButton} />
                       </View>
-                      <View style={styles.headerDivider} />
+                      <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
 
-                      <View style={styles.summaryCard}>
-                        <Text style={styles.summaryTitle}>Booking Summary</Text>
+                      <View style={[
+                        styles.summaryCard,
+                        { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.border }
+                      ]}>
+                        <Text style={[styles.summaryTitle, { color: themeHook.colors.text }]}>Booking Summary</Text>
 
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Service</Text>
-                          <Text style={styles.summaryValue}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                             {booking.service?.name || 'Service'}
                           </Text>
                         </View>
 
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Provider</Text>
-                          <Text style={styles.summaryValue}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Provider</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                             {booking.provider
                               ? `${booking.provider.firstName} ${booking.provider.lastName}`
                               : 'Provider'}
@@ -943,64 +882,75 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                         </View>
 
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Date & Time</Text>
-                          <Text style={styles.summaryValue}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Date & Time</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                             {new Date(booking.scheduledDate).toLocaleDateString()} at{' '}
                             {formatTime12Hour(booking.scheduledTime)}
                           </Text>
                         </View>
 
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, { backgroundColor: themeHook.colors.border }]} />
 
                         <View style={styles.summaryRow}>
-                          <Text style={styles.summaryLabel}>Service Price</Text>
-                          <Text style={styles.summaryValue}>
+                          <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Service Price</Text>
+                          <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                             ${paymentAmounts?.providerAmount.toFixed(2) || booking.price.toFixed(2)}
                           </Text>
                         </View>
 
                         {paymentAmounts && (
                           <View style={styles.summaryRow}>
-                            <Text style={styles.summaryLabel}>Platform Fee (Alyne)</Text>
-                            <Text style={styles.summaryValue}>
+                            <Text style={[styles.summaryLabel, { color: themeHook.colors.textSecondary }]}>Platform Fee (Alyne)</Text>
+                            <Text style={[styles.summaryValue, { color: themeHook.colors.text }]}>
                               +${paymentAmounts.platformFee.toFixed(2)}
                             </Text>
                           </View>
                         )}
 
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, { backgroundColor: themeHook.colors.border }]} />
 
                         <View style={styles.totalRow}>
-                          <Text style={styles.totalLabel}>Total Amount Due</Text>
-                          <Text style={styles.totalAmount}>
+                          <Text style={[styles.totalLabel, { color: themeHook.colors.text }]}>Total Amount Due</Text>
+                          <Text style={[styles.totalAmount, { color: themeHook.colors.primary }]}>
                             ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
                           </Text>
                         </View>
 
-                        {requiresPlaidPayment && paymentAmounts && (
-                          <View style={styles.paymentBreakdownCard}>
-                            <Text style={styles.breakdownTitle}>Payment Breakdown</Text>
+                        {paymentAmounts && (
+                          <View style={[
+                            styles.paymentBreakdownCard,
+                            { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }
+                          ]}>
+                            <Text style={[styles.breakdownTitle, { color: themeHook.colors.text }]}>Payment Breakdown</Text>
                             <View style={styles.breakdownRow}>
-                              <Text style={styles.breakdownLabel}>Platform Fee (Stripe)</Text>
-                              <Text style={styles.breakdownValue}>
-                                ${paymentAmounts.platformFee.toFixed(2)}
+                              <Text style={[styles.breakdownLabel, { color: themeHook.colors.textSecondary }]}>Service Price</Text>
+                              <Text style={[styles.breakdownValue, { color: themeHook.colors.text }]}>
+                                ${paymentAmounts.providerAmount.toFixed(2)}
                               </Text>
                             </View>
                             <View style={styles.breakdownRow}>
-                              <Text style={styles.breakdownLabel}>Provider Payment (Plaid)</Text>
-                              <Text style={styles.breakdownValue}>
-                                ${paymentAmounts.providerAmount.toFixed(2)}
+                              <Text style={[styles.breakdownLabel, { color: themeHook.colors.textSecondary }]}>Platform Fee (Alyne)</Text>
+                              <Text style={[styles.breakdownValue, { color: themeHook.colors.text }]}>
+                                ${paymentAmounts.platformFee.toFixed(2)}
+                              </Text>
+                            </View>
+                            <View style={[styles.breakdownRow, { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: themeHook.colors.border }]}>
+                              <Text style={[styles.breakdownLabel, { fontWeight: '600', color: themeHook.colors.text }]}>Total</Text>
+                              <Text style={[styles.breakdownValue, { fontWeight: '600', color: themeHook.colors.primary }]}>
+                                ${paymentAmounts.total.toFixed(2)}
                               </Text>
                             </View>
                           </View>
                         )}
                       </View>
 
-                      <View style={styles.infoCard}>
-                        <Ionicons name="lock-closed" size={20} color="#2563eb" />
-                        <Text style={styles.infoText}>
-                          Your payments are secured by Stripe and Plaid. We never store your payment
-                          details.
+                      <View style={[
+                        styles.infoCard,
+                        { backgroundColor: themeHook.colors.primaryLight || themeHook.colors.surface }
+                      ]}>
+                        <Ionicons name="lock-closed" size={20} color={themeHook.colors.primary} />
+                        <Text style={[styles.infoText, { color: themeHook.colors.primary }]}>
+                          Your payment is secured by Stripe. We never store your payment details.
                         </Text>
                       </View>
 
@@ -1019,86 +969,65 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                                 onSuccess={handleStripePaymentSuccess}
                                 stripeInstance={stripeInstance}
                                 publishableKey={STRIPE_PUBLISHABLE_KEY}
-                                amount={paymentAmounts?.platformFee || 0}
+                                amount={paymentAmounts?.total || 0}
                                 onSubmitRef={stripeSubmitRef}
                                 hideButton={true}
+                                themeHook={themeHook}
+                                isDark={isDark}
                                 onError={(title, message) => {
                                   setProcessing(false);
                                   setErrorModal({ visible: true, type: 'error', title, message });
+                                }}
+                                onInvalidClientSecret={() => {
+                                  // Clear client secret to force creation of new payment intent
+                                  setClientSecret(null);
+                                  logger.debug('Client secret cleared due to invalid secret error');
                                 }}
                               />
                             </View>
                           )}
 
-                          {/* Single Pay Now Button - Processes Both Payments */}
-                          {!stripePaymentComplete || (requiresPlaidPayment && !plaidPaymentComplete) ? (
+                          {/* Pay Now Button */}
+                          {!stripePaymentComplete ? (
                             <>
-                              {requiresPlaidPayment && paymentAmounts && (
-                                <View style={styles.paymentStepCard}>
-                                  <Text style={styles.breakdownTitle}>Payment Details</Text>
-                                  <View style={styles.breakdownRow}>
-                                    <Text style={styles.breakdownLabel}>Platform Fee (Stripe)</Text>
-                                    <Text style={styles.breakdownValue}>
-                                      ${paymentAmounts.platformFee.toFixed(2)}
-                                      {stripePaymentComplete && ' ✓'}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.breakdownRow}>
-                                    <Text style={styles.breakdownLabel}>Provider Payment (Plaid)</Text>
-                                    <Text style={styles.breakdownValue}>
-                                      ${paymentAmounts.providerAmount.toFixed(2)}
-                                      {plaidPaymentComplete && ' ✓'}
-                                    </Text>
-                                  </View>
-                                </View>
-                              )}
-
                               <TouchableOpacity
                                 style={[
                                   styles.payButton,
-                                  (processing || !stripeInstance || (requiresPlaidPayment && !plaidLinkToken && plaidLoading)) && styles.payButtonDisabled,
+                                  { backgroundColor: themeHook.colors.primary },
+                                  (processing || !stripeInstance) && styles.payButtonDisabled,
                                 ]}
-                                onPress={handleUnifiedPayment}
-                                disabled={processing || !stripeInstance || (requiresPlaidPayment && !plaidLinkToken && plaidLoading)}
+                                onPress={handlePayNow}
+                                disabled={processing || !stripeInstance}
                               >
                                 {processing ? (
-                                  <ActivityIndicator color="#ffffff" />
+                                  <ActivityIndicator color={themeHook.colors.white} />
                                 ) : (
                                   <Text style={styles.payButtonText}>
-                                    Pay Now ($
-                                    {paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)})
+                                    Pay ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
                                   </Text>
                                 )}
                               </TouchableOpacity>
 
                               {processing && (
-                                <View style={styles.paymentStatus}>
-                                  <ActivityIndicator size="small" color="#2563eb" />
-                                  <Text style={styles.paymentStatusText}>
-                                    Processing payments...
-                                  </Text>
-                                  {requiresPlaidPayment && (
-                                    <Text style={[styles.paymentStatusText, { fontSize: 12, marginTop: 4 }]}>
-                                      Platform fee: {stripePaymentComplete ? '✓' : '...'} | Provider payment: {plaidPaymentComplete ? '✓' : '...'}
-                                    </Text>
-                                  )}
-                                </View>
-                              )}
-
-                              {plaidLoading && !plaidLinkToken && (
-                                <View style={styles.paymentStatus}>
-                                  <ActivityIndicator size="small" color="#2563eb" />
-                                  <Text style={styles.paymentStatusText}>
-                                    Preparing payments...
+                                <View style={[
+                                  styles.paymentStatus,
+                                  { backgroundColor: themeHook.colors.primaryLight || themeHook.colors.surface }
+                                ]}>
+                                  <ActivityIndicator size="small" color={themeHook.colors.primary} />
+                                  <Text style={[styles.paymentStatusText, { color: themeHook.colors.primary }]}>
+                                    Processing payment...
                                   </Text>
                                 </View>
                               )}
                             </>
                           ) : (
-                            /* Both Payments Complete */
-                            <View style={styles.paymentStatus}>
-                              <Ionicons name="checkmark-circle" size={24} color="#16A34A" />
-                              <Text style={[styles.paymentStatusText, { color: '#16A34A' }]}>
+                            /* Payment Complete */
+                            <View style={[
+                              styles.paymentStatus,
+                              { backgroundColor: themeHook.colors.surface }
+                            ]}>
+                              <Ionicons name="checkmark-circle" size={24} color={themeHook.colors.success || '#16A34A'} />
+                              <Text style={[styles.paymentStatusText, { color: themeHook.colors.success || '#16A34A' }]}>
                                 Payment completed successfully!
                               </Text>
                             </View>
@@ -1106,8 +1035,8 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                         </>
                       ) : Platform.OS === 'web' ? (
                         <View style={styles.loadingContainer}>
-                          <ActivityIndicator size="small" color="#2563eb" />
-                          <Text style={styles.loadingText}>
+                          <ActivityIndicator size="small" color={themeHook.colors.primary} />
+                          <Text style={[styles.loadingText, { color: themeHook.colors.textSecondary }]}>
                             {(() => {
                               const reasons = [];
                               if (!stripeModulesLoaded) reasons.push('Loading Stripe modules...');
@@ -1119,12 +1048,16 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
                         </View>
                       ) : (
                         <TouchableOpacity
-                          style={[styles.payButton, processing && styles.payButtonDisabled]}
+                          style={[
+                            styles.payButton,
+                            { backgroundColor: themeHook.colors.primary },
+                            processing && styles.payButtonDisabled
+                          ]}
                           onPress={handlePayment}
                           disabled={processing}
                         >
                           {processing ? (
-                            <ActivityIndicator color="#ffffff" />
+                            <ActivityIndicator color={themeHook.colors.white} />
                           ) : (
                             <Text style={styles.payButtonText}>
                               Pay ${paymentAmounts?.total.toFixed(2) || booking.price.toFixed(2)}
@@ -1159,7 +1092,6 @@ export function PaymentCheckoutModal({ visible, bookingId, onClose }: PaymentChe
           setErrorModal({ visible: false, type: 'error', title: '', message: '' });
           // Reset all loading states when error modal is closed
           setProcessing(false);
-          setPlaidLoading(false);
         }}
         title={errorModal.title}
         message={errorModal.message}
@@ -1181,10 +1113,8 @@ const styles = StyleSheet.create({
     width: '92.5%',
     maxWidth: 600,
     height: '90%',
-    backgroundColor: '#f8fafc',
     borderRadius: 24,
     borderWidth: 3.5,
-    borderColor: '#2563eb',
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -1200,7 +1130,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -1238,7 +1167,6 @@ const styles = StyleSheet.create({
   },
   headerDivider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginBottom: 16,
     width: '95%',
     alignSelf: 'center',
@@ -1246,20 +1174,16 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   summaryCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   summaryTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 16,
   },
   summaryRow: {
@@ -1269,16 +1193,13 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   summaryValue: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1e293b',
   },
   divider: {
     height: 1,
-    backgroundColor: '#e2e8f0',
     marginVertical: 16,
   },
   totalRow: {
@@ -1289,17 +1210,14 @@ const styles = StyleSheet.create({
   totalLabel: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1e293b',
   },
   totalAmount: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#2563eb',
   },
   infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
     borderRadius: 12,
     padding: 16,
     gap: 12,
@@ -1307,7 +1225,6 @@ const styles = StyleSheet.create({
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1e40af',
     lineHeight: 20,
   },
   paymentFormSection: {
@@ -1315,7 +1232,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   payButton: {
-    backgroundColor: '#2563eb',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -1335,28 +1251,24 @@ const styles = StyleSheet.create({
   stripeElementContainer: {
     marginBottom: 16,
     padding: 16,
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
     minHeight: 200,
   },
   loadingText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#64748b',
     textAlign: 'center',
   },
   paymentBreakdownCard: {
-    backgroundColor: '#f1f5f9',
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
+    borderWidth: 1,
   },
   breakdownTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     marginBottom: 12,
   },
   breakdownRow: {
@@ -1367,35 +1279,29 @@ const styles = StyleSheet.create({
   },
   breakdownLabel: {
     fontSize: 14,
-    color: '#64748b',
   },
   breakdownValue: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1e293b',
     flexDirection: 'row',
     alignItems: 'center',
   },
   paymentStatus: {
     marginTop: 12,
     padding: 12,
-    backgroundColor: '#eff6ff',
     borderRadius: 8,
     alignItems: 'center',
   },
   paymentStatusText: {
     fontSize: 14,
-    color: '#1e40af',
     textAlign: 'center',
     marginTop: 8,
   },
   paymentStepCard: {
-    backgroundColor: '#ffffff',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
   },
   paymentStepHeader: {
     flexDirection: 'row',

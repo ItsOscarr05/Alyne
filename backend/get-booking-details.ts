@@ -34,8 +34,10 @@ async function getBookingDetails() {
             lastName: true,
             providerProfile: {
               select: {
-                bankAccountVerified: true,
-                plaidAccountId: true,
+                stripeAccountId: true,
+                stripeOnboardingComplete: true,
+                stripeChargesEnabled: true,
+                stripePayoutsEnabled: true,
               },
             },
           },
@@ -65,7 +67,11 @@ async function getBookingDetails() {
       console.log(`     ID: ${booking.providerId}`);
       console.log(`     Email: ${booking.provider.email}`);
       console.log(`     Name: ${booking.provider.firstName} ${booking.provider.lastName}`);
-      console.log(`     Bank Account Verified: ${booking.provider.providerProfile?.bankAccountVerified || false}`);
+      const pp = booking.provider.providerProfile;
+      console.log(`     Stripe Connect: ${pp?.stripeAccountId ? 'Connected' : 'Not set up'}`);
+      if (pp?.stripeAccountId) {
+        console.log(`     Charges enabled: ${pp?.stripeChargesEnabled ?? false}, Payouts enabled: ${pp?.stripePayoutsEnabled ?? false}`);
+      }
       console.log(`\n   ⚠️  For testing, you need to:`);
       console.log(`     1. Login as client (${booking.client.email}) to get a real JWT token`);
       console.log(`     2. Use that token instead of 'dev-token'`);

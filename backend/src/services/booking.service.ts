@@ -2,6 +2,7 @@ import { prisma } from '../utils/db';
 import { BookingStatus } from '@prisma/client';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { paymentService } from './payment.service';
 
 
 interface CreateBookingData {
@@ -193,6 +194,32 @@ export const bookingService = {
     ]);
 
     return { bookings, total };
+  },
+
+  /**
+   * Returns booked time slots for a provider on a given date (for client booking flow).
+   * Used so clients see live availability when choosing a time.
+   */
+  async getBookedSlotsForProvider(providerId: string, dateStr: string): Promise<{ scheduledTime: string; duration: number }[]> {
+    const startOfDay = new Date(dateStr + 'T00:00:00');
+    const endOfDay = new Date(dateStr + 'T23:59:59.999');
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        providerId,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        scheduledDate: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      include: { service: { select: { duration: true } } },
+    });
+
+    return bookings.map((b) => ({
+      scheduledTime: b.scheduledTime,
+      duration: b.service.duration,
+    }));
   },
 
   async getBookingById(bookingId: string, userId: string) {
@@ -433,6 +460,18 @@ export const bookingService = {
         service: true,
       },
     });
+
+    // Release provider payout (delayed payouts) if the client already paid.
+    // Do not block completion if payout fails; it can be retried.
+    try {
+      await paymentService.processProviderPayment(bookingId, providerId);
+    } catch (error: any) {
+      logger.error('Failed to release provider payout on completion', {
+        bookingId,
+        providerId,
+        error: error.message,
+      });
+    }
 
     return updated;
   },

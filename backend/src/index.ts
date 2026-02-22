@@ -110,7 +110,15 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-app.use(express.json({ limit: '10mb' })); // Limit JSON payload size
+// Capture raw request body for Stripe webhook signature verification.
+app.use(
+  express.json({
+    limit: '10mb',
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+); // Limit JSON payload size
 app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Limit URL-encoded payload size
 
 // Sanitize input to prevent XSS attacks
@@ -222,8 +230,10 @@ import { reviewRoutes } from './routes/review.routes';
 app.use('/api/reviews', reviewRoutes);
 import { paymentRoutes } from './routes/payment.routes';
 app.use('/api/payments', paymentRoutes);
-import { plaidRoutes } from './routes/plaid.routes';
-app.use('/api/plaid', plaidRoutes);
+import { stripeConnectRoutes } from './routes/stripeConnect.routes';
+import { stripeWebhookRoutes } from './routes/stripeWebhook.routes';
+app.use('/api/stripe/connect', stripeConnectRoutes);
+app.use('/api/stripe', stripeWebhookRoutes);
 // app.use('/api/users', userRoutes);
 
 // Socket.io for real-time messaging

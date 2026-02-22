@@ -19,7 +19,6 @@ import { theme } from '../../theme';
 import { Button } from '../../components/ui/Button';
 import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
-import { plaidService } from '../../services/plaid';
 import { logger } from '../../utils/logger';
 import apiClient from '../../services/api';
 import { LocationAutocomplete } from '../../components/ui/LocationAutocomplete';
@@ -38,13 +37,6 @@ export default function ClientOnboardingScreen() {
   const [city, setCity] = useState<string>('');
   const [state, setState] = useState<string>('');
 
-  // Payment state
-  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
-  const [bankAccountConnected, setBankAccountConnected] = useState(false);
-  const [bankAccountInfo, setBankAccountInfo] = useState<{
-    accountName: string;
-    accountMask: string;
-  } | null>(null);
 
   // Preferences state
   const [wellnessGoals, setWellnessGoals] = useState<string[]>([]);
@@ -77,13 +69,6 @@ export default function ClientOnboardingScreen() {
     }
   }, [user, router]);
 
-  // Get Plaid link token when on payment step
-  useEffect(() => {
-    if (currentStep === 'payment' && !plaidLinkToken && !bankAccountConnected) {
-      loadPlaidLinkToken();
-    }
-  }, [currentStep]);
-
   const geocodeCityState = async (cityName: string, stateName: string) => {
     try {
       const results = await Location.geocodeAsync(`${cityName}, ${stateName}, USA`);
@@ -98,105 +83,6 @@ export default function ClientOnboardingScreen() {
       logger.error('Error geocoding city/state', error);
       return null;
     }
-  };
-
-  const loadPlaidLinkToken = async () => {
-    try {
-      setLoading(true);
-      // For clients, payment method setup is optional during onboarding
-      // They can set it up when making their first booking
-      // For now, we'll skip this step or make it optional
-      modal.showAlert({
-        title: 'Payment Setup',
-        message:
-          'Payment method setup is optional. You can add a payment method when booking your first session.',
-        type: 'info',
-      });
-    } catch (error: any) {
-      logger.error('Error loading Plaid link token', error);
-      modal.showAlert({
-        title: 'Payment Setup Error',
-        message: 'Failed to initialize payment setup. You can set this up later in settings.',
-        type: 'error',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const initializePlaidLink = (linkToken: string) => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') {
-      Alert.alert(
-        'Info',
-        'Payment setup is currently only available on web. You can set this up later.'
-      );
-      return;
-    }
-
-    // Check if Plaid script is already loaded
-    if ((window as any).Plaid) {
-      createPlaidHandler(linkToken);
-    } else {
-      // Load Plaid Link from CDN
-      const script = document.createElement('script');
-      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
-      script.async = true;
-      script.onload = () => {
-        if ((window as any).Plaid) {
-          createPlaidHandler(linkToken);
-        } else {
-          Alert.alert('Error', 'Failed to load payment system. Please refresh the page.');
-        }
-      };
-      script.onerror = () => {
-        Alert.alert(
-          'Error',
-          'Failed to load payment system. Please check your internet connection.'
-        );
-      };
-      document.body.appendChild(script);
-    }
-  };
-
-  const createPlaidHandler = (linkToken: string) => {
-    const handler = (window as any).Plaid.create({
-      token: linkToken,
-      onSuccess: async (publicToken: string, metadata: any) => {
-        try {
-          setLoading(true);
-          // For client onboarding, we'll store the Plaid item for future payments
-          // Note: This might need a different endpoint for client payment methods
-          const result = await plaidService.exchangePublicToken(publicToken);
-          setBankAccountConnected(true);
-          setBankAccountInfo({
-            accountName: result.accountName,
-            accountMask: result.accountMask,
-          });
-          modal.showAlert({
-            title: 'Payment Method Added',
-            message: `Your ${result.accountName} account ending in ${result.accountMask} has been connected.`,
-            type: 'success',
-          });
-        } catch (error: any) {
-          logger.error('Error exchanging Plaid token', error);
-          modal.showAlert({
-            title: 'Error',
-            message: error.response?.data?.error?.message || 'Failed to connect payment method',
-            type: 'error',
-          });
-        } finally {
-          setLoading(false);
-        }
-      },
-      onExit: (err: any) => {
-        if (err) {
-          logger.error('Plaid exit error', err);
-        }
-        setLoading(false);
-      },
-    });
-
-    handler.open();
   };
 
   const toggleGoal = (goal: string) => {
@@ -321,66 +207,24 @@ export default function ClientOnboardingScreen() {
         <View style={styles.stepIcon}>
           <Ionicons name="card" size={32} color={theme.colors.primary[500]} />
         </View>
-        <Text style={styles.stepTitle}>Add Payment Method</Text>
+        <Text style={styles.stepTitle}>Payment</Text>
         <Text style={styles.stepDescription}>
-          Connect your bank account to easily pay providers. This is secure and you can skip this
-          step for now.
+          You'll add a payment method when you book your first session. Payments are secure and
+          handled by Stripe.
         </Text>
       </View>
 
-      {bankAccountConnected && bankAccountInfo ? (
-        <View style={styles.paymentCard}>
-          <Ionicons name="checkmark-circle" size={24} color={theme.colors.semantic.success} />
-          <View style={styles.paymentInfo}>
-            <Text style={styles.paymentAccountName}>{bankAccountInfo.accountName}</Text>
-            <Text style={styles.paymentAccountMask}>•••• {bankAccountInfo.accountMask}</Text>
-          </View>
-        </View>
-      ) : (
-        <View style={styles.paymentCard}>
-          <Ionicons name="card-outline" size={24} color={theme.colors.neutral[500]} />
-          <Text style={styles.paymentPlaceholder}>No payment method connected</Text>
-        </View>
-      )}
-
-      {!bankAccountConnected && (
-        <TouchableOpacity
-          style={styles.plaidButton}
-          onPress={() => {
-            if (plaidLinkToken) {
-              initializePlaidLink(plaidLinkToken);
-            } else {
-              loadPlaidLinkToken();
-            }
-          }}
-          disabled={loading}
-          activeOpacity={0.7}
-        >
-          {loading ? (
-            <ActivityIndicator color={theme.colors.white} />
-          ) : (
-            <>
-              <Ionicons name="lock-closed" size={20} color={theme.colors.white} />
-              <Text style={styles.plaidButtonText}>Connect Bank Account</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      )}
-
-      <View style={styles.buttonRow}>
-        <Button
-          title="Skip for Now"
-          onPress={handleSavePayment}
-          variant="secondary"
-          style={styles.skipButton}
-        />
-        <Button
-          title="Continue"
-          onPress={handleSavePayment}
-          loading={loading}
-          style={styles.continueButton}
-        />
+      <View style={styles.paymentCard}>
+        <Ionicons name="card-outline" size={24} color={theme.colors.neutral[500]} />
+        <Text style={styles.paymentPlaceholder}>Payment method added at checkout</Text>
       </View>
+
+      <Button
+        title="Continue"
+        onPress={handleSavePayment}
+        loading={loading}
+        style={styles.continueButton}
+      />
     </View>
   );
 
@@ -660,7 +504,7 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[500],
     flex: 1,
   },
-  plaidButton: {
+  connectPaymentButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

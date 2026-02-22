@@ -31,7 +31,7 @@ import { ProviderDetailModal } from '../../components/ProviderDetailModal';
 import * as ImagePicker from 'expo-image-picker';
 import { onboardingService } from '../../services/onboarding';
 import { storage } from '../../utils/storage';
-import { plaidService } from '../../services/plaid';
+import { stripeConnectService } from '../../services/stripeConnect';
 
 const USER_KEY = 'user_data';
 
@@ -184,22 +184,19 @@ export default function ProfileScreen() {
       });
 
       if (profile) {
-        // Check bank account status
+        // Stripe Connect payout status
         let bankAccountVerified = false;
         let bankAccountMask: string | null = null;
         try {
-          const bankInfo = await plaidService.getBankAccountInfo();
-          if (bankInfo && bankInfo.verified) {
+          const stripeStatus = await stripeConnectService.getStatus();
+          if (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) {
             bankAccountVerified = true;
-            // Extract last 4 characters from plaidAccountId if available (not ideal, but shows something)
-            // TODO: Store accountMask in backend when bank account is linked
-            if (bankInfo.plaidAccountId && bankInfo.plaidAccountId.length >= 4) {
-              bankAccountMask = bankInfo.plaidAccountId.slice(-4);
+            if (stripeStatus.bankAccount?.last4) {
+              bankAccountMask = stripeStatus.bankAccount.last4;
             }
           }
         } catch (error) {
-          // Bank account not connected or error - that's okay
-          logger.debug('No bank account info', error);
+          logger.debug('No Stripe Connect status', error);
         }
 
         setProviderProfile({

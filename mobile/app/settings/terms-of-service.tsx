@@ -178,10 +178,8 @@ export default function TermsOfServiceScreen() {
             5.1 Booking Process
           </Text>
           <Text style={[styles.paragraph, { color: themeHook.colors.textSecondary }]}>
-            All bookings are subject to availability and confirmation by the Provider. We facilitate
-            the booking process but do not guarantee that any booking request will be accepted.
-            Providers retain the right to accept or decline booking requests at their sole
-            discretion.
+            All bookings are subject to availability. When you book a session, it is confirmed
+            automatically. Providers may still cancel or decline in accordance with our policies.
           </Text>
 
           <Text style={[styles.subsectionTitle, { color: themeHook.colors.text }]}>

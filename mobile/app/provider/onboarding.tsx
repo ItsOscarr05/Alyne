@@ -11,14 +11,15 @@ import {
   Platform,
   Image,
   KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
 import { onboardingService } from '../../services/onboarding';
-import { plaidService } from '../../services/plaid';
+import { stripeConnectService } from '../../services/stripeConnect';
 import { providerService } from '../../services/provider';
 import { logger } from '../../utils/logger';
 import * as ImagePicker from 'expo-image-picker';
@@ -36,6 +37,7 @@ type Step =
 
 export default function ProviderOnboardingScreen() {
   const router = useRouter();
+  const { step } = useLocalSearchParams<{ step?: Step; stripe?: string }>();
   const { user, refreshUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [currentStep, setCurrentStep] = useState<Step>('location');
@@ -47,6 +49,16 @@ export default function ProviderOnboardingScreen() {
       router.replace('/(tabs)/profile');
     }
   }, [user, router]);
+
+  // Allow deep-linking to a specific onboarding step (used by Stripe return_url/refresh_url on web).
+  useEffect(() => {
+    if (step && typeof step === 'string') {
+      const allowed: Step[] = ['location', 'bank', 'profile', 'services', 'credentials', 'availability', 'complete'];
+      if (allowed.includes(step as Step)) {
+        setCurrentStep(step as Step);
+      }
+    }
+  }, [step]);
 
   // Track if profile has been loaded to prevent reloading
   const [profileLoaded, setProfileLoaded] = useState(false);
@@ -100,7 +112,6 @@ export default function ProviderOnboardingScreen() {
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
   // Bank account state
-  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
   const [bankAccountConnected, setBankAccountConnected] = useState(false);
   const [bankAccountInfo, setBankAccountInfo] = useState<{
     accountName: string;
@@ -281,23 +292,17 @@ export default function ProviderOnboardingScreen() {
           logger.debug('Set availability', { count: formattedAvailability.length });
         }
 
-        // Load bank account info (if verified)
+        // Load Stripe payout status (if already onboarded)
         try {
-          const bankInfo = await plaidService.getBankAccountInfo();
-          if (bankInfo && bankInfo.verified) {
+          const stripeStatus = await stripeConnectService.getStatus();
+          if (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) {
             setBankAccountConnected(true);
-            // Note: accountName and accountMask aren't stored/returned by backend
-            // They're only available during the Plaid Link flow
-            // So we'll just mark it as connected
-            setBankAccountInfo({
-              accountName: 'Connected Account',
-              accountMask: '••••',
-            });
-            logger.debug('Bank account is verified');
+            setBankAccountInfo({ accountName: 'Stripe Payouts', accountMask: 'Enabled' });
+            logger.debug('Stripe payouts enabled');
           }
         } catch (error) {
-          // Bank account not connected or error loading - that's okay
-          logger.debug('No bank account info or error loading', error);
+          // Not onboarded yet or error loading - that's okay
+          logger.debug('No Stripe payout status or error loading', error);
         }
 
         // Mark profile as loaded
@@ -339,12 +344,7 @@ export default function ProviderOnboardingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, user?.userType, profileLoaded]);
 
-  // Get Plaid link token when on bank step
-  useEffect(() => {
-    if (currentStep === 'bank' && !plaidLinkToken && !bankAccountConnected) {
-      loadPlaidLinkToken();
-    }
-  }, [currentStep]);
+  // Stripe Connect onboarding for provider payouts.
 
   const geocodeCityState = async (cityName: string, stateName: string) => {
     try {
@@ -362,89 +362,50 @@ export default function ProviderOnboardingScreen() {
     }
   };
 
-  const loadPlaidLinkToken = async () => {
+  const openUrl = async (url: string) => {
+    try {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.open(url, '_blank');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      logger.error('Failed to open URL', e);
+      Alert.alert('Error', 'Failed to open the onboarding link. Please try again.');
+    }
+  };
+
+  const startStripeOnboarding = async () => {
     try {
       setLoading(true);
-      const token = await plaidService.getProviderLinkToken();
-      setPlaidLinkToken(token);
+      const { url } = await stripeConnectService.createOnboardingLink();
+      await openUrl(url);
+      // After returning, user can tap "Refresh status"
     } catch (error: any) {
-      logger.error('Error loading Plaid link token', error);
-      Alert.alert(
-        'Error',
-        'Failed to initialize bank setup. You can set this up later in settings.'
-      );
+      logger.error('Error creating Stripe onboarding link', error);
+      Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to start payout setup.');
     } finally {
       setLoading(false);
     }
   };
 
-  const initializePlaidLink = (linkToken: string) => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') {
-      Alert.alert(
-        'Info',
-        'Bank setup is currently only available on web. You can set this up later.'
-      );
-      return;
+  const refreshStripeStatus = async () => {
+    try {
+      setLoading(true);
+      const status = await stripeConnectService.getStatus();
+      if (status?.chargesEnabled && status?.payoutsEnabled) {
+        setBankAccountConnected(true);
+        setBankAccountInfo({ accountName: 'Stripe Payouts', accountMask: 'Enabled' });
+      } else {
+        setBankAccountConnected(false);
+        setBankAccountInfo(null);
+      }
+    } catch (error: any) {
+      logger.error('Error fetching Stripe payout status', error);
+      Alert.alert('Error', error.response?.data?.message || error.message || 'Failed to refresh payout status.');
+    } finally {
+      setLoading(false);
     }
-
-    if ((window as any).Plaid) {
-      createPlaidHandler(linkToken);
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
-      script.async = true;
-      script.onload = () => {
-        if ((window as any).Plaid) {
-          createPlaidHandler(linkToken);
-        } else {
-          Alert.alert('Error', 'Failed to load payment system. Please refresh the page.');
-        }
-      };
-      script.onerror = () => {
-        Alert.alert(
-          'Error',
-          'Failed to load payment system. Please check your internet connection.'
-        );
-      };
-      document.body.appendChild(script);
-    }
-  };
-
-  const createPlaidHandler = (linkToken: string) => {
-    const handler = (window as any).Plaid.create({
-      token: linkToken,
-      onSuccess: async (publicToken: string, metadata: any) => {
-        try {
-          setLoading(true);
-          const result = await plaidService.exchangePublicToken(publicToken);
-          setBankAccountConnected(true);
-          setBankAccountInfo({
-            accountName: result.accountName,
-            accountMask: result.accountMask,
-          });
-          Alert.alert(
-            'Success',
-            `Your ${result.accountName} account ending in ${result.accountMask} has been connected.`
-          );
-        } catch (error: any) {
-          logger.error('Error exchanging Plaid token', error);
-          Alert.alert(
-            'Error',
-            error.response?.data?.error?.message || 'Failed to connect bank account'
-          );
-        } finally {
-          setLoading(false);
-        }
-      },
-      onExit: (err: any) => {
-        if (err) {
-          logger.error('Plaid exit error', err);
-        }
-        setLoading(false);
-      },
-    });
-
-    handler.open();
   };
 
   const handleSaveLocation = async () => {
@@ -752,10 +713,10 @@ export default function ProviderOnboardingScreen() {
         <View style={styles.bankIconContainer}>
           <Ionicons name="shield-checkmark" size={32} color="#2563eb" />
         </View>
-        <Text style={styles.stepTitle}>Connect Bank Account</Text>
+        <Text style={styles.stepTitle}>Set up payouts</Text>
         <Text style={styles.stepDescription}>
-          Securely connect your bank account to receive payments from clients. Your financial
-          information is encrypted and protected.
+          Set up payouts with Stripe so clients can pay you and you can receive your earnings after
+          sessions are completed.
         </Text>
       </View>
 
@@ -780,23 +741,17 @@ export default function ProviderOnboardingScreen() {
           <View style={styles.bankCardEmptyIcon}>
             <Ionicons name="card-outline" size={40} color="#cbd5e1" />
           </View>
-          <Text style={styles.bankCardEmptyTitle}>No bank account connected</Text>
+          <Text style={styles.bankCardEmptyTitle}>Payouts not set up yet</Text>
           <Text style={styles.bankCardEmptyText}>
-            Connect your account to start receiving payments
+            Complete Stripe onboarding to start receiving payouts
           </Text>
         </View>
       )}
 
       {!bankAccountConnected && (
         <TouchableOpacity
-          style={[styles.plaidButton, loading && styles.buttonDisabled]}
-          onPress={() => {
-            if (plaidLinkToken) {
-              initializePlaidLink(plaidLinkToken);
-            } else {
-              loadPlaidLinkToken();
-            }
-          }}
+          style={[styles.payoutButton, loading && styles.buttonDisabled]}
+          onPress={startStripeOnboarding}
           disabled={loading}
         >
           {loading ? (
@@ -804,24 +759,32 @@ export default function ProviderOnboardingScreen() {
           ) : (
             <>
               <Ionicons name="lock-closed" size={20} color="#ffffff" />
-              <Text style={styles.plaidButtonText}>Connect Bank Account</Text>
+              <Text style={styles.payoutButtonText}>Start Stripe Onboarding</Text>
             </>
           )}
         </TouchableOpacity>
       )}
 
+      <TouchableOpacity
+        style={[styles.skipButton, { marginTop: 12 }]}
+        onPress={refreshStripeStatus}
+        disabled={loading}
+      >
+        <Text style={styles.skipButtonText}>Refresh Status</Text>
+      </TouchableOpacity>
+
       <View style={styles.bankFeatures}>
         <View style={styles.bankFeature}>
           <Ionicons name="shield-checkmark-outline" size={20} color="#2563eb" />
-          <Text style={styles.bankFeatureText}>Bank-level security</Text>
+          <Text style={styles.bankFeatureText}>Stripe-hosted secure onboarding</Text>
         </View>
         <View style={styles.bankFeature}>
           <Ionicons name="flash-outline" size={20} color="#2563eb" />
-          <Text style={styles.bankFeatureText}>Instant verification</Text>
+          <Text style={styles.bankFeatureText}>Global-ready payout infrastructure</Text>
         </View>
         <View style={styles.bankFeature}>
           <Ionicons name="time-outline" size={20} color="#2563eb" />
-          <Text style={styles.bankFeatureText}>Skip for now</Text>
+          <Text style={styles.bankFeatureText}>Payout after session completion</Text>
         </View>
       </View>
 
@@ -1753,7 +1716,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
     textAlign: 'center',
   },
-  plaidButton: {
+  payoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -1768,7 +1731,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  plaidButtonText: {
+  payoutButtonText: {
     fontWeight: '600',
     color: '#ffffff',
     fontSize: 16,

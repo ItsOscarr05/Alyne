@@ -87,6 +87,20 @@ export const bookingController = {
     }
   },
 
+  /** Live availability: booked slots for a provider on a date (for client booking flow). */
+  async getProviderBookedSlots(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { providerId, date } = req.query;
+      if (!providerId || typeof providerId !== 'string' || !date || typeof date !== 'string') {
+        return next(createError('providerId and date (YYYY-MM-DD) are required', 400));
+      }
+      const slots = await bookingService.getBookedSlotsForProvider(providerId, date);
+      res.json({ success: true, data: slots });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getById(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;

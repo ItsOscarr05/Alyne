@@ -43,11 +43,11 @@ export const paymentRateLimiter = createRateLimiter(
   'payment'
 );
 
-// Rate limiter for Plaid endpoints (sensitive financial operations)
-export const plaidRateLimiter = createRateLimiter(
-  10, // max
+// Rate limiter for Stripe Connect endpoints (onboarding/status)
+export const stripeRateLimiter = createRateLimiter(
+  15, // max
   15 * 60 * 1000, // 15 minutes
-  'Too many bank account requests, please try again later.',
-  'plaid'
+  'Too many Stripe requests, please try again later.',
+  'stripe'
 );
 

@@ -116,7 +116,7 @@ export const paymentController = {
   },
 
   /**
-   * Automatically process Plaid transfer to provider
+   * Process Stripe Connect payout to provider (after booking completed)
    * POST /api/payments/process-provider-payment
    */
   async processProviderPayment(req: AuthRequest, res: Response, next: NextFunction) {

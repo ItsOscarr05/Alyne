@@ -786,6 +786,8 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                       </View>
                                     </View>
 
+                                    <View style={[styles.reviewCardDivider, { backgroundColor: themeHook.colors.border }]} />
+
                                     {review.comment && (
                                       <Text
                                         style={[styles.reviewComment, { color: themeHook.colors.textSecondary }]}
@@ -1261,10 +1263,13 @@ const styles = StyleSheet.create({
   flagButton: {
     padding: 4,
   },
+  reviewCardDivider: {
+    height: 1,
+    marginVertical: theme.spacing.sm,
+  },
   reviewComment: {
     fontSize: 14,
     lineHeight: 20,
-    marginTop: 12,
     flex: 1,
   },
   emptyTextContainer: {

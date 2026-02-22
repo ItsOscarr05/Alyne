@@ -4,10 +4,11 @@ export interface PaymentIntent {
   clientSecret: string;
   paymentId: string;
   amount: number; // Total amount (service price + platform fee)
-  providerAmount: number; // Amount going to provider via Plaid
-  platformFee: number; // Platform fee going to Alyne via Stripe
-  requiresPlaidPayment: boolean; // Whether client needs to pay provider via Plaid
-  stripeAmount?: number; // Amount in Stripe payment intent (platform fee only)
+  providerAmount: number; // Provider share
+  platformFee: number; // Platform fee (application fee)
+  requiresPlaidPayment?: boolean; // Deprecated; always false with Stripe Connect
+  stripeAmount?: number; // Amount in Stripe payment intent (total)
+  stripeAccountId?: string; // Connected account for the provider (required for web Connect)
 }
 
 export interface Payment {
@@ -49,7 +50,7 @@ export const paymentService = {
   },
 
   /**
-   * Automatically process Plaid transfer to provider (no user interaction needed)
+   * Release provider payout (manual payouts) after completion.
    */
   async processProviderPayment(bookingId: string) {
     const response = await apiClient.post<{ success: boolean; data: any }>('/payments/process-provider-payment', {

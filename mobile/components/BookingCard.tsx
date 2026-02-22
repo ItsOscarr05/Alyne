@@ -25,7 +25,6 @@ interface BookingCardProps {
   booking: BookingCardData;
   onPress: () => void;
   actionButton?: React.ReactNode;
-  onAccept?: () => void;
   onDecline?: () => void;
   onComplete?: () => void;
   onOptionsPress?: () => void;
@@ -39,7 +38,6 @@ export function BookingCard({
   booking,
   onPress,
   actionButton,
-  onAccept,
   onDecline,
   onComplete,
   onOptionsPress,
@@ -226,17 +224,8 @@ export function BookingCard({
               <Ionicons name="cash-outline" size={16} color={themeHook.colors.textTertiary} />
               <Text style={[styles.detailText, { color: themeHook.colors.textSecondary }]}>${booking.price}/session</Text>
             </View>
-            {(onAccept || onDecline || onComplete || (showMessageButton && onMessagePress)) && (
+            {(onDecline || onComplete || (showMessageButton && onMessagePress)) && (
               <View style={styles.actionButtonsContainer}>
-                {onAccept && (
-                  <TouchableOpacity
-                    style={styles.acceptButton}
-                    onPress={onAccept}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="checkmark" size={20} color="#16A34A" />
-                  </TouchableOpacity>
-                )}
                 {onDecline && (
                   <TouchableOpacity
                     style={styles.declineButton}
@@ -451,16 +440,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     gap: 8,
-  },
-  acceptButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#16A34A20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#16A34A',
   },
   declineButton: {
     width: 36,

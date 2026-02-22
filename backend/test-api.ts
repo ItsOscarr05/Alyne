@@ -68,7 +68,7 @@ async function testPaymentIntent() {
     console.log(`   Platform Fee: $${data.platformFee || 'N/A'}`);
     console.log(`   Provider Amount: $${data.providerAmount || 'N/A'}`);
     console.log(`   Total Amount: $${data.amount || 'N/A'}`);
-    console.log(`   Requires Plaid Payment: ${data.requiresPlaidPayment !== undefined ? data.requiresPlaidPayment : 'N/A'}`);
+    console.log(`   Stripe Connect: ${data.stripeAccountId ? 'Yes' : 'N/A'}`);
     
     // Verify calculation if we have the data
     if (data.providerAmount && data.platformFee && data.amount) {
@@ -96,105 +96,55 @@ async function testPaymentIntent() {
     if (errorMsg.includes('Booking not found') || errorMsg.includes('not found')) {
       console.log('   ⚠️  Make sure BOOKING_ID is set to a valid booking ID from your database');
     }
-    if (errorMsg.includes('bank account') || errorMsg.includes('verified')) {
-      console.log('   ⚠️  Provider needs to set up their bank account via Plaid first');
-      console.log('   ⚠️  This is expected - provider must link bank account before payments can be processed');
-    }
-    return null;
-  }
-}
-
-async function testProviderLinkToken() {
-  console.log('\n🧪 Test 2: Getting Provider Plaid Link Token');
-  console.log('='.repeat(60));
-  
-  try {
-    const response = await apiRequest('GET', '/api/plaid/link-token');
-    console.log('✅ Provider Link Token Created');
-    console.log(`   Link Token: ${response.data.linkToken.substring(0, 30)}...`);
-    return response.data.linkToken;
-  } catch (error: any) {
-    console.log('❌ Failed to create provider link token');
-    const errorMsg = error?.message || error?.toString() || String(error);
-    console.log(`   Error: ${errorMsg}`);
-    if (error?.data) {
-      console.log(`   Response: ${JSON.stringify(error.data, null, 2)}`);
-    }
-    if (errorMsg.includes('PROVIDER')) {
-      console.log('   ⚠️  Make sure you are authenticated as a PROVIDER user');
-    }
-    return null;
-  }
-}
-
-async function testClientPaymentLinkToken() {
-  console.log('\n🧪 Test 3: Getting Client Payment Link Token');
-  console.log('='.repeat(60));
-  
-  try {
-    const response = await apiRequest('GET', `/api/plaid/payment-link-token?bookingId=${BOOKING_ID}`);
-    console.log('✅ Client Payment Link Token Created');
-    console.log(`   Link Token: ${response.data.linkToken.substring(0, 30)}...`);
-    return response.data.linkToken;
-  } catch (error: any) {
-    console.log('❌ Failed to create client payment link token');
-    const errorMsg = error?.message || error?.toString() || String(error);
-    console.log(`   Error: ${errorMsg}`);
-    if (error?.data) {
-      console.log(`   Response: ${JSON.stringify(error.data, null, 2)}`);
+    if (errorMsg.includes('payout') || errorMsg.includes('Stripe') || errorMsg.includes('onboarding')) {
+      console.log('   ⚠️  Provider needs to complete Stripe Connect onboarding first');
+      console.log('   ⚠️  Provider must complete payout setup before payments can be processed');
     }
     return null;
   }
 }
 
 async function testPaymentCalculation() {
-  console.log('\n🧪 Test 4: Verifying Payment Calculation Logic');
+  console.log('\n🧪 Test 2: Verifying Payment Calculation Logic');
   console.log('='.repeat(60));
   
   const servicePrice = 120;
-  const platformFeePercent = 10;
-  const expectedPlatformFee = 12;
+  const platformFeePercent = 7.5;
+  const expectedPlatformFee = 9;
   const expectedProviderAmount = 120;
-  const expectedTotal = 132;
+  const expectedTotal = 129;
   
   console.log(`   Service Price: $${servicePrice}`);
   console.log(`   Platform Fee (${platformFeePercent}%): $${expectedPlatformFee}`);
   console.log(`   Provider Amount: $${expectedProviderAmount}`);
   console.log(`   Total Client Pays: $${expectedTotal}`);
-  console.log(`\n   ✅ Stripe Payment (Platform Fee Only): $${expectedPlatformFee}`);
-  console.log(`   ✅ Plaid Payment (Provider Amount): $${expectedProviderAmount}`);
+  console.log(`\n   ✅ Stripe Connect: client pays total; platform fee and provider share handled by Stripe`);
 }
 
 async function runTests() {
-  console.log('\n🚀 Testing Dual Payment Flow Backend');
+  console.log('\n🚀 Testing Stripe Connect Payment Flow Backend');
   console.log('='.repeat(60));
   console.log(`Base URL: ${BASE_URL}`);
   console.log(`Booking ID: ${BOOKING_ID}`);
   console.log('\n⚠️  Make sure to update BOOKING_ID with an actual booking from your database!');
   
-  // Test payment calculation logic
   await testPaymentCalculation();
   
-  // Test API endpoints
   const paymentData = await testPaymentIntent();
-  await testProviderLinkToken();
-  await testClientPaymentLinkToken();
   
   console.log('\n📊 Test Summary');
   console.log('='.repeat(60));
   if (paymentData) {
-    console.log('✅ Payment Intent: Creates only platform fee in Stripe');
+    console.log('✅ Payment Intent: Stripe Connect direct charge (total amount, application fee)');
     console.log('✅ Calculation: Correct (providerAmount + platformFee = totalAmount)');
-    console.log('✅ Requires Plaid: Client must pay provider separately');
   } else {
-    console.log('❌ Payment Intent: Failed - check booking ID and provider setup');
+    console.log('❌ Payment Intent: Failed - check booking ID and provider Stripe Connect setup');
   }
   
   console.log('\n📝 Next Steps:');
-  console.log('1. Verify in Stripe Dashboard: Payment intent should be for platform fee only');
-  console.log('2. Test Plaid Link integration for providers');
-  console.log('3. Test Plaid Payment Initiation for clients');
-  console.log('4. Implement frontend dual payment UI');
+  console.log('1. Provider completes Stripe Connect onboarding (GET /api/stripe/connect/onboarding-link)');
+  console.log('2. Client pays via Stripe on checkout (card on file on connected account)');
+  console.log('3. After booking completed, provider payout is released via process-provider-payment');
 }
 
 // Run tests

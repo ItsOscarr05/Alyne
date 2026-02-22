@@ -53,7 +53,7 @@ export function CreateBookingModal({
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingBookings, setExistingBookings] = useState<BookingDetail[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{ scheduledTime: string; duration: number }[]>([]);
 
   useEffect(() => {
     if (visible && providerId) {
@@ -67,16 +67,16 @@ export function CreateBookingModal({
       setNotes('');
       setIsLoading(true);
       setIsSubmitting(false);
-      setExistingBookings([]);
+      setBookedSlots([]);
     }
   }, [visible, providerId]);
 
-  // Fetch existing bookings for the provider when date changes
+  // Fetch provider's booked slots for selected date (live availability)
   useEffect(() => {
     if (visible && providerId && selectedDate) {
-      loadExistingBookings();
+      loadBookedSlots();
     } else {
-      setExistingBookings([]);
+      setBookedSlots([]);
     }
   }, [visible, providerId, selectedDate]);
 
@@ -100,28 +100,15 @@ export function CreateBookingModal({
     }
   };
 
-  const loadExistingBookings = async () => {
+  const loadBookedSlots = async () => {
     if (!providerId || !selectedDate) return;
 
     try {
-      // Fetch all bookings for the provider
-      const bookings = await bookingService.getMyBookings(undefined, 'provider');
-      
-      // Filter bookings for the selected date and provider
-      const selectedDateObj = new Date(selectedDate + 'T00:00:00');
-      const filteredBookings = bookings.filter(booking => {
-        if (booking.providerId !== providerId) return false;
-        if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') return false;
-        
-        const bookingDate = new Date(booking.scheduledDate);
-        return bookingDate.toDateString() === selectedDateObj.toDateString();
-      });
-
-      setExistingBookings(filteredBookings);
+      const slots = await bookingService.getProviderBookedSlots(providerId, selectedDate);
+      setBookedSlots(slots);
     } catch (error: any) {
-      logger.error('Error loading existing bookings', error);
-      // Don't show error to user, just log it - filtering will still work
-      setExistingBookings([]);
+      logger.error('Error loading provider booked slots', error);
+      setBookedSlots([]);
     }
   };
 
@@ -232,7 +219,25 @@ export function CreateBookingModal({
     });
 
     // Remove duplicates and sort
-    return [...new Set(allSlots)].sort((a, b) => a.localeCompare(b));
+    const uniqueSlots = [...new Set(allSlots)].sort((a, b) => a.localeCompare(b));
+
+    // Filter out slots that conflict with existing bookings (live availability)
+    const serviceDuration = selectedService?.duration ?? 30;
+    if (bookedSlots.length === 0) {
+      return uniqueSlots;
+    }
+    return uniqueSlots.filter((time) => {
+      const [slotHour, slotMinute] = time.split(':').map(Number);
+      const slotStartMinutes = slotHour * 60 + slotMinute;
+      const slotEndMinutes = slotStartMinutes + serviceDuration;
+      const hasConflict = bookedSlots.some((booked) => {
+        const [bh, bm] = booked.scheduledTime.split(':').map(Number);
+        const bookingStart = bh * 60 + bm;
+        const bookingEnd = bookingStart + booked.duration;
+        return slotStartMinutes < bookingEnd && slotEndMinutes > bookingStart;
+      });
+      return !hasConflict;
+    });
   };
 
   const timeSlots = getAvailableTimeSlots();

@@ -75,7 +75,6 @@ const options: swaggerJsdoc.Options = {
       { name: 'Messages', description: 'In-app messaging' },
       { name: 'Reviews', description: 'Reviews and ratings' },
       { name: 'Payments', description: 'Payment processing' },
-      { name: 'Plaid', description: 'Bank account integration' },
     ],
   },
   apis: ['./src/routes/*.ts', './src/controllers/*.ts'], // Path to the API files

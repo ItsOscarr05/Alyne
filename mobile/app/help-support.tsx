@@ -22,7 +22,7 @@ export default function HelpSupportScreen() {
   const faqs: FAQItem[] = [
     {
       question: 'How do I book a session?',
-      answer: 'Browse providers on the Discover tab, select a provider, choose a service, pick a date and time, then confirm your booking. You\'ll receive a confirmation once the provider accepts.',
+      answer: 'Browse providers on the Discover tab, select a provider, choose a service, pick a date and time, then confirm your booking. Your booking is confirmed immediately.',
     },
     {
       question: 'How do I pay for a booking?',

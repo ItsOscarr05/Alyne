@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { storage } from '../utils/storage';
 import { logger } from '../utils/logger';
 
@@ -20,9 +21,34 @@ const decodeJWT = (token: string): { userId?: string } | null => {
 };
 
 // Socket.io connects to the server root, NOT /api
-const SOCKET_URL =
-  (Constants.expoConfig?.extra?.API_BASE_URL || process.env.API_BASE_URL || 'http://localhost:3000')
-    .replace('/api', '') || 'http://localhost:3000';
+// Use platform-specific URL detection like api.ts
+const getSocketUrl = () => {
+  // CRITICAL: On web, ALWAYS use localhost (override everything else)
+  if (Platform.OS === 'web') {
+    return 'http://localhost:3000';
+  }
+  
+  // Check env var first (highest priority after platform check)
+  if (process.env.API_BASE_URL) {
+    return process.env.API_BASE_URL.replace('/api', '');
+  }
+  
+  // Check config, but ignore if it's 10.0.2.2 (Android emulator address)
+  const configUrl = Constants.expoConfig?.extra?.API_BASE_URL;
+  if (configUrl && !configUrl.includes('10.0.2.2')) {
+    return configUrl.replace('/api', '');
+  }
+  
+  // Use platform-specific default
+  // Android emulator uses 10.0.2.2 to access host machine's localhost
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000';
+  }
+  
+  return 'http://localhost:3000';
+};
+
+const SOCKET_URL = getSocketUrl();
 
 export const useSocket = () => {
   const [socket, setSocket] = useState<Socket | null>(null);

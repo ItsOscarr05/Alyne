@@ -124,7 +124,6 @@ export default function ProviderDashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState({
     upcomingBookings: 0,
-    pendingBookings: 0,
     completedBookings: 0,
     totalEarnings: 0,
     thisMonthEarnings: 0,
@@ -157,7 +156,6 @@ export default function ProviderDashboardScreen() {
       const upcoming = bookings.filter(
         (b) => b.status === 'CONFIRMED' && new Date(b.scheduledDate) >= new Date()
       );
-      const pending = bookings.filter((b) => b.status === 'PENDING');
       const completed = bookings.filter((b) => b.status === 'COMPLETED');
 
       // Calculate earnings from completed bookings with payments
@@ -230,7 +228,6 @@ export default function ProviderDashboardScreen() {
 
       setStats({
         upcomingBookings: upcoming.length,
-        pendingBookings: pending.length,
         completedBookings: completed.length,
         totalEarnings,
         thisMonthEarnings,
@@ -313,18 +310,14 @@ export default function ProviderDashboardScreen() {
           const bookingDate = scheduledDate || data.booking?.scheduledDate;
 
           // Decrement old category
-          if (oldStatus === 'PENDING') {
-            newStats.pendingBookings = Math.max(0, newStats.pendingBookings - 1);
-          } else if (oldStatus && isUpcomingStatus(oldStatus, bookingDate)) {
+          if (oldStatus && isUpcomingStatus(oldStatus, bookingDate)) {
             newStats.upcomingBookings = Math.max(0, newStats.upcomingBookings - 1);
           } else if (oldStatus === 'COMPLETED') {
             newStats.completedBookings = Math.max(0, newStats.completedBookings - 1);
           }
 
           // Increment new category
-          if (data.status === 'PENDING') {
-            newStats.pendingBookings += 1;
-          } else if (isUpcomingStatus(data.status, bookingDate)) {
+          if (isUpcomingStatus(data.status, bookingDate)) {
             newStats.upcomingBookings += 1;
           } else if (data.status === 'COMPLETED') {
             newStats.completedBookings += 1;
@@ -763,33 +756,8 @@ export default function ProviderDashboardScreen() {
             <TouchableOpacity
               style={[
                 styles.statCard,
-                styles.statCardPending,
-                { backgroundColor: themeHook.colors.surface },
-              ]}
-              onPress={() => {
-                router.push({
-                  pathname: '/(tabs)/bookings',
-                  params: { tab: 'pending' },
-                });
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.statIconContainer}>
-                <Ionicons name="time-outline" size={22} color="#F59E0B" />
-              </View>
-              <Text style={[styles.statValue, { color: themeHook.colors.text }]}>
-                {stats.pendingBookings}
-              </Text>
-              <Text style={[styles.statLabel, { color: themeHook.colors.textSecondary }]}>
-                Pending
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.statCard,
                 styles.statCardUpcoming,
-                { marginLeft: theme.spacing.md, backgroundColor: themeHook.colors.surface },
+                { backgroundColor: themeHook.colors.surface },
               ]}
               onPress={() => {
                 router.push({
@@ -1224,9 +1192,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     ...theme.shadows.card,
-  },
-  statCardPending: {
-    borderColor: '#F59E0B',
   },
   statCardUpcoming: {
     borderColor: '#9333EA',

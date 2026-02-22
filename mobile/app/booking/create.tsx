@@ -15,7 +15,7 @@ import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { providerService, ProviderDetail, Service } from '../../services/provider';
-import { bookingService, CreateBookingData, BookingDetail } from '../../services/booking';
+import { bookingService, CreateBookingData } from '../../services/booking';
 import { useAuth } from '../../hooks/useAuth';
 import { logger } from '../../utils/logger';
 import { getUserFriendlyError, getErrorTitle } from '../../utils/errorMessages';
@@ -49,7 +49,7 @@ export default function CreateBookingScreen() {
   const [notes, setNotes] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [existingBookings, setExistingBookings] = useState<BookingDetail[]>([]);
+  const [bookedSlots, setBookedSlots] = useState<{ scheduledTime: string; duration: number }[]>([]);
 
   useEffect(() => {
     if (providerId) {
@@ -57,12 +57,12 @@ export default function CreateBookingScreen() {
     }
   }, [providerId]);
 
-  // Fetch existing bookings for the provider when date changes
+  // Fetch provider's booked slots for selected date (live availability)
   useEffect(() => {
     if (providerId && selectedDate) {
-      loadExistingBookings();
+      loadBookedSlots();
     } else {
-      setExistingBookings([]);
+      setBookedSlots([]);
     }
   }, [providerId, selectedDate]);
 
@@ -90,28 +90,15 @@ export default function CreateBookingScreen() {
     }
   };
 
-  const loadExistingBookings = async () => {
+  const loadBookedSlots = async () => {
     if (!providerId || !selectedDate) return;
 
     try {
-      // Fetch all bookings for the provider
-      const bookings = await bookingService.getMyBookings(undefined, 'provider');
-      
-      // Filter bookings for the selected date and provider
-      const selectedDateObj = new Date(selectedDate + 'T00:00:00');
-      const filteredBookings = bookings.filter(booking => {
-        if (booking.providerId !== providerId) return false;
-        if (booking.status !== 'PENDING' && booking.status !== 'CONFIRMED') return false;
-        
-        const bookingDate = new Date(booking.scheduledDate);
-        return bookingDate.toDateString() === selectedDateObj.toDateString();
-      });
-
-      setExistingBookings(filteredBookings);
+      const slots = await bookingService.getProviderBookedSlots(providerId, selectedDate);
+      setBookedSlots(slots);
     } catch (error: any) {
-      logger.error('Error loading existing bookings', error);
-      // Don't show error to user, just log it - filtering will still work
-      setExistingBookings([]);
+      logger.error('Error loading provider booked slots', error);
+      setBookedSlots([]);
     }
   };
 
@@ -215,8 +202,8 @@ export default function CreateBookingScreen() {
     // Remove duplicates and sort
     const uniqueSlots = [...new Set(allSlots)].sort((a, b) => a.localeCompare(b));
 
-    // Filter out slots that conflict with existing bookings
-    if (existingBookings.length === 0 || !selectedService) {
+    // Filter out slots that conflict with existing bookings (live availability)
+    if (bookedSlots.length === 0 || !selectedService) {
       return uniqueSlots;
     }
 
@@ -226,17 +213,11 @@ export default function CreateBookingScreen() {
       const slotStartMinutes = slotHour * 60 + slotMinute;
       const slotEndMinutes = slotStartMinutes + serviceDuration;
 
-      // Check if this slot conflicts with any existing booking
-      const hasConflict = existingBookings.some(booking => {
-        const [bookingHour, bookingMinute] = booking.scheduledTime.split(':').map(Number);
+      const hasConflict = bookedSlots.some(booked => {
+        const [bookingHour, bookingMinute] = booked.scheduledTime.split(':').map(Number);
         const bookingStartMinutes = bookingHour * 60 + bookingMinute;
-        const bookingDuration = booking.service?.duration || 30; // Default to 30 if not available
-        const bookingEndMinutes = bookingStartMinutes + bookingDuration;
-
-        // Check if time ranges overlap
-        return (
-          (slotStartMinutes < bookingEndMinutes && slotEndMinutes > bookingStartMinutes)
-        );
+        const bookingEndMinutes = bookingStartMinutes + booked.duration;
+        return slotStartMinutes < bookingEndMinutes && slotEndMinutes > bookingStartMinutes;
       });
 
       return !hasConflict;

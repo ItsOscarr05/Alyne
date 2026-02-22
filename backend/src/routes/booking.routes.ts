@@ -68,6 +68,11 @@ router.get(
 );
 
 router.get(
+  '/availability',
+  bookingController.getProviderBookedSlots
+);
+
+router.get(
   '/:id',
   validateRequest(getBookingSchema),
   bookingController.getById

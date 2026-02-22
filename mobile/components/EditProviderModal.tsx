@@ -12,12 +12,13 @@ import {
   Platform,
   Image,
   Alert,
+  Linking,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { providerService } from '../services/provider';
 import { onboardingService } from '../services/onboarding';
-import { plaidService } from '../services/plaid';
+import { stripeConnectService } from '../services/stripeConnect';
 import { logger } from '../utils/logger';
 import { LocationAutocomplete } from './ui/LocationAutocomplete';
 import { formatTime12Hour, formatTime24Hour } from '../utils/timeUtils';
@@ -160,8 +161,7 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
   const [serviceRadiusFocused, setServiceRadiusFocused] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Bank account state
-  const [plaidLinkToken, setPlaidLinkToken] = useState<string | null>(null);
+  // Bank account state (Stripe Connect)
   const [bankAccountConnected, setBankAccountConnected] = useState(false);
   const [bankAccountInfo, setBankAccountInfo] = useState<{
     accountName: string;
@@ -217,14 +217,6 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
       prevSectionRef.current = activeSection;
     }
   }, [activeSection, loadingProfile, sectionOpacityAnim]);
-
-  // Load Plaid link token when bank section is active
-  useEffect(() => {
-    if (visible && activeSection === 'bank' && !plaidLinkToken && user?.id) {
-      loadPlaidLinkToken();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, activeSection]);
 
   // Update profile photo when user object changes
   useEffect(() => {
@@ -389,18 +381,28 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
           setAvailability(formattedAvailability);
         }
 
-        // Load bank account info
+        // Load Stripe Connect payout status
         try {
-          const bankInfo = await plaidService.getBankAccountInfo();
-          if (bankInfo && bankInfo.verified) {
+          const stripeStatus = await stripeConnectService.getStatus();
+          if (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) {
             setBankAccountConnected(true);
-            setBankAccountInfo({
-              accountName: 'Connected Account',
-              accountMask: '••••',
-            });
+            if (stripeStatus.bankAccount?.bankName && stripeStatus.bankAccount?.last4) {
+              setBankAccountInfo({
+                accountName: stripeStatus.bankAccount.bankName,
+                accountMask: stripeStatus.bankAccount.last4,
+              });
+            } else {
+              setBankAccountInfo({
+                accountName: 'Stripe payouts',
+                accountMask: 'Enabled',
+              });
+            }
+          } else {
+            setBankAccountConnected(false);
+            setBankAccountInfo(null);
           }
         } catch (error) {
-          logger.debug('No bank account info', error);
+          logger.debug('No Stripe payout status or error loading', error);
         }
       }
     } catch (error: any) {
@@ -416,110 +418,76 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
     }
   };
 
-  const loadPlaidLinkToken = async (): Promise<string | null> => {
+  const openUrl = async (url: string) => {
+    try {
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.open(url, '_blank');
+        return;
+      }
+      await Linking.openURL(url);
+    } catch (e: any) {
+      logger.error('Failed to open URL', e);
+      Alert.alert('Error', 'Failed to open the onboarding link. Please try again.');
+    }
+  };
+
+  const startStripeOnboarding = async () => {
     try {
       setLoading(true);
-      const token = await plaidService.getProviderLinkToken();
-      setPlaidLinkToken(token);
-      return token;
+      // Use 'update' type if account is already connected, otherwise 'onboarding'
+      const linkType = bankAccountConnected ? 'update' : 'onboarding';
+      // For modal, return to provider profile page
+      const { url } = await stripeConnectService.createOnboardingLink({
+        returnPath: '/provider/edit-profile?section=bank',
+        type: linkType,
+      });
+      await openUrl(url);
+      // After returning, user can tap "Refresh status"
     } catch (error: any) {
-      logger.error('Error loading Plaid link token', error);
+      logger.error('Error creating Stripe onboarding link', error);
       setAlertModal({
         visible: true,
         type: 'error',
         title: 'Error',
-        message: 'Failed to initialize bank setup. Please try again.',
+        message: error.response?.data?.message || error.message || 'Failed to start payout setup.',
       });
-      return null;
     } finally {
       setLoading(false);
     }
   };
 
-  const initializePlaidLink = (linkToken: string) => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') {
+  const refreshStripeStatus = async () => {
+    try {
+      setLoading(true);
+      const status = await stripeConnectService.getStatus();
+      if (status?.chargesEnabled && status?.payoutsEnabled) {
+        setBankAccountConnected(true);
+        if (status.bankAccount?.bankName && status.bankAccount?.last4) {
+          setBankAccountInfo({
+            accountName: status.bankAccount.bankName,
+            accountMask: status.bankAccount.last4,
+          });
+        } else {
+          setBankAccountInfo({
+            accountName: 'Stripe payouts',
+            accountMask: 'Enabled',
+          });
+        }
+      } else {
+        setBankAccountConnected(false);
+        setBankAccountInfo(null);
+      }
+    } catch (error: any) {
+      logger.error('Error fetching Stripe payout status', error);
       setAlertModal({
         visible: true,
-        type: 'info',
-        title: 'Info',
-        message: 'Bank setup is currently only available on web. You can set this up later.',
+        type: 'error',
+        title: 'Error',
+        message: error.response?.data?.message || error.message || 'Failed to refresh payout status.',
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    if ((window as any).Plaid) {
-      createPlaidHandler(linkToken);
-    } else {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js';
-      script.async = true;
-      script.onload = () => {
-        if ((window as any).Plaid) {
-          createPlaidHandler(linkToken);
-        } else {
-          setAlertModal({
-            visible: true,
-            type: 'error',
-            title: 'Error',
-            message: 'Failed to load payment system. Please refresh the page.',
-          });
-        }
-      };
-      script.onerror = () => {
-        setAlertModal({
-          visible: true,
-          type: 'error',
-          title: 'Error',
-          message: 'Failed to load payment system. Please check your internet connection.',
-        });
-      };
-      if (typeof document !== 'undefined') {
-        document.body.appendChild(script);
-      }
-    }
-  };
-
-  const createPlaidHandler = (linkToken: string) => {
-    const handler = (window as any).Plaid.create({
-      token: linkToken,
-      onSuccess: async (publicToken: string, metadata: any) => {
-        try {
-          setLoading(true);
-          const result = await plaidService.exchangePublicToken(publicToken);
-          setBankAccountConnected(true);
-          setBankAccountInfo({
-            accountName: result.accountName,
-            accountMask: result.accountMask,
-          });
-          setAlertModal({
-            visible: true,
-            type: 'success',
-            title: 'Success',
-            message: `Your ${result.accountName} account ending in ${result.accountMask} has been connected.`,
-          });
-          // Reload profile data to get updated bank account status
-          loadProfileData();
-        } catch (error: any) {
-          logger.error('Error exchanging Plaid token', error);
-          setAlertModal({
-            visible: true,
-            type: 'error',
-            title: 'Error',
-            message: error.response?.data?.error?.message || 'Failed to connect bank account',
-          });
-        } finally {
-          setLoading(false);
-        }
-      },
-      onExit: (err: any) => {
-        if (err) {
-          logger.error('Plaid exit error', err);
-        }
-        setLoading(false);
-      },
-    });
-
-    handler.open();
   };
 
   const geocodeCityState = async (cityName: string, stateName: string) => {
@@ -1460,44 +1428,53 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
     <ScrollView style={styles.sectionContent}>
       <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Bank Account</Text>
       <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Connect your bank account to receive payments from clients.
+        Set up payouts with Stripe to receive payments from clients.
       </Text>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? themeHook.colors.surface : '#f0fdf4', borderColor: themeHook.colors.success }]}>
-          <View style={styles.bankCardHeader}>
-            <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
-            <View style={styles.bankInfo}>
-              <Text style={[styles.bankAccountName, { color: themeHook.colors.text }]}>{bankAccountInfo.accountName}</Text>
-              <Text style={[styles.bankAccountMask, { color: themeHook.colors.textSecondary }]}>•••• {bankAccountInfo.accountMask}</Text>
+        <>
+          <View style={[styles.bankCardConnected, { backgroundColor: themeHook.isDark ? themeHook.colors.surface : '#f0fdf4', borderColor: themeHook.colors.success }]}>
+            <View style={styles.bankCardHeader}>
+              <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
+              <View style={styles.bankInfo}>
+                <Text style={[styles.bankAccountName, { color: themeHook.colors.text }]}>{bankAccountInfo.accountName}</Text>
+                <Text style={[styles.bankAccountMask, { color: themeHook.colors.textSecondary }]}>
+                  {bankAccountInfo.accountMask === 'Enabled' ? bankAccountInfo.accountMask : `•••• ${bankAccountInfo.accountMask}`}
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
+              <Ionicons name="lock-closed" size={14} color={themeHook.colors.textSecondary} />
+              <Text style={[styles.bankCardFooterText, { color: themeHook.colors.textSecondary }]}>Securely connected</Text>
             </View>
           </View>
-          <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
-            <Ionicons name="lock-closed" size={14} color={themeHook.colors.textSecondary} />
-            <Text style={[styles.bankCardFooterText, { color: themeHook.colors.textSecondary }]}>Securely connected</Text>
-          </View>
-        </View>
+          <TouchableOpacity
+            style={[styles.payoutButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
+            onPress={startStripeOnboarding}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={themeHook.colors.white} />
+            ) : (
+              <>
+                <Ionicons name="settings-outline" size={20} color={themeHook.colors.white} />
+                <Text style={[styles.payoutButtonText, { color: themeHook.colors.white }]}>Manage Payout Details</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </>
       ) : (
         <>
           <View style={[styles.bankCardEmpty, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
             <Ionicons name="card-outline" size={40} color={themeHook.colors.textTertiary} />
-            <Text style={[styles.bankCardEmptyTitle, { color: themeHook.colors.text }]}>No bank account connected</Text>
+            <Text style={[styles.bankCardEmptyTitle, { color: themeHook.colors.text }]}>Payouts not set up yet</Text>
             <Text style={[styles.bankCardEmptyText, { color: themeHook.colors.textSecondary }]}>
-              Connect your account to start receiving payments
+              Complete Stripe onboarding to start receiving payouts
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.plaidButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
-            onPress={async () => {
-              if (plaidLinkToken) {
-                initializePlaidLink(plaidLinkToken);
-              } else {
-                const token = await loadPlaidLinkToken();
-                if (token) {
-                  initializePlaidLink(token);
-                }
-              }
-            }}
+            style={[styles.payoutButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.isDark ? themeHook.colors.textTertiary : '#cbd5e1' }]}
+            onPress={startStripeOnboarding}
             disabled={loading}
           >
             {loading ? (
@@ -1505,12 +1482,20 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
             ) : (
               <>
                 <Ionicons name="lock-closed" size={20} color={themeHook.colors.white} />
-                <Text style={[styles.plaidButtonText, { color: themeHook.colors.white }]}>Connect Bank Account</Text>
+                <Text style={[styles.payoutButtonText, { color: themeHook.colors.white }]}>Start Stripe Onboarding</Text>
               </>
             )}
           </TouchableOpacity>
         </>
       )}
+
+      <TouchableOpacity
+        style={[styles.skipButton, { marginTop: 12 }]}
+        onPress={refreshStripeStatus}
+        disabled={loading}
+      >
+        <Text style={[styles.skipButtonText, { color: themeHook.colors.textSecondary }]}>Refresh Status</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 
@@ -2710,7 +2695,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  plaidButton: {
+  payoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -2723,8 +2708,18 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  plaidButtonText: {
+  payoutButtonText: {
     fontWeight: '600',
     fontSize: 16,
+  },
+  skipButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  skipButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

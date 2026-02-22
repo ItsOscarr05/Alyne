@@ -55,13 +55,12 @@ export default function BookingsScreen() {
   const [optionsMenuVisible, setOptionsMenuVisible] = useState(false);
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'past' | 'declined'>(
-    'pending'
+  const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'declined'>(
+    'upcoming'
   );
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const prevTabRef = useRef<'pending' | 'upcoming' | 'past' | 'declined'>('pending');
+  const prevTabRef = useRef<'upcoming' | 'past' | 'declined'>('upcoming');
   const [currentPage, setCurrentPage] = useState({
-    pending: 1,
     upcoming: 1,
     past: 1,
     declined: 1,
@@ -69,7 +68,7 @@ export default function BookingsScreen() {
   const ITEMS_PER_PAGE = 10;
 
   // Animate tab switch
-  const handleTabChange = (tab: 'pending' | 'upcoming' | 'past' | 'declined') => {
+  const handleTabChange = (tab: 'upcoming' | 'past' | 'declined') => {
     setActiveTab(tab);
     // Reset to page 1 when switching tabs
     setCurrentPage((prev) => ({ ...prev, [tab]: 1 }));
@@ -96,8 +95,8 @@ export default function BookingsScreen() {
 
   // Check for initial tab from route params
   useEffect(() => {
-    if (params.tab && ['pending', 'upcoming', 'past', 'declined'].includes(params.tab)) {
-      const tab = params.tab as 'pending' | 'upcoming' | 'past' | 'declined';
+    if (params.tab && ['upcoming', 'past', 'declined'].includes(params.tab)) {
+      const tab = params.tab as 'upcoming' | 'past' | 'declined';
       if (tab !== activeTab) {
         setActiveTab(tab);
       }
@@ -306,9 +305,6 @@ export default function BookingsScreen() {
     return unsubscribe;
   }, [onReviewDeleted]);
 
-  const pendingBookings = bookings.filter(
-    (b) => b.status === 'PENDING' && !hiddenBookings.has(b.id)
-  );
   const upcomingBookings = bookings.filter(
     (b) => b.status === 'CONFIRMED' && !hiddenBookings.has(b.id)
   );
@@ -324,7 +320,7 @@ export default function BookingsScreen() {
   // Pagination logic
   const getPaginatedBookings = (
     bookingsList: BookingDetail[],
-    tab: 'pending' | 'upcoming' | 'past' | 'declined'
+    tab: 'upcoming' | 'past' | 'declined'
   ) => {
     const page = currentPage[tab];
     const startIndex = (page - 1) * ITEMS_PER_PAGE;
@@ -336,7 +332,7 @@ export default function BookingsScreen() {
     return Math.ceil(bookingsList.length / ITEMS_PER_PAGE);
   };
 
-  const handlePageChange = (tab: 'pending' | 'upcoming' | 'past' | 'declined', page: number) => {
+  const handlePageChange = (tab: 'upcoming' | 'past' | 'declined', page: number) => {
     setCurrentPage((prev) => ({ ...prev, [tab]: page }));
   };
 
@@ -354,24 +350,6 @@ export default function BookingsScreen() {
       router.push(`/messages/${booking.clientId}`);
     }
     // For clients, do nothing - they should use provider detail to start conversations
-  };
-
-  const handleAccept = async (bookingId: string) => {
-    try {
-      await bookingService.accept(bookingId);
-      modal.showAlert({
-        title: 'Success',
-        message: 'Booking accepted!',
-        type: 'success',
-      });
-      loadBookings();
-    } catch (error: any) {
-      modal.showAlert({
-        title: 'Error',
-        message: error.response?.data?.error?.message || 'Failed to accept booking',
-        type: 'error',
-      });
-    }
   };
 
   const handleDecline = async (bookingId: string) => {
@@ -570,19 +548,6 @@ export default function BookingsScreen() {
               <TouchableOpacity
                 style={[
                   styles.tab,
-                  activeTab === 'pending' && styles.tabActive,
-                  activeTab === 'pending' && styles.tabActivePending,
-                ]}
-                onPress={() => handleTabChange('pending')}
-                activeOpacity={0.8}
-              >
-                <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
-                  Pending
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
                   activeTab === 'upcoming' && styles.tabActive,
                   activeTab === 'upcoming' && styles.tabActiveUpcoming,
                 ]}
@@ -646,19 +611,6 @@ export default function BookingsScreen() {
               <TouchableOpacity
                 style={[
                   styles.tab,
-                  activeTab === 'pending' && styles.tabActive,
-                  activeTab === 'pending' && styles.tabActivePending,
-                ]}
-                onPress={() => handleTabChange('pending')}
-                activeOpacity={0.8}
-              >
-                <Text style={activeTab === 'pending' ? styles.tabActiveText : styles.tabText}>
-                  Pending
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.tab,
                   activeTab === 'upcoming' && styles.tabActive,
                   activeTab === 'upcoming' && styles.tabActiveUpcoming,
                 ]}
@@ -698,17 +650,7 @@ export default function BookingsScreen() {
             </View>
           </View>
           <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-            {activeTab === 'pending' ? (
-              <AnimatedEmptyState style={styles.emptyState}>
-                <Ionicons name="time-outline" size={160} color="#FBBF24" />
-                <Text style={styles.emptyTitle}>No pending bookings</Text>
-                <Text style={styles.emptyText}>
-                  {user?.userType === 'PROVIDER'
-                    ? 'When clients request sessions, they will appear here'
-                    : 'When you request a session, it will appear here'}
-                </Text>
-              </AnimatedEmptyState>
-            ) : activeTab === 'upcoming' ? (
+            {activeTab === 'upcoming' ? (
               <AnimatedEmptyState style={styles.emptyState}>
                 <Ionicons name="calendar-outline" size={160} color="#A855F7" />
                 <Text style={styles.emptyTitle}>No upcoming bookings</Text>
@@ -757,21 +699,6 @@ export default function BookingsScreen() {
               style={[
                 styles.tab,
                 { backgroundColor: themeHook.colors.surface },
-                activeTab === 'pending' && styles.tabActive,
-                activeTab === 'pending' && styles.tabActivePending,
-                activeTab === 'pending' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
-              ]}
-              onPress={() => handleTabChange('pending')}
-              activeOpacity={0.8}
-            >
-              <Text style={[activeTab === 'pending' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'pending' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
-                Pending
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                { backgroundColor: themeHook.colors.surface },
                 activeTab === 'upcoming' && styles.tabActive,
                 activeTab === 'upcoming' && styles.tabActiveUpcoming,
                 activeTab === 'upcoming' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
@@ -816,95 +743,7 @@ export default function BookingsScreen() {
           </View>
         </View>
         <Animated.View style={{ opacity: fadeAnim, flex: 1 }}>
-          {activeTab === 'pending' ? (
-            <View style={styles.section}>
-              {pendingBookings.length === 0 ? (
-                <AnimatedEmptyState style={styles.emptyState}>
-                  <Ionicons name="time-outline" size={160} color="#FBBF24" />
-                  <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No pending bookings</Text>
-                  <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
-                    {user?.userType === 'PROVIDER'
-                      ? 'When clients request sessions, they will appear here'
-                      : 'When you request a session, it will appear here'}
-                  </Text>
-                </AnimatedEmptyState>
-              ) : (
-                <>
-                  {getPaginatedBookings(pendingBookings, 'pending').map((booking, index) => {
-                    const bookingCardData = createBookingCardData(booking);
-
-                    return (
-                      <AnimatedCardWrapper key={booking.id} index={index}>
-                        <BookingCard
-                          booking={bookingCardData}
-                          onPress={() => handleBookingPress(booking.id)}
-                          showMessageButton={user?.userType === 'PROVIDER' ? true : false}
-                          onMessagePress={user?.userType === 'PROVIDER' ? () => handleMessage(booking) : undefined}
-                        />
-                      </AnimatedCardWrapper>
-                    );
-                  })}
-                  {getTotalPages(pendingBookings) > 1 && (
-                    <View style={styles.paginationContainer}>
-                      <TouchableOpacity
-                        style={[
-                          styles.paginationButton,
-                          currentPage.pending === 1 && styles.paginationButtonDisabled,
-                        ]}
-                        onPress={() => handlePageChange('pending', currentPage.pending - 1)}
-                        disabled={currentPage.pending === 1}
-                      >
-                        <Ionicons
-                          name="chevron-back"
-                          size={20}
-                          color={currentPage.pending === 1 ? '#CBD5E1' : '#2563eb'}
-                        />
-                        <Text
-                          style={[
-                            styles.paginationButtonText,
-                            currentPage.pending === 1 && styles.paginationButtonTextDisabled,
-                          ]}
-                        >
-                          Previous
-                        </Text>
-                      </TouchableOpacity>
-                      <Text style={styles.paginationInfo}>
-                        Page {currentPage.pending} of {getTotalPages(pendingBookings)}
-                      </Text>
-                      <TouchableOpacity
-                        style={[
-                          styles.paginationButton,
-                          currentPage.pending === getTotalPages(pendingBookings) &&
-                            styles.paginationButtonDisabled,
-                        ]}
-                        onPress={() => handlePageChange('pending', currentPage.pending + 1)}
-                        disabled={currentPage.pending === getTotalPages(pendingBookings)}
-                      >
-                        <Text
-                          style={[
-                            styles.paginationButtonText,
-                            currentPage.pending === getTotalPages(pendingBookings) &&
-                              styles.paginationButtonTextDisabled,
-                          ]}
-                        >
-                          Next
-                        </Text>
-                        <Ionicons
-                          name="chevron-forward"
-                          size={20}
-                          color={
-                            currentPage.pending === getTotalPages(pendingBookings)
-                              ? '#CBD5E1'
-                              : '#2563eb'
-                          }
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
-          ) : activeTab === 'upcoming' ? (
+          {activeTab === 'upcoming' ? (
             <View style={styles.section}>
               {upcomingBookings.length === 0 ? (
                 <AnimatedEmptyState style={styles.emptyState}>
@@ -1339,10 +1178,6 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 12,
   },
-  tabActivePending: {
-    borderColor: '#FBBF24', // Yellow
-    shadowColor: '#FBBF24',
-  },
   tabActiveUpcoming: {
     borderColor: '#A855F7', // Purple
     shadowColor: '#A855F7',
@@ -1417,18 +1252,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.sm,
     alignItems: 'center',
   },
-  acceptButton: {
-    backgroundColor: theme.colors.semantic.success,
-  },
   declineButton: {
     backgroundColor: theme.colors.white,
     borderWidth: 1,
     borderColor: '#ef4444',
-  },
-  acceptButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
   },
   declineButtonText: {
     color: '#ef4444',

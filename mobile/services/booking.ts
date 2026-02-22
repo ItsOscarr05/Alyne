@@ -69,6 +69,15 @@ export const bookingService = {
     return response.data.data;
   },
 
+  /** Live availability: get booked slots for a provider on a date (for filtering time slots). */
+  async getProviderBookedSlots(providerId: string, date: string): Promise<{ scheduledTime: string; duration: number }[]> {
+    const params = new URLSearchParams({ providerId, date });
+    const response = await apiClient.get<{ success: boolean; data: { scheduledTime: string; duration: number }[] }>(
+      `/bookings/availability?${params.toString()}`
+    );
+    return response.data.data;
+  },
+
   async getById(bookingId: string) {
     const response = await apiClient.get<{ success: boolean; data: BookingDetail }>(
       `/bookings/${bookingId}`

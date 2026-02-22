@@ -69,14 +69,10 @@ model ProviderProfile {
   specialties     String[] // Array of specialty tags
   serviceArea     Json // Service area radius and center coordinates
   isActive        Boolean  @default(true)
-  stripeAccountId String? // Stripe Connect account ID (deprecated - using Plaid for bank transfers)
-  // Plaid integration for bank account linking
-  plaidProcessorToken String? // Plaid processor token (Stripe-compatible) for ACH transfers
-  plaidItemId String? // Plaid Item ID for the connected bank account
-  plaidAccessToken String? // Plaid access token (encrypted in production) - needed for Transfer API
-  plaidAccountId String? // Plaid account ID for the specific bank account
-  bankAccountVerified Boolean @default(false) // Whether bank account has been verified via Plaid
-  stripeBankAccountId String? // Stripe External Account ID (deprecated - using Plaid Transfer)
+  stripeAccountId String? // Stripe Connect Express account ID
+  stripeOnboardingComplete Boolean @default(false) // Whether Stripe onboarding is complete
+  stripeChargesEnabled Boolean @default(false) // Whether charges are enabled on Stripe account
+  stripePayoutsEnabled Boolean @default(false) // Whether payouts are enabled on Stripe account
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -190,8 +186,7 @@ model Payment {
   platformFee      Float? // Platform fee (Alyne's commission) - optional for backwards compatibility
   currency         String    @default("USD")
   stripePaymentId  String?   @unique
-  stripeTransferId String? // Stripe transfer ID to provider's account
-  plaidTransferId  String? // Plaid transfer ID for provider payment
+  stripeTransferId String? // Stripe transfer/payout ID to provider's connected account
   status           String // "pending", "completed", "refunded", "failed"
   paidAt           DateTime?
   createdAt        DateTime  @default(now())

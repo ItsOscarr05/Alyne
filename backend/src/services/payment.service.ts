@@ -2,6 +2,7 @@ import { prisma } from '../utils/db';
 import Stripe from 'stripe';
 import { createError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
+import { stripeConnectService } from './stripeConnect.service';
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
@@ -17,7 +18,7 @@ const PLATFORM_FEE_PERCENTAGE = parseFloat(process.env.PLATFORM_FEE_PERCENTAGE |
  * @returns Object with providerAmount (base service price), platformFee (Alyne's fee), and totalAmount (what client pays)
  * 
  * Example: Service price = $120, Platform fee = 7.5%
- * - providerAmount = $120 (goes to provider via Plaid)
+ * - providerAmount = $120 (goes to provider via Stripe Connect)
  * - platformFee = $9 (stays in Alyne's Stripe account)
  * - totalAmount = $129 (what client pays via Stripe)
  */
@@ -63,53 +64,110 @@ export const paymentService = {
       throw createError('Payment can only be processed for confirmed bookings', 400);
     }
 
+    const providerStripeAccountId = booking.provider.providerProfile?.stripeAccountId;
+    if (!providerStripeAccountId) {
+      throw createError('Provider payout is not set up yet. Please ask the provider to complete payout onboarding.', 400);
+    }
+
+    // Verify Stripe account is fully enabled before allowing payment
+    try {
+      const accountStatus = await stripeConnectService.getAccountStatus(booking.providerId);
+      if (!accountStatus.chargesEnabled) {
+        throw createError(
+          'Provider payment account is not fully set up. Charges are not enabled yet. Please ask the provider to complete their Stripe onboarding.',
+          400
+        );
+      }
+      if (!accountStatus.payoutsEnabled) {
+        throw createError(
+          'Provider payout account is not fully set up. Payouts are not enabled yet. Please ask the provider to complete their Stripe onboarding.',
+          400
+        );
+      }
+    } catch (error: any) {
+      // If it's already a createError, re-throw it
+      if (error.statusCode) {
+        throw error;
+      }
+      // Otherwise, log and throw a generic error
+      logger.error('Error checking provider Stripe account status', {
+        providerId: booking.providerId,
+        error: error.message,
+      });
+      throw createError(
+        'Unable to verify provider payment setup. Please try again or contact support.',
+        500
+      );
+    }
+
     // Check if payment already exists
     if (booking.payment) {
       if (booking.payment.status === 'completed') {
         throw createError('Payment already completed', 409);
       }
-      // Return existing payment intent if pending
+      // Return existing payment intent if pending and still valid
       if (booking.payment.stripePaymentId) {
-        const paymentIntent = await stripe.paymentIntents.retrieve(booking.payment.stripePaymentId);
-        return {
-          clientSecret: paymentIntent.client_secret,
-          paymentId: booking.payment.id,
-        };
+        try {
+          const paymentIntent = await stripe.paymentIntents.retrieve(
+            booking.payment.stripePaymentId,
+            undefined,
+            { stripeAccount: providerStripeAccountId }
+          );
+          
+          // Check if payment intent is still usable (requires_payment_method, requires_confirmation, or requires_action)
+          const validStatuses = ['requires_payment_method', 'requires_confirmation', 'requires_action'];
+          if (validStatuses.includes(paymentIntent.status)) {
+            // Payment intent is still valid, return existing client secret
+            return {
+              clientSecret: paymentIntent.client_secret,
+              paymentId: booking.payment.id,
+              amount: booking.payment.amount,
+              providerAmount: booking.payment.providerAmount || booking.price,
+              platformFee: booking.payment.platformFee || booking.price * (PLATFORM_FEE_PERCENTAGE / 100),
+              requiresPlaidPayment: false,
+              stripeAmount: booking.payment.amount,
+              stripeAccountId: providerStripeAccountId,
+            };
+          } else {
+            // Payment intent is in an invalid state (succeeded, cancelled, etc.), create a new one
+            logger.warn(`Payment intent ${paymentIntent.id} is in status ${paymentIntent.status}, creating new payment intent`);
+            // Fall through to create a new payment intent
+          }
+        } catch (error: any) {
+          // Payment intent might not exist or be inaccessible, create a new one
+          logger.warn(`Error retrieving payment intent ${booking.payment.stripePaymentId}: ${error.message}, creating new payment intent`);
+          // Fall through to create a new payment intent
+        }
       }
     }
 
-    // Note: Provider bank account verification is not required for creating the Stripe payment intent
-    // The Stripe payment (platform fee) can be created independently
-    // Bank account verification is only needed when initiating the Plaid payment to the provider
-    const providerProfile = booking.provider.providerProfile;
-    
-    // Warn if provider doesn't have bank account set up (but don't block payment intent creation)
-    if (!providerProfile?.plaidAccountId || !providerProfile?.bankAccountVerified) {
-      logger.warn(`Provider ${booking.providerId} does not have verified bank account. Plaid payment will need to be set up separately.`);
-    }
-
     // Calculate payment amounts
-    // - providerAmount: Full service price (goes to provider via Plaid RTP)
-    // - platformFee: Platform fee (goes to Alyne via Stripe)
+    // - providerAmount: Full service price (provider keeps this)
+    // - platformFee: Platform fee (Alyne application fee)
     // - totalAmount: What client pays in total (providerAmount + platformFee)
     const { providerAmount, platformFee, totalAmount } = calculatePaymentAmounts(booking.price);
 
-    // Create Stripe payment intent ONLY for platform fee
-    // This is the only amount that will show in Alyne's Stripe dashboard
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(platformFee * 100), // Convert to cents - ONLY the platform fee
-      currency: 'usd',
-      metadata: {
-        project: 'alyne',
-        bookingId,
-        clientId: booking.clientId,
-        providerId: booking.providerId,
-        providerAmount: providerAmount.toString(),
-        platformFee: platformFee.toString(),
-        paymentType: 'platform_fee_only', // Indicates this is only the platform fee
+    // Provider MoR (Direct charge): create the PaymentIntent on the provider's connected account.
+    // Alyne takes an application fee automatically.
+    const paymentIntent = await stripe.paymentIntents.create(
+      {
+        amount: Math.round(totalAmount * 100), // TOTAL in cents
+        currency: 'usd',
+        application_fee_amount: Math.round(platformFee * 100),
+        automatic_payment_methods: { enabled: true },
+        metadata: {
+          project: 'alyne',
+          bookingId,
+          clientId: booking.clientId,
+          providerId: booking.providerId,
+          providerAmount: providerAmount.toString(),
+          platformFee: platformFee.toString(),
+          paymentType: 'connect_direct_charge',
+        },
+        description: `Alyne - Payment for ${booking.service.name}`,
       },
-      description: `Alyne - Platform fee for ${booking.service.name}`,
-    });
+      { stripeAccount: providerStripeAccountId }
+    );
 
     // Create or update payment record
     const payment = await prisma.payment.upsert({
@@ -117,7 +175,7 @@ export const paymentService = {
       create: {
         bookingId,
         amount: totalAmount, // Total amount client pays (providerAmount + platformFee)
-        providerAmount: providerAmount, // Amount going to provider via Plaid RTP
+        providerAmount: providerAmount, // Amount going to provider via Stripe Connect
         platformFee: platformFee, // Platform fee going to Alyne via Stripe
         currency: 'USD',
         stripePaymentId: paymentIntent.id,
@@ -136,10 +194,11 @@ export const paymentService = {
       clientSecret: paymentIntent.client_secret,
       paymentId: payment.id,
       amount: totalAmount, // Total client pays
-      providerAmount: providerAmount, // Goes to provider via Plaid
-      platformFee: platformFee, // Goes to Alyne via Stripe
-      requiresPlaidPayment: true, // Flag to indicate client needs to pay provider via Plaid
-      stripeAmount: platformFee, // Amount in Stripe payment intent (for verification)
+      providerAmount: providerAmount, // Provider's share (held in connected balance until payout)
+      platformFee: platformFee, // Alyne fee (application fee)
+      requiresPlaidPayment: false,
+      stripeAmount: totalAmount, // Amount in Stripe payment intent (for verification)
+      stripeAccountId: providerStripeAccountId,
     };
   },
 
@@ -175,8 +234,17 @@ export const paymentService = {
       }
     }
 
-    // Retrieve payment intent from Stripe
-    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    const providerStripeAccountId = booking.provider.providerProfile?.stripeAccountId;
+    if (!providerStripeAccountId) {
+      throw createError('Provider payout is not set up yet', 400);
+    }
+
+    // Retrieve payment intent from Stripe (on connected account)
+    const paymentIntent = await stripe.paymentIntents.retrieve(
+      paymentIntentId,
+      undefined,
+      { stripeAccount: providerStripeAccountId }
+    );
 
     // Verify payment intent metadata matches the booking
     if (paymentIntent.metadata?.bookingId && paymentIntent.metadata.bookingId !== bookingId) {
@@ -197,13 +265,14 @@ export const paymentService = {
     const totalAmount = booking.payment?.amount 
       || (providerAmount + platformFee); // Total = provider amount + platform fee
 
-    // Note: In the new dual payment flow:
-    // - Platform fee ($12) is paid via Stripe (this payment intent)
-    // - Provider amount ($120) is paid directly via Plaid Payment Initiation (handled separately)
-    // - We only confirm the Stripe payment here
-    // - The Plaid payment is initiated by the client and confirmed via webhook
-
-    logger.info(`Platform fee payment confirmed: $${platformFee} via Stripe, Provider amount: $${providerAmount} via Plaid, Total: $${totalAmount}`);
+    // Provider MoR flow:
+    // - Client pays TOTAL via Stripe on provider's connected account
+    // - Alyne fee is captured via application_fee_amount
+    // - Provider payout is delayed until booking is marked COMPLETED
+    logger.info(
+      `Connect payment confirmed: $${totalAmount} (Provider: $${providerAmount}, Platform fee: $${platformFee})`,
+      { bookingId, paymentIntentId, providerStripeAccountId }
+    );
 
     // Upsert payment record (create if doesn't exist, update if it does)
     const payment = await prisma.payment.upsert({
@@ -215,7 +284,7 @@ export const paymentService = {
         platformFee: platformFee,
         currency: 'USD',
         stripePaymentId: paymentIntentId,
-        stripeTransferId: null, // Not used in dual payment flow
+        stripeTransferId: null, // Will store Stripe payout id once released
         status: 'completed',
         paidAt: new Date(),
       },
@@ -234,8 +303,8 @@ export const paymentService = {
   },
 
   /**
-   * Automatically process Plaid transfer to provider after Stripe payment is confirmed
-   * This is called automatically - no user interaction needed
+   * Release provider payout after booking completion (manual payouts).
+   * This can be called from booking completion, or manually retried via API.
    */
   async processProviderPayment(bookingId: string, userId: string) {
     const booking = await prisma.booking.findUnique({
@@ -254,9 +323,9 @@ export const paymentService = {
       throw createError('Booking not found', 404);
     }
 
-    // Only the booking owner (client) can trigger provider payment
-    if (booking.clientId !== userId) {
-      throw createError('Unauthorized: Only the booking owner can process provider payment', 403);
+    // Only provider can release payout (triggered when provider completes session)
+    if (booking.providerId !== userId) {
+      throw createError('Unauthorized: Only the provider can release payout', 403);
     }
 
     // Verify Stripe payment is completed first
@@ -264,37 +333,98 @@ export const paymentService = {
       throw createError('Stripe payment must be completed before processing provider payment', 400);
     }
 
-    const providerAmount = booking.payment.providerAmount || booking.price;
-    const providerProfile = booking.provider.providerProfile;
-
-    if (!providerProfile?.plaidAccessToken || !providerProfile?.plaidAccountId || !providerProfile?.bankAccountVerified) {
-      throw createError('Provider bank account not set up or verified', 400);
+    // Only allow payout after booking is completed
+    if (booking.status !== 'COMPLETED') {
+      throw createError('Provider payout can only be released after booking is completed', 400);
     }
 
-    // Import plaidService dynamically to avoid circular dependency
-    const { plaidService } = await import('./plaid.service');
-    
-    // Process Plaid transfer to provider
-    const transferResult = await plaidService.createTransfer(
-      booking.providerId,
-      providerAmount,
-      `Payment for booking ${bookingId}`,
-      bookingId
+    // Prevent duplicate payouts
+    if (booking.payment.stripeTransferId) {
+      return {
+        payoutId: booking.payment.stripeTransferId,
+        status: 'already_released',
+        amount: booking.payment.providerAmount || booking.price,
+        payment: booking.payment,
+      };
+    }
+
+    const providerProfile = booking.provider.providerProfile;
+    const providerStripeAccountId = providerProfile?.stripeAccountId;
+    if (!providerStripeAccountId) {
+      throw createError('Provider payouts are not set up (missing Stripe Connect account)', 400);
+    }
+
+    // Verify account is enabled for payouts
+    try {
+      const accountStatus = await stripeConnectService.getAccountStatus(booking.providerId);
+      if (!accountStatus.payoutsEnabled) {
+        throw createError(
+          'Provider payout account is not fully enabled. Payouts are not enabled yet.',
+          400
+        );
+      }
+    } catch (error: any) {
+      if (error.statusCode) {
+        throw error;
+      }
+      logger.error('Error checking provider payout status', {
+        providerId: booking.providerId,
+        error: error.message,
+      });
+      throw createError('Unable to verify provider payout setup', 500);
+    }
+
+    const providerAmount = booking.payment.providerAmount || booking.price;
+    const payoutAmountCents = Math.round(providerAmount * 100);
+
+    // Check account balance before creating payout (informative, Stripe will also validate)
+    try {
+      const balance = await stripe.balance.retrieve({ stripeAccount: providerStripeAccountId });
+      const availableBalance = balance.available?.[0]?.amount || 0;
+      
+      if (availableBalance < payoutAmountCents) {
+        logger.warn('Insufficient balance for payout', {
+          providerStripeAccountId,
+          required: payoutAmountCents,
+          available: availableBalance,
+          bookingId,
+        });
+        // Note: We still attempt the payout - Stripe will reject if insufficient
+        // This is logged for monitoring but doesn't block the attempt
+      }
+    } catch (balanceError: any) {
+      // Balance check failed - log but don't block payout (Stripe will validate)
+      logger.warn('Failed to check account balance before payout', {
+        providerStripeAccountId,
+        error: balanceError.message,
+      });
+    }
+
+    const payout = await stripe.payouts.create(
+      {
+        amount: payoutAmountCents,
+        currency: 'usd',
+        metadata: {
+          project: 'alyne',
+          bookingId,
+          providerId: booking.providerId,
+        },
+      },
+      { stripeAccount: providerStripeAccountId }
     );
 
-    // Update payment record with Plaid transfer ID
     const updatedPayment = await prisma.payment.update({
       where: { bookingId },
       data: {
-        plaidTransferId: transferResult.transferId,
+        stripeTransferId: payout.id,
       },
     });
 
-    logger.info(`Plaid transfer processed: ${transferResult.transferId} for $${providerAmount}`);
+    logger.info(`Stripe payout released: ${payout.id} for booking ${bookingId}`);
     return {
-      transferId: transferResult.transferId,
-      status: transferResult.status,
-      amount: transferResult.amount,
+      payoutId: payout.id,
+      status: payout.status,
+      amount: providerAmount,
       payment: updatedPayment,
     };
   },
