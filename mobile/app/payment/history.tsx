@@ -55,7 +55,7 @@ type FilterOption = 'all' | 'completed' | 'pending' | 'failed' | 'refunded';
 export default function PaymentHistoryScreen() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { theme: themeHook } = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const [payments, setPayments] = useState<PaymentWithBooking[]>([]);
   const [allPayments, setAllPayments] = useState<PaymentWithBooking[]>([]);
@@ -397,13 +397,13 @@ export default function PaymentHistoryScreen() {
                         style={[
                           styles.dropdownItemText,
                           { color: themeHook.colors.text },
-                          filterOption === option && { fontWeight: '600', color: themeHook.colors.primary },
+                          filterOption === option && { fontWeight: '600', color: isDark ? themeHook.colors.white : themeHook.colors.primary },
                         ]}
                       >
                         {option === 'all' ? 'All Payments' : option.charAt(0).toUpperCase() + option.slice(1)}
                       </Text>
                       {filterOption === option && (
-                        <Ionicons name="checkmark" size={18} color={themeHook.colors.primary} />
+                        <Ionicons name="checkmark" size={18} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -457,13 +457,13 @@ export default function PaymentHistoryScreen() {
                         style={[
                           styles.dropdownItemText,
                           { color: themeHook.colors.text },
-                          sortOption === option.value && { fontWeight: '600', color: themeHook.colors.primary },
+                          sortOption === option.value && { fontWeight: '600', color: isDark ? themeHook.colors.white : themeHook.colors.primary },
                         ]}
                       >
                         {option.label}
                       </Text>
                       {sortOption === option.value && (
-                        <Ionicons name="checkmark" size={18} color={themeHook.colors.primary} />
+                        <Ionicons name="checkmark" size={18} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   ))}

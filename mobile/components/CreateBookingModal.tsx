@@ -43,7 +43,7 @@ export function CreateBookingModal({
   const router = useRouter();
   const { user } = useAuth();
   const modal = useModal();
-  const themeHook = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
@@ -317,7 +317,7 @@ export function CreateBookingModal({
                               <View style={styles.serviceOptionHeader}>
                                 <Text style={[styles.serviceOptionName, { color: themeHook.colors.text }]}>{service.name}</Text>
                                 {selectedService?.id === service.id && (
-                                  <Ionicons name="checkmark-circle" size={24} color={themeHook.colors.primary} />
+                                  <Ionicons name="checkmark-circle" size={24} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                                 )}
                               </View>
                               <Text style={[styles.serviceOptionDetails, { color: themeHook.colors.textSecondary }]}>

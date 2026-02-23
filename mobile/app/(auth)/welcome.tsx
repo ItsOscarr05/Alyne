@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -28,16 +29,15 @@ export default function WelcomeScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
-            <View style={[styles.logoCircle, { backgroundColor: themeHook.colors.primary }]}>
-              <Ionicons name="heart" size={48} color={themeHook.colors.white} />
-            </View>
+            <Image
+              source={require('../../assets/image-removebg-preview_dark.png')}
+              style={styles.logoImage}
+              contentFit="contain"
+            />
           </View>
           <Text style={[styles.title, { color: themeHook.colors.text }]}>Welcome to Alyne</Text>
           <Text style={[styles.subtitle, { color: themeHook.colors.textSecondary }]}>
@@ -48,16 +48,30 @@ export default function WelcomeScreen() {
         {/* Features Section */}
         <View style={styles.featuresSection}>
           {features.map((feature, index) => (
-            <View key={index} style={[styles.featureCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}>
-              <View style={[styles.featureIconContainer, { backgroundColor: themeHook.colors.primaryLight }]}>
-                <Ionicons
-                  name={feature.icon as any}
-                  size={28}
-                  color={themeHook.colors.primary}
-                />
+            <View
+              key={index}
+              style={[
+                styles.featureCard,
+                {
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.primary,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.featureIconContainer,
+                  { backgroundColor: themeHook.colors.primaryLight },
+                ]}
+              >
+                <Ionicons name={feature.icon as any} size={28} color={themeHook.colors.primary} />
               </View>
-              <Text style={[styles.featureTitle, { color: themeHook.colors.text }]}>{feature.title}</Text>
-              <Text style={[styles.featureDescription, { color: themeHook.colors.textSecondary }]}>{feature.description}</Text>
+              <Text style={[styles.featureTitle, { color: themeHook.colors.text }]}>
+                {feature.title}
+              </Text>
+              <Text style={[styles.featureDescription, { color: themeHook.colors.textSecondary }]}>
+                {feature.description}
+              </Text>
             </View>
           ))}
         </View>
@@ -75,11 +89,16 @@ export default function WelcomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.secondaryButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]}
+          style={[
+            styles.secondaryButton,
+            { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary },
+          ]}
           onPress={() => router.push('/(auth)/login')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.secondaryButtonText, { color: themeHook.colors.primary }]}>Sign In</Text>
+          <Text style={[styles.secondaryButtonText, { color: themeHook.colors.primary }]}>
+            Sign In
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -103,13 +122,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: theme.spacing.xl,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...theme.shadows.card,
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   title: {
     ...theme.typography.display,
@@ -189,4 +204,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

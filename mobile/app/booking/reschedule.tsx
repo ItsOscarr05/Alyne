@@ -22,15 +22,33 @@ import { useModal } from '../../hooks/useModal';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { generateTimeSlots, getDayOfWeek, formatTime12Hour } from '../../utils/timeUtils';
 import { useTheme } from '../../contexts/ThemeContext';
+import { theme } from '../../theme';
 
 export default function RescheduleBookingScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
-  const id = params.id;
+  const id = params.id as string | undefined;
   const router = useRouter();
   const { user } = useAuth();
   const modal = useModal();
-  const { theme: themeHook, isDark } = useTheme();
+  const { theme: themeHook } = useTheme();
   const insets = useSafeAreaInsets();
+
+  const [booking, setBooking] = useState<BookingDetail | null>(null);
+  const [provider, setProvider] = useState<ProviderDetail | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else if (id) {
+      router.replace(`/booking/${id}`);
+    }
+  };
 
   // Redirect providers - they can't reschedule
   useEffect(() => {
@@ -39,20 +57,12 @@ export default function RescheduleBookingScreen() {
     }
   }, [user, router, id]);
 
-  if (user?.userType === 'PROVIDER') {
-    return null;
-  }
-
-  const [booking, setBooking] = useState<BookingDetail | null>(null);
-  const [provider, setProvider] = useState<ProviderDetail | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   useEffect(() => {
     if (id) {
       loadData();
+    } else {
+      setIsLoading(false);
+      setLoadError('No booking ID provided.');
     }
   }, [id]);
 
@@ -60,6 +70,7 @@ export default function RescheduleBookingScreen() {
     if (!id) return;
 
     setIsLoading(true);
+    setLoadError(null);
     try {
       // Load booking data
       const bookingData = await bookingService.getById(id);
@@ -82,12 +93,7 @@ export default function RescheduleBookingScreen() {
       }
     } catch (error: any) {
       logger.error('Error loading booking data', error);
-      modal.showAlert({
-        title: 'Error',
-        message: 'Failed to load booking details',
-        type: 'error',
-        onButtonPress: () => router.back(),
-      });
+      setLoadError(getUserFriendlyError(error) || 'Failed to load booking details');
     } finally {
       setIsLoading(false);
     }
@@ -192,7 +198,12 @@ export default function RescheduleBookingScreen() {
     : '';
   const currentTime = booking?.scheduledTime || '';
 
-  if (isLoading || !booking || !provider) {
+  // Redirect providers (render nothing while redirecting)
+  if (user?.userType === 'PROVIDER') {
+    return null;
+  }
+
+  if (isLoading) {
     return (
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
@@ -200,7 +211,7 @@ export default function RescheduleBookingScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
       >
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Reschedule Booking</Text>
@@ -208,6 +219,43 @@ export default function RescheduleBookingScreen() {
         </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={themeHook.colors.primary} />
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  if (loadError || !booking || !provider) {
+    return (
+      <KeyboardAvoidingView
+        style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 + insets.top : insets.top}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Reschedule Booking</Text>
+          <View style={styles.backButton} />
+        </View>
+        <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
+        <View style={[styles.loadingContainer, { paddingHorizontal: 24 }]}>
+          <Ionicons name="alert-circle-outline" size={48} color={themeHook.colors.textTertiary} style={{ marginBottom: 16 }} />
+          <Text style={[styles.errorTitle, { color: themeHook.colors.text }]}>{!id ? 'Booking ID missing' : 'Unable to load booking'}</Text>
+          <Text style={[styles.errorMessage, { color: themeHook.colors.textSecondary }]}>
+            {loadError || 'This booking may have been cancelled or the link may be incorrect.'}
+          </Text>
+          {id && (
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: themeHook.colors.primary }]}
+              onPress={() => loadData()}
+            >
+              <Text style={[styles.retryButtonText, { color: themeHook.colors.white }]}>Try again</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity style={styles.backLinkButton} onPress={handleBack}>
+            <Text style={[styles.backLinkText, { color: themeHook.colors.primary }]}>Back to booking</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
     );
@@ -222,7 +270,7 @@ export default function RescheduleBookingScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, theme.spacing.xl) }]}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color={themeHook.colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: themeHook.colors.text }]}>Reschedule Booking</Text>
@@ -613,6 +661,34 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backLinkButton: {
+    paddingVertical: 8,
+  },
+  backLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
 

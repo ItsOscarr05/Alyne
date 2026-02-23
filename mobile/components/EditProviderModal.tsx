@@ -1610,7 +1610,7 @@ export function EditProviderModal({ visible, onClose, onSuccess, initialSection 
           <View style={styles.specialtyTags}>
             {specialties.map((specialty, index) => (
               <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
-                <Text style={[styles.specialtyTagText, { color: themeHook.colors.primary }]}>{specialty}</Text>
+                <Text style={[styles.specialtyTagText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{specialty}</Text>
                 <TouchableOpacity onPress={() => removeSpecialty(index)}>
                   <Ionicons name="close-circle" size={18} color={themeHook.colors.textTertiary} />
                 </TouchableOpacity>

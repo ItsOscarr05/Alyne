@@ -395,7 +395,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                             <View style={styles.specialties}>
                               {provider.specialties.map((specialty, index) => (
                                 <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
-                                  <Text style={[styles.specialtyText, { color: themeHook.colors.primary }]}>{specialty}</Text>
+                                  <Text style={[styles.specialtyText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{specialty}</Text>
                                 </View>
                               ))}
                             </View>
@@ -531,7 +531,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                                           key={day.label}
                                           style={[styles.availabilityDayPill, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
                                         >
-                                          <Text style={[styles.availabilityDayPillText, { color: themeHook.colors.primary }]}>
+                                          <Text style={[styles.availabilityDayPillText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>
                                             {day.label}
                                           </Text>
                                           <Text style={[styles.availabilityTimeSmall, { color: themeHook.colors.textSecondary }]}>
@@ -578,7 +578,7 @@ export function ProviderDetailModal({ visible, providerId, onClose, initialTab =
                               <View style={styles.chipRow}>
                                 {provider.specialties.slice(0, 3).map((tag) => (
                                   <View key={tag} style={[styles.chip, { backgroundColor: themeHook.colors.primaryLight }]}>
-                                    <Text style={[styles.chipText, { color: themeHook.colors.primary }]}>{tag}</Text>
+                                    <Text style={[styles.chipText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{tag}</Text>
                                   </View>
                                 ))}
                               </View>

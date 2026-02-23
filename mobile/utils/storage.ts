@@ -47,6 +47,15 @@ const getWebStorage = () => {
   return null;
 };
 
+// Use localStorage for web - persists across sessions and tabs
+// Use for user preferences (theme, etc.) that should survive tab close
+const getPersistentWebStorage = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage;
+  }
+  return null;
+};
+
 export const storage = {
   async getItem(key: string): Promise<string | null> {
     if (isWeb) {
@@ -111,6 +120,53 @@ export const storage = {
         await SecureStore.deleteItemAsync(key);
       } catch (error) {
         logger.error('Error removing item from SecureStore', error);
+      }
+    }
+  },
+};
+
+/**
+ * Persistent storage - survives tab close and app restart.
+ * Use for user preferences (theme, etc.) that should persist across sessions.
+ * On web: localStorage (shared across tabs, persists across sessions)
+ * On native: SecureStore (same as main storage)
+ */
+export const persistentStorage = {
+  async getItem(key: string): Promise<string | null> {
+    if (isWeb) {
+      const webStorage = getPersistentWebStorage();
+      if (webStorage) {
+        return webStorage.getItem(key);
+      }
+      return await AsyncStorage.getItem(key);
+    }
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      logger.error('Error getting item from SecureStore', error);
+      return null;
+    }
+  },
+
+  async setItem(key: string, value: string): Promise<void> {
+    if (isWeb) {
+      const webStorage = getPersistentWebStorage();
+      if (webStorage) {
+        try {
+          webStorage.setItem(key, value);
+          return Promise.resolve();
+        } catch (error) {
+          logger.error('Error setting item in persistent storage', error);
+          throw error;
+        }
+      }
+      await AsyncStorage.setItem(key, value);
+    } else {
+      try {
+        await SecureStore.setItemAsync(key, value);
+      } catch (error) {
+        logger.error('Error setting item in SecureStore', error);
+        throw error;
       }
     }
   },

@@ -127,7 +127,7 @@ export function ProviderCard({ provider, onPress }: ProviderCardProps) {
         <View style={styles.specialtiesRow}>
           {provider.specialties.slice(0, 3).map((specialty, index) => (
             <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary, borderWidth: 1 }]}>
-              <Text style={[styles.specialtyText, { color: themeHook.colors.primary }]}>{specialty}</Text>
+              <Text style={[styles.specialtyText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{specialty}</Text>
             </View>
           ))}
           {provider.specialties.length > 3 && (

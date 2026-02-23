@@ -21,11 +21,13 @@ import { formatTime12Hour } from '../../utils/timeUtils';
 import { AlertModal } from '../../components/ui/AlertModal';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
 import { theme } from '../../theme';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function ProviderDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuth();
+  const themeHook = useTheme();
   const insets = useSafeAreaInsets();
   const { onProviderRatingUpdate } = useSocket();
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
@@ -293,8 +295,8 @@ export default function ProviderDetailScreen() {
               {provider.specialties.length > 0 && (
                 <View style={styles.specialties}>
                   {provider.specialties.map((specialty, index) => (
-                    <View key={index} style={styles.specialtyTag}>
-                      <Text style={styles.specialtyText}>{specialty}</Text>
+                    <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
+                      <Text style={[styles.specialtyText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{specialty}</Text>
                     </View>
                   ))}
                 </View>
@@ -451,8 +453,8 @@ export default function ProviderDetailScreen() {
                 {provider.specialties && provider.specialties.length > 0 && (
                   <View style={styles.chipRow}>
                     {provider.specialties.slice(0, 3).map((tag) => (
-                      <View key={tag} style={styles.chip}>
-                        <Text style={styles.chipText}>{tag}</Text>
+                      <View key={tag} style={[styles.chip, { backgroundColor: themeHook.colors.primaryLight }]}>
+                        <Text style={[styles.chipText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{tag}</Text>
                       </View>
                     ))}
                   </View>
@@ -763,14 +765,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   specialtyTag: {
-    backgroundColor: '#eff6ff',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
   },
   specialtyText: {
     fontSize: 12,
-    color: '#2563eb',
     fontWeight: '500',
   },
   tabs: {
@@ -863,12 +863,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
-    backgroundColor: '#eff6ff',
   },
   chipText: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#2563eb',
   },
   availabilityDaysRow: {
     flexDirection: 'row',

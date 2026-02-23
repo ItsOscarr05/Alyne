@@ -114,8 +114,8 @@ export function ConversationItem({ conversation, onPress }: ConversationItemProp
       )}
       {isClient && (
         <View style={[styles.clientBadge, { backgroundColor: isDark ? themeHook.colors.primaryLight : themeHook.colors.primaryLight, borderColor: themeHook.colors.primary, borderWidth: 1 }]}>
-          <Ionicons name="person" size={14} color={themeHook.colors.primary} />
-          <Text style={[styles.clientBadgeText, { color: themeHook.colors.primary }]}>Client</Text>
+          <Ionicons name="person" size={14} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
+          <Text style={[styles.clientBadgeText, { color: isDark ? themeHook.colors.white : themeHook.colors.primary }]}>Client</Text>
         </View>
       )}
       </TouchableOpacity>

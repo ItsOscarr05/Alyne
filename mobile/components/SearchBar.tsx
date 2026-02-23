@@ -32,7 +32,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search providers
       </View>
       {onFilterPress && (
         <TouchableOpacity style={[styles.filterButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primaryLight }]} onPress={onFilterPress}>
-          <Ionicons name="options-outline" size={20} color={themeHook.colors.primary} />
+          <Ionicons name="options-outline" size={20} color={themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary} />
         </TouchableOpacity>
       )}
     </View>

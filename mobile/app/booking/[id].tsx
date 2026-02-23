@@ -76,6 +76,20 @@ export default function BookingDetailScreen() {
     return unsubscribe;
   }, [id, booking, onBookingUpdate]);
 
+  const formatLocation = (location: string | { address?: string; coordinates?: { lat: number; lng: number } } | undefined): string => {
+    if (!location) return 'Location TBD';
+    if (typeof location === 'object' && location.address) return location.address;
+    if (typeof location === 'string') {
+      try {
+        const parsed = JSON.parse(location);
+        return typeof parsed === 'object' && parsed?.address ? parsed.address : location;
+      } catch {
+        return location;
+      }
+    }
+    return 'Location TBD';
+  };
+
   const loadBooking = async () => {
     if (!id) return;
 
@@ -156,7 +170,7 @@ export default function BookingDetailScreen() {
 
   if (!booking) {
     return (
-      <View style={[styles.container, { backgroundColor: themeHook.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: themeHook.colors.background, paddingTop: insets.top }]}>
         <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -167,7 +181,23 @@ export default function BookingDetailScreen() {
           </View>
           <View style={[styles.headerDivider, { backgroundColor: themeHook.colors.border }]} />
           <View style={styles.loadingContainer}>
-            <Text style={[styles.errorText, { color: themeHook.colors.textSecondary }]}>Booking not found</Text>
+            <Ionicons name="search-outline" size={48} color={themeHook.colors.textTertiary} style={{ marginBottom: 16 }} />
+            <Text style={[styles.errorText, { color: themeHook.colors.text }]}>Booking not found</Text>
+            <Text style={[styles.errorSubtext, { color: themeHook.colors.textSecondary }]}>
+              This booking may have been cancelled, or the link may be incorrect.
+            </Text>
+            <TouchableOpacity
+              style={[styles.retryButton, { backgroundColor: themeHook.colors.primary }]}
+              onPress={() => loadBooking()}
+            >
+              <Text style={[styles.retryButtonText, { color: themeHook.colors.white }]}>Try again</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.backLinkButton]}
+              onPress={() => router.back()}
+            >
+              <Text style={[styles.backLinkText, { color: themeHook.colors.primary }]}>Back to bookings</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </View>
@@ -230,8 +260,8 @@ export default function BookingDetailScreen() {
                   }
                 }}
               >
-                <Ionicons name="chatbubble-outline" size={18} color={themeHook.colors.primary} />
-                <Text style={[styles.messageButtonText, { color: themeHook.colors.primary }]}>Message</Text>
+                <Ionicons name="chatbubble-outline" size={18} color={themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary} />
+                <Text style={[styles.messageButtonText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>Message</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -274,9 +304,7 @@ export default function BookingDetailScreen() {
               <View style={styles.scheduleRow}>
                 <Ionicons name="location-outline" size={20} color={themeHook.colors.primary} />
                 <Text style={[styles.scheduleText, { color: themeHook.colors.text }]}>
-                  {typeof booking.location === 'string'
-                    ? booking.location
-                    : booking.location.address || 'Location TBD'}
+                  {formatLocation(booking.location)}
                 </Text>
               </View>
             )}
@@ -344,8 +372,8 @@ export default function BookingDetailScreen() {
           (booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
             <View style={styles.section}>
               <TouchableOpacity
-                style={[styles.rescheduleButton, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}
-                onPress={() => router.push({ pathname: '/booking/reschedule', params: { id } })}
+                style={[styles.rescheduleButton, { backgroundColor: themeHook.colors.primary, borderColor: themeHook.colors.primary }]}
+                onPress={() => router.push(`/booking/reschedule?id=${id}`)}
               >
                 <Ionicons name="calendar-outline" size={20} color={themeHook.colors.white} />
                 <Text style={[styles.rescheduleButtonText, { color: themeHook.colors.white }]}>Reschedule Booking</Text>
@@ -406,6 +434,31 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  errorSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  retryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  backLinkButton: {
+    paddingVertical: 8,
+  },
+  backLinkText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   statusBadge: {
     flexDirection: 'row',

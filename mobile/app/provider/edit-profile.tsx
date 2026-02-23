@@ -463,16 +463,30 @@ export default function EditProviderProfileScreen() {
   };
 
   const startStripeOnboarding = async () => {
+    const redirectMessage = bankAccountConnected
+      ? "You'll be redirected to Stripe to update your payout details. You'll return here when you're done. Continue?"
+      : "You'll be redirected to Stripe to connect your bank account. You'll return here when you're done. Continue?";
+
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' && window.confirm(`Redirect to Stripe\n\n${redirectMessage}`);
+      if (ok) doStripeOnboarding();
+    } else {
+      Alert.alert('Redirect to Stripe', redirectMessage, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Continue', onPress: () => doStripeOnboarding() },
+      ]);
+    }
+  };
+
+  const doStripeOnboarding = async () => {
     try {
       setLoading(true);
-      // Use 'update' type if account is already connected, otherwise 'onboarding'
       const linkType = bankAccountConnected ? 'update' : 'onboarding';
       const { url } = await stripeConnectService.createOnboardingLink({
         returnPath: '/provider/edit-profile?section=bank',
         type: linkType,
       });
       await openUrl(url);
-      // After returning, user can tap "Refresh status"
     } catch (error: any) {
       logger.error('Error creating Stripe onboarding link', error);
       setAlertModal({
@@ -1389,7 +1403,7 @@ export default function EditProviderProfileScreen() {
     { id: 'services', label: 'Services', icon: 'list-outline' },
     { id: 'credentials', label: 'Credentials', icon: 'school-outline' },
     { id: 'availability', label: 'Availability', icon: 'calendar-outline' },
-    { id: 'bank', label: 'Bank', icon: 'card-outline' },
+    { id: 'bank', label: 'Payouts', icon: 'cash-outline' },
   ];
 
   const renderSection = () => {
@@ -1470,75 +1484,102 @@ export default function EditProviderProfileScreen() {
 
   const renderBankSection = () => (
     <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Bank Account</Text>
+      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Payout account</Text>
       <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Set up payouts with Stripe to receive payments from clients.
+        Connect your bank account to receive payments from clients. Powered by Stripe.
       </Text>
 
       {bankAccountConnected && bankAccountInfo ? (
-        <>
-          <View style={[styles.bankCardConnected, { backgroundColor: isDark ? themeHook.colors.background : '#f0fdf4', borderColor: themeHook.colors.success }]}>
-            <View style={styles.bankCardHeader}>
-              <Ionicons name="checkmark-circle" size={28} color={themeHook.colors.success} />
-              <View style={styles.bankInfo}>
-                <Text style={[styles.bankAccountName, { color: themeHook.colors.text }]}>{bankAccountInfo.accountName}</Text>
-                <Text style={[styles.bankAccountMask, { color: themeHook.colors.textSecondary }]}>
-                  {bankAccountInfo.accountMask === 'Enabled' ? bankAccountInfo.accountMask : `•••• ${bankAccountInfo.accountMask}`}
-                </Text>
-              </View>
-            </View>
-            <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
-              <Ionicons name="lock-closed" size={14} color={themeHook.colors.textSecondary} />
-              <Text style={[styles.bankCardFooterText, { color: themeHook.colors.textSecondary }]}>Securely connected</Text>
+        <View style={[styles.bankCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <View style={styles.bankCardStatusRow}>
+            <Text style={[styles.bankCardLabel, { color: themeHook.colors.textSecondary }]}>Status</Text>
+            <View style={[styles.bankStatusBadge, { backgroundColor: themeHook.colors.success + '20' }]}>
+              <Ionicons name="checkmark-circle" size={14} color={themeHook.colors.success} />
+              <Text style={[styles.bankStatusBadgeText, { color: themeHook.colors.success }]}>Connected</Text>
             </View>
           </View>
-          <TouchableOpacity
-            style={[styles.payoutButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
-            onPress={startStripeOnboarding}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={themeHook.colors.white} />
-            ) : (
-              <>
-                <Ionicons name="settings-outline" size={20} color={themeHook.colors.white} />
-                <Text style={[styles.payoutButtonText, { color: themeHook.colors.white }]}>Manage Payout Details</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </>
+          <View style={[styles.bankCardDivider, { backgroundColor: themeHook.colors.border }]} />
+          <View style={styles.bankCardHeader}>
+            <View style={[styles.bankIconWrapper, { backgroundColor: themeHook.colors.primaryLight }]}>
+              <Ionicons name="business" size={20} color={themeHook.colors.primary} />
+            </View>
+            <View style={styles.bankInfo}>
+              <Text style={[styles.bankAccountName, { color: themeHook.colors.text }]}>{bankAccountInfo.accountName}</Text>
+              <Text style={[styles.bankAccountMask, { color: themeHook.colors.textSecondary }]}>
+                {bankAccountInfo.accountMask === 'Enabled' ? bankAccountInfo.accountMask : `•••• ${bankAccountInfo.accountMask}`}
+              </Text>
+            </View>
+          </View>
+          <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
+            <View style={styles.bankTrustRow}>
+              <Ionicons name="lock-closed" size={12} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.bankTrustText, { color: themeHook.colors.textTertiary }]}>Secured by Stripe</Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.bankCardActionButton, { backgroundColor: themeHook.colors.primary }]}
+              onPress={startStripeOnboarding}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={themeHook.colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="create-outline" size={16} color={themeHook.colors.white} />
+                  <Text style={[styles.bankCardActionText, { color: themeHook.colors.white }]}>Manage</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       ) : (
-        <>
-          <View style={[styles.bankCardEmpty, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
-            <Ionicons name="card-outline" size={40} color={themeHook.colors.textTertiary} />
-            <Text style={[styles.bankCardEmptyTitle, { color: themeHook.colors.text }]}>Payouts not set up yet</Text>
-            <Text style={[styles.bankCardEmptyText, { color: themeHook.colors.textSecondary }]}>
-              Complete Stripe onboarding to start receiving payouts
-            </Text>
+        <View style={[styles.bankCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
+          <View style={styles.bankCardStatusRow}>
+            <Text style={[styles.bankCardLabel, { color: themeHook.colors.textSecondary }]}>Status</Text>
+            <View style={[styles.bankStatusBadge, { backgroundColor: themeHook.colors.textTertiary + '30' }]}>
+              <Ionicons name="alert-circle-outline" size={14} color={themeHook.colors.textSecondary} />
+              <Text style={[styles.bankStatusBadgeText, { color: themeHook.colors.textSecondary }]}>Not set up</Text>
+            </View>
           </View>
-          <TouchableOpacity
-            style={[styles.payoutButton, { backgroundColor: themeHook.colors.primary, shadowColor: themeHook.colors.primary }, loading && styles.buttonDisabled, loading && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
-            onPress={startStripeOnboarding}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={themeHook.colors.white} />
-            ) : (
-              <>
-                <Ionicons name="lock-closed" size={20} color={themeHook.colors.white} />
-                <Text style={[styles.payoutButtonText, { color: themeHook.colors.white }]}>Start Stripe Onboarding</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </>
+          <View style={[styles.bankCardDivider, { backgroundColor: themeHook.colors.border }]} />
+          <View style={styles.bankCardEmptyContent}>
+            <View style={[styles.bankIconWrapper, { backgroundColor: themeHook.colors.borderLight }]}>
+              <Ionicons name="card-outline" size={24} color={themeHook.colors.textTertiary} />
+            </View>
+            <Text style={[styles.bankCardEmptyTitle, { color: themeHook.colors.text }]}>No payout account</Text>
+            <Text style={[styles.bankCardEmptyText, { color: themeHook.colors.textSecondary }]}>
+              Connect your bank account to receive payments directly after each session.
+            </Text>
+            <TouchableOpacity
+              style={[styles.bankPrimaryButton, { backgroundColor: '#635BFF' }]}
+              onPress={startStripeOnboarding}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator size="small" color={themeHook.colors.white} />
+              ) : (
+                <>
+                  <Ionicons name="cash-outline" size={18} color={themeHook.colors.white} />
+                  <Text style={[styles.bankPrimaryButtonText, { color: themeHook.colors.white }]}>Set Up Payouts</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          <View style={[styles.bankCardFooter, { borderTopColor: themeHook.colors.border }]}>
+            <View style={styles.bankTrustRow}>
+              <Ionicons name="lock-closed" size={12} color={themeHook.colors.textTertiary} />
+              <Text style={[styles.bankTrustText, { color: themeHook.colors.textTertiary }]}>Secured by Stripe</Text>
+            </View>
+          </View>
+        </View>
       )}
 
       <TouchableOpacity
-        style={[styles.skipButton, { marginTop: 12 }]}
+        style={styles.bankRefreshLink}
         onPress={refreshStripeStatus}
         disabled={loading}
       >
-        <Text style={[styles.skipButtonText, { color: themeHook.colors.textSecondary }]}>Refresh Status</Text>
+        <Ionicons name="refresh-outline" size={14} color={themeHook.colors.textTertiary} />
+        <Text style={[styles.bankRefreshLinkText, { color: themeHook.colors.textTertiary }]}>Refresh status</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -1654,7 +1695,7 @@ export default function EditProviderProfileScreen() {
           <View style={styles.specialtyTags}>
             {specialties.map((specialty, index) => (
               <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight }]}>
-                <Text style={[styles.specialtyTagText, { color: themeHook.colors.primary }]}>{specialty}</Text>
+                <Text style={[styles.specialtyTagText, { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{specialty}</Text>
                 <TouchableOpacity onPress={() => removeSpecialty(index)}>
                   <Ionicons name="close-circle" size={18} color={themeHook.colors.textTertiary} />
                 </TouchableOpacity>
@@ -2618,73 +2659,133 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: '600',
   },
-  bankCardConnected: {
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 24,
-    borderWidth: 2,
+  bankCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  bankCardStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  bankCardLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  bankStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  bankStatusBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  bankCardDivider: {
+    height: 1,
   },
   bankCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    padding: 16,
     gap: 12,
+  },
+  bankIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   bankInfo: {
     flex: 1,
   },
   bankAccountName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   bankAccountMask: {
-    fontSize: 16,
+    fontSize: 14,
   },
-  bankCardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 16,
-    borderTopWidth: 1,
-    gap: 6,
-  },
-  bankCardFooterText: {
-    fontSize: 13,
-  },
-  bankCardEmpty: {
-    borderRadius: 16,
-    padding: 32,
-    marginBottom: 24,
-    borderWidth: 2,
-    borderStyle: 'dashed',
+  bankCardEmptyContent: {
+    padding: 20,
     alignItems: 'center',
   },
   bankCardEmptyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
+    marginTop: 12,
+    marginBottom: 6,
+    textAlign: 'center',
   },
   bankCardEmptyText: {
     fontSize: 14,
     textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 16,
   },
-  payoutButton: {
+  bankPrimaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-    gap: 10,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignSelf: 'stretch',
   },
-  payoutButtonText: {
+  bankPrimaryButtonText: {
+    fontSize: 15,
     fontWeight: '600',
-    fontSize: 16,
+  },
+  bankCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  bankTrustRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  bankTrustText: {
+    fontSize: 12,
+  },
+  bankCardActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+  },
+  bankCardActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  bankRefreshLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  bankRefreshLinkText: {
+    fontSize: 13,
   },
   skipButton: {
     alignItems: 'center',

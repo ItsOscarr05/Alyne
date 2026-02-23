@@ -52,8 +52,18 @@ export const getUserFriendlyError = (error: any): string => {
     return 'Unable to connect to the server. Please check your internet connection and try again.';
   }
 
-  // Authentication errors
+  // Try to extract API message first - e.g. "Invalid email or password" from login
+  const apiMessage =
+    error?.response?.data?.error?.message ||
+    error?.response?.data?.message ||
+    error?.response?.data?.error;
+
+  // 401: use API message if it indicates invalid credentials; otherwise session expired
   if (error?.response?.status === 401) {
+    const msg = typeof apiMessage === 'string' ? apiMessage.toLowerCase() : '';
+    if (msg.includes('invalid') && (msg.includes('email') || msg.includes('password') || msg.includes('credential'))) {
+      return 'Incorrect email or password. Please try again.';
+    }
     return 'Your session has expired. Please log in again.';
   }
 
@@ -76,14 +86,8 @@ export const getUserFriendlyError = (error: any): string => {
     return 'Too many requests. Please wait a moment and try again.';
   }
 
-  // Try to extract user-friendly message from API response
-  const apiMessage = 
-    error?.response?.data?.error?.message ||
-    error?.response?.data?.message ||
-    error?.response?.data?.error;
-
-  if (apiMessage) {
-    // Clean up technical error messages
+  // Use API message if available (and not already handled above)
+  if (apiMessage && typeof apiMessage === 'string') {
     return cleanErrorMessage(apiMessage);
   }
 
@@ -141,6 +145,14 @@ export const getErrorTitle = (error: any): string => {
     return 'No Connection';
   }
   if (error?.response?.status === 401) {
+    const apiMessage =
+      error?.response?.data?.error?.message ||
+      error?.response?.data?.message ||
+      error?.response?.data?.error;
+    const msg = typeof apiMessage === 'string' ? apiMessage.toLowerCase() : '';
+    if (msg.includes('invalid') && (msg.includes('email') || msg.includes('password') || msg.includes('credential'))) {
+      return 'Invalid Credentials';
+    }
     return 'Session Expired';
   }
   if (error?.response?.status === 403) {

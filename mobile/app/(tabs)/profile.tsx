@@ -641,11 +641,20 @@ export default function ProfileScreen() {
                       size={20}
                       color={providerProfile.bankAccountVerified ? "#16a34a" : "#ef4444"}
                     />
-                    <Text style={[styles.bankAccountStatusText, { color: themeHook.colors.text }]}>
-                      Bank Account: {providerProfile.bankAccountVerified 
+                    <Text style={[styles.bankAccountStatusText, { color: themeHook.colors.text, flex: 1 }]}>
+                      Bank Account: {providerProfile.bankAccountVerified
                         ? (providerProfile.bankAccountMask ? `Connected (****${providerProfile.bankAccountMask})` : "Connected")
                         : "Not Connected"}
                     </Text>
+                    {!providerProfile.bankAccountVerified && (
+                      <TouchableOpacity
+                        style={[styles.bankAccountConnectButton, { backgroundColor: themeHook.colors.primary }]}
+                        onPress={() => router.push('/provider/edit-profile?section=bank')}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={[styles.bankAccountConnectButtonText, { color: themeHook.colors.white }]}>Connect</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </View>
@@ -817,7 +826,7 @@ export default function ProfileScreen() {
                     <View style={styles.specialtiesContainer}>
                       {providerProfile.specialties.map((specialty, index) => (
                         <View key={index} style={[styles.specialtyTag, { backgroundColor: themeHook.colors.primaryLight, borderColor: themeHook.colors.primary }]}>
-                          <Text style={[styles.specialtyText, { color: themeHook.colors.primary }]}>{specialty}</Text>
+                          <Text style={[styles.specialtyText, { color: isDark ? themeHook.colors.white : themeHook.colors.primary }]}>{specialty}</Text>
                         </View>
                       ))}
                     </View>
@@ -1172,6 +1181,15 @@ const styles = StyleSheet.create({
   },
   bankAccountStatusText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  bankAccountConnectButton: {
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.radii.sm,
+  },
+  bankAccountConnectButtonText: {
+    fontSize: 12,
     fontWeight: '600',
   },
   quickStatNumber: {

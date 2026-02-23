@@ -1,8 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useColorScheme, Appearance } from 'react-native';
-import { storage } from '../utils/storage';
+import { useColorScheme, Appearance, Platform } from 'react-native';
+import { persistentStorage } from '../utils/storage';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+const THEME_STORAGE_KEY = 'theme_mode';
+
+/** Sync read for web to avoid theme flash on load; native uses 'system' until async load */
+function getInitialThemeMode(): ThemeMode {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.localStorage) {
+    const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (saved === 'light' || saved === 'dark' || saved === 'system') return saved;
+  }
+  return 'system';
+}
 
 interface ThemeColors {
   // Background colors
@@ -178,8 +189,6 @@ const createTheme = (colors: ThemeColors): Theme => ({
   },
 });
 
-const THEME_STORAGE_KEY = 'theme_mode';
-
 interface ThemeContextType {
   theme: Theme;
   colors: ThemeColors;
@@ -193,14 +202,14 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>(getInitialThemeMode);
   const [isDark, setIsDark] = useState(systemColorScheme === 'dark');
 
   // Load saved theme preference
   useEffect(() => {
     const loadTheme = async () => {
       try {
-        const saved = await storage.getItem(THEME_STORAGE_KEY);
+        const saved = await persistentStorage.getItem(THEME_STORAGE_KEY);
         if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
           setThemeModeState(saved as ThemeMode);
         }
@@ -234,7 +243,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const setThemeMode = async (mode: ThemeMode) => {
     setThemeModeState(mode);
     try {
-      await storage.setItem(THEME_STORAGE_KEY, mode);
+      await persistentStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch (error) {
       console.error('Error saving theme preference', error);
     }

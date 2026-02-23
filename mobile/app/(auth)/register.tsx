@@ -120,14 +120,14 @@ export default function RegisterScreen() {
                   name="business-outline"
                   size={20}
                   color={
-                    userType === 'provider' ? themeHook.colors.primary : themeHook.colors.textSecondary
+                    userType === 'provider' ? (themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.textSecondary
                   }
                 />
                 <Text
                   style={[
                     styles.userTypeButtonText,
                     { color: themeHook.colors.textSecondary },
-                    userType === 'provider' && { color: themeHook.colors.primary },
+                    userType === 'provider' && { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary },
                   ]}
                 >
                   Provider
@@ -146,14 +146,14 @@ export default function RegisterScreen() {
                   name="person-outline"
                   size={20}
                   color={
-                    userType === 'client' ? themeHook.colors.primary : themeHook.colors.textSecondary
+                    userType === 'client' ? (themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.textSecondary
                   }
                 />
                 <Text
                   style={[
                     styles.userTypeButtonText,
                     { color: themeHook.colors.textSecondary },
-                    userType === 'client' && { color: themeHook.colors.primary },
+                    userType === 'client' && { color: themeHook.isDark ? themeHook.colors.white : themeHook.colors.primary },
                   ]}
                 >
                   Client

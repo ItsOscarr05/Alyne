@@ -36,7 +36,7 @@ import { AnimatedEmptyState } from '../../components/AnimatedEmptyState';
 export default function DiscoverScreen() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const themeHook = useTheme();
+  const { theme: themeHook, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { onProviderRatingUpdate } = useSocket();
   const [searchQuery, setSearchQuery] = useState('');
@@ -619,14 +619,14 @@ export default function DiscoverScreen() {
                       <Text
                         style={[
                           styles.dropdownOptionText,
-                          { color: ratingOption === stars ? themeHook.colors.primary : themeHook.colors.text },
+                          { color: ratingOption === stars ? (isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.text },
                           ratingOption === stars && { fontWeight: '600' },
                         ]}
                       >
                         {stars} star{stars > 1 ? 's' : ''} & above
                       </Text>
                       {ratingOption === stars && (
-                        <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                        <Ionicons name="checkmark" size={20} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -645,14 +645,14 @@ export default function DiscoverScreen() {
                     <Text
                       style={[
                         styles.dropdownOptionText,
-                        { color: priceOption === 'asc' ? themeHook.colors.primary : themeHook.colors.text },
+                        { color: priceOption === 'asc' ? (isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.text },
                         priceOption === 'asc' && { fontWeight: '600' },
                       ]}
                     >
                       Ascending
                     </Text>
                     {priceOption === 'asc' && (
-                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                      <Ionicons name="checkmark" size={20} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -665,14 +665,14 @@ export default function DiscoverScreen() {
                     <Text
                       style={[
                         styles.dropdownOptionText,
-                        { color: priceOption === 'desc' ? themeHook.colors.primary : themeHook.colors.text },
+                        { color: priceOption === 'desc' ? (isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.text },
                         priceOption === 'desc' && { fontWeight: '600' },
                       ]}
                     >
                       Descending
                     </Text>
                     {priceOption === 'desc' && (
-                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                      <Ionicons name="checkmark" size={20} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                     )}
                   </TouchableOpacity>
                 </>
@@ -692,7 +692,7 @@ export default function DiscoverScreen() {
                       <Text
                         style={[
                           styles.dropdownOptionText,
-                          { color: distanceOption === miles ? themeHook.colors.primary : themeHook.colors.text },
+                          { color: distanceOption === miles ? (isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.text },
                           distanceOption === miles && { fontWeight: '600' },
                         ]}
                       >
@@ -718,14 +718,14 @@ export default function DiscoverScreen() {
                     <Text
                       style={[
                         styles.dropdownOptionText,
-                        { color: reviewsOption === 'highest' ? themeHook.colors.primary : themeHook.colors.text },
+                        { color: reviewsOption === 'highest' ? (isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.text },
                         reviewsOption === 'highest' && { fontWeight: '600' },
                       ]}
                     >
                       Highest
                     </Text>
                     {reviewsOption === 'highest' && (
-                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                      <Ionicons name="checkmark" size={20} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                     )}
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -738,14 +738,14 @@ export default function DiscoverScreen() {
                     <Text
                       style={[
                         styles.dropdownOptionText,
-                        { color: reviewsOption === 'lowest' ? themeHook.colors.primary : themeHook.colors.text },
+                        { color: reviewsOption === 'lowest' ? (isDark ? themeHook.colors.white : themeHook.colors.primary) : themeHook.colors.text },
                         reviewsOption === 'lowest' && { fontWeight: '600' },
                       ]}
                     >
                       Lowest
                     </Text>
                     {reviewsOption === 'lowest' && (
-                      <Ionicons name="checkmark" size={20} color={themeHook.colors.primary} />
+                      <Ionicons name="checkmark" size={20} color={isDark ? themeHook.colors.white : themeHook.colors.primary} />
                     )}
                   </TouchableOpacity>
                 </>
