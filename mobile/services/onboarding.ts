@@ -92,5 +92,12 @@ export const onboardingService = {
     const response = await apiClient.put('/auth/profile', data);
     return response.data;
   },
+
+  async completeOnboarding(): Promise<{ user: import('../types').User }> {
+    const response = await apiClient.post<{ success: boolean; data: { user: import('../types').User } }>(
+      '/providers/onboarding-complete'
+    );
+    return response.data.data;
+  },
 };
 

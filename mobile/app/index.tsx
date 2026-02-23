@@ -6,18 +6,25 @@ import { useTheme } from '../contexts/ThemeContext';
 
 export default function Index() {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const themeHook = useTheme();
 
   useEffect(() => {
     if (!isLoading) {
       if (isAuthenticated) {
-        router.replace('/(tabs)');
+        // Providers must complete onboarding before accessing the app
+        const isProviderNeedingOnboarding =
+          user?.userType === 'PROVIDER' && user?.providerOnboardingComplete !== true;
+        if (isProviderNeedingOnboarding) {
+          router.replace('/provider/onboarding');
+        } else {
+          router.replace('/(tabs)');
+        }
       } else {
         router.replace('/(auth)/welcome');
       }
     }
-  }, [isAuthenticated, isLoading]);
+  }, [isAuthenticated, isLoading, user]);
 
   if (isLoading) {
     return (

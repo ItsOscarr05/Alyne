@@ -63,13 +63,14 @@ model User {
 }
 
 model ProviderProfile {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  bio             String?
-  specialties     String[] // Array of specialty tags
-  serviceArea     Json // Service area radius and center coordinates
-  isActive        Boolean  @default(true)
-  stripeAccountId String? // Stripe Connect Express account ID
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  bio                 String?
+  specialties         String[] // Array of specialty tags
+  serviceArea         Json // Service area radius and center coordinates
+  isActive            Boolean  @default(true)
+  onboardingComplete  Boolean  @default(false) // Provider setup flow finished; account fully activated
+  stripeAccountId     String? // Stripe Connect Express account ID
   stripeOnboardingComplete Boolean @default(false) // Whether Stripe onboarding is complete
   stripeChargesEnabled Boolean @default(false) // Whether charges are enabled on Stripe account
   stripePayoutsEnabled Boolean @default(false) // Whether payouts are enabled on Stripe account

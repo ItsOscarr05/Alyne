@@ -14,6 +14,7 @@
     "generate": "prisma generate",
     "studio": "prisma studio",
     "seed": "tsx prisma/seed.ts",
+    "backfill:onboarding-complete": "tsx scripts/backfill-onboarding-complete.ts",
     "kill-port": "powershell -ExecutionPolicy Bypass -File ./kill-port.ps1",
     "security:audit": "powershell -ExecutionPolicy Bypass -File ./scripts/security-audit.ps1",
     "security:check": "pnpm audit --audit-level=moderate"

@@ -146,6 +146,15 @@ export const useAuth = () => {
     }
   };
 
+  /** Update stored user (e.g. after completing provider onboarding). */
+  const setUserFromResponse = async (user: User) => {
+    await storage.setItem(USER_KEY, JSON.stringify(user));
+    setAuthState((prev) => ({
+      ...prev,
+      user,
+    }));
+  };
+
   const deleteAccount = async () => {
     try {
       await authService.deleteAccount();
@@ -173,6 +182,7 @@ export const useAuth = () => {
     register,
     logout,
     refreshUser,
+    setUserFromResponse,
     deleteAccount,
   };
 };

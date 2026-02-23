@@ -25,8 +25,24 @@ interface LoginResult {
     userType: UserType;
     profilePhoto?: string;
     isVerified: boolean;
+    providerOnboardingComplete?: boolean;
   };
   token: string;
+}
+
+function formatUserForResponse(user: { id: string; email: string; firstName: string; lastName: string; userType: UserType; profilePhoto?: string | null; isVerified: boolean; providerProfile?: { onboardingComplete: boolean } | null }) {
+  return {
+    id: user.id,
+    email: user.email,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    userType: user.userType,
+    profilePhoto: user.profilePhoto || undefined,
+    isVerified: user.isVerified,
+    ...(user.userType === 'PROVIDER' && {
+      providerOnboardingComplete: user.providerProfile?.onboardingComplete ?? false,
+    }),
+  };
 }
 
 export const authService = {
@@ -61,8 +77,9 @@ export const authService = {
     });
 
     // Create profile based on user type
+    let providerProfile: { onboardingComplete: boolean } | null = null;
     if (userType === 'PROVIDER') {
-      await prisma.providerProfile.create({
+      const pp = await prisma.providerProfile.create({
         data: {
           userId: user.id,
           specialties: [],
@@ -72,6 +89,7 @@ export const authService = {
           },
         },
       });
+      providerProfile = pp;
     } else {
       await prisma.clientProfile.create({
         data: {
@@ -84,15 +102,10 @@ export const authService = {
     const token = this.generateToken(user.id);
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        userType: user.userType,
-        profilePhoto: user.profilePhoto || undefined,
-        isVerified: user.isVerified,
-      },
+      user: formatUserForResponse({
+        ...user,
+        providerProfile,
+      }),
       token,
     };
   },
@@ -148,9 +161,10 @@ export const authService = {
     }
 
     // Normal authentication flow
-    // Find user
+    // Find user with provider profile for onboarding status
     const user = await prisma.user.findUnique({
       where: { email },
+      include: { providerProfile: true },
     });
 
     if (!user) {
@@ -168,15 +182,7 @@ export const authService = {
     const token = this.generateToken(user.id);
 
     return {
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        userType: user.userType,
-        profilePhoto: user.profilePhoto || undefined,
-        isVerified: user.isVerified,
-      },
+      user: formatUserForResponse(user),
       token,
     };
   },

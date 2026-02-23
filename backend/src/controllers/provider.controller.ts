@@ -115,6 +115,24 @@ export const providerController = {
     }
   },
 
+  async completeOnboarding(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return next(createError('Authentication required', 401));
+      }
+
+      const user = await providerService.completeOnboarding(userId);
+
+      res.json({
+        success: true,
+        data: { user },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
   async getMyProfile(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user?.id;

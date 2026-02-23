@@ -80,10 +80,13 @@ export default function LoginScreen() {
         ]);
       }
       
-      // Route based on user type - navigate immediately
+      // Route based on user type - providers must complete onboarding first
       if (response.user.userType === 'PROVIDER') {
-        // Navigate immediately to dashboard
-        router.replace('/(tabs)/dashboard');
+        if (response.user.providerOnboardingComplete !== true) {
+          router.replace('/provider/onboarding');
+        } else {
+          router.replace('/(tabs)/dashboard');
+        }
       } else {
         router.replace('/(tabs)'); // Defaults to discover/index for clients
       }

@@ -55,6 +55,7 @@ export const providerService = {
         userType: 'PROVIDER',
         providerProfile: {
           isActive: true,
+          onboardingComplete: true, // Only show providers who finished setup
         },
       },
       include: {
@@ -449,6 +450,44 @@ export const providerService = {
     await deleteCache(cacheKey);
 
     return profile;
+  },
+
+  async completeOnboarding(userId: string) {
+    const profile = await prisma.providerProfile.findUnique({
+      where: { userId },
+    });
+
+    if (!profile) {
+      throw createError('Provider profile not found', 404);
+    }
+
+    await prisma.providerProfile.update({
+      where: { userId },
+      data: { onboardingComplete: true },
+    });
+
+    // Invalidate provider cache
+    await deleteCache(cacheKeys.provider(userId));
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { providerProfile: true },
+    });
+
+    if (!user) {
+      throw createError('User not found', 404);
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      userType: user.userType,
+      profilePhoto: user.profilePhoto || undefined,
+      isVerified: user.isVerified,
+      providerOnboardingComplete: user.providerProfile?.onboardingComplete ?? true,
+    };
   },
 
   async createService(userId: string, serviceData: {

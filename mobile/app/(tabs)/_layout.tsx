@@ -1,4 +1,5 @@
-import { Tabs } from 'expo-router';
+import { useEffect } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
@@ -6,7 +7,15 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { theme } from '../../theme';
 
 export default function TabsLayout() {
+  const router = useRouter();
   const { user, isLoading } = useAuth();
+
+  // Redirect providers with incomplete onboarding (defense in depth)
+  useEffect(() => {
+    if (!isLoading && user?.userType === 'PROVIDER' && user?.providerOnboardingComplete !== true) {
+      router.replace('/provider/onboarding');
+    }
+  }, [user, isLoading, router]);
   const { theme: themeHook } = useTheme();
   const insets = useSafeAreaInsets();
   const isProvider = user?.userType === 'PROVIDER';

@@ -170,4 +170,21 @@ export const persistentStorage = {
       }
     }
   },
+
+  async removeItem(key: string): Promise<void> {
+    if (isWeb) {
+      const webStorage = getPersistentWebStorage();
+      if (webStorage) {
+        webStorage.removeItem(key);
+        return;
+      }
+      await AsyncStorage.removeItem(key);
+    } else {
+      try {
+        await SecureStore.deleteItemAsync(key);
+      } catch (error) {
+        logger.error('Error removing item from persistent storage', error);
+      }
+    }
+  },
 };

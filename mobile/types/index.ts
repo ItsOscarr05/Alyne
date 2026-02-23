@@ -10,6 +10,8 @@ export interface User {
   lastName: string;
   profilePhoto?: string;
   isVerified: boolean;
+  /** For providers: true when setup flow is finished; false until then. */
+  providerOnboardingComplete?: boolean;
 }
 
 // Provider Types

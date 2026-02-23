@@ -132,6 +132,11 @@ router.post(
   providerController.createOrUpdateProfile
 );
 
+router.post(
+  '/onboarding-complete',
+  providerController.completeOnboarding
+);
+
 router.get(
   '/profile/me',
   providerController.getMyProfile

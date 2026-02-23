@@ -349,6 +349,13 @@ export default function ProviderDashboardScreen() {
     }
   }, [user, authLoading, router]);
 
+  // Redirect providers with incomplete onboarding
+  useEffect(() => {
+    if (!authLoading && user?.userType === 'PROVIDER' && user?.providerOnboardingComplete !== true) {
+      router.replace('/provider/onboarding');
+    }
+  }, [user, authLoading, router]);
+
   useEffect(() => {
     if (user && user.userType === 'PROVIDER') {
       loadDashboardData();
@@ -383,10 +390,12 @@ export default function ProviderDashboardScreen() {
     }
   };
 
-  // Don't render dashboard for clients (but all hooks must still be called)
-  // Wait for auth to load before making this decision
+  // Don't render dashboard for clients or providers with incomplete onboarding
   if (!authLoading && user?.userType !== 'PROVIDER') {
     return null;
+  }
+  if (!authLoading && user?.userType === 'PROVIDER' && user?.providerOnboardingComplete !== true) {
+    return null; // Will redirect to onboarding
   }
 
   // Show loading state while auth is loading or data is loading
