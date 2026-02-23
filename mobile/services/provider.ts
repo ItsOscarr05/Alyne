@@ -102,6 +102,14 @@ export const providerService = {
     return response.data.data;
   },
 
+  /** Get current user's own provider profile (bypasses cache for fresh counts) */
+  async getMyProfile() {
+    const response = await apiClient.get<{ success: boolean; data: ProviderDetail }>(
+      '/providers/profile/me'
+    );
+    return response.data.data;
+  },
+
   async getServices(providerId: string) {
     const response = await apiClient.get<{ success: boolean; data: Service[] }>(
       `/providers/${providerId}/services`

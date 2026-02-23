@@ -25,6 +25,8 @@ import { stripeConnectService } from '../../services/stripeConnect';
 import { logger } from '../../utils/logger';
 import { formatTime12Hour, formatTime24Hour } from '../../utils/timeUtils';
 import * as ImagePicker from 'expo-image-picker';
+import { LocationAutocomplete } from '../../components/ui/LocationAutocomplete';
+import { filterSpecialties, type SpecialtyOption } from '../../data/wellnessSpecialties';
 import { useAuth } from '../../hooks/useAuth';
 import { storage } from '../../utils/storage';
 import { AlertModal } from '../../components/ui/AlertModal';
@@ -84,7 +86,6 @@ export default function EditProviderProfileScreen() {
     profilePhoto: string | null;
     city: string;
     state: string;
-    serviceRadius: string;
     coordinates: { lat: number; lng: number } | null;
     services: Array<{
       id?: string;
@@ -119,6 +120,7 @@ export default function EditProviderProfileScreen() {
   const [specialties, setSpecialties] = useState<string[]>([]);
   const [specialtyInput, setSpecialtyInput] = useState('');
   const [specialtyInputFocused, setSpecialtyInputFocused] = useState(false);
+  const [showSpecialtyDropdown, setShowSpecialtyDropdown] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Service state
@@ -129,8 +131,17 @@ export default function EditProviderProfileScreen() {
       description: string;
       price: string;
       duration: string;
+      durationUnit: 'min' | 'hr';
     }>
-  >([{ name: '', description: '', price: '0.00', duration: '' }]);
+  >([{ name: '', description: '', price: '', duration: '', durationUnit: 'min' }]);
+
+  const [durationUnitDropdownOpen, setDurationUnitDropdownOpen] = useState<number | null>(null);
+  const [focusedInputId, setFocusedInputId] = useState<string | null>(null);
+
+  const durationUnitOptions: { value: 'min' | 'hr'; label: string }[] = [
+    { value: 'min', label: 'min' },
+    { value: 'hr', label: 'hr' },
+  ];
 
   // Credential state
   const [credentials, setCredentials] = useState<
@@ -157,8 +168,6 @@ export default function EditProviderProfileScreen() {
   // Location state
   const [city, setCity] = useState<string>('');
   const [state, setState] = useState<string>('');
-  const [serviceRadius, setServiceRadius] = useState<string>('15');
-  const [serviceRadiusFocused, setServiceRadiusFocused] = useState(false);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
 
   // Bank account state (Stripe Connect)
@@ -270,7 +279,6 @@ export default function EditProviderProfileScreen() {
           profilePhoto,
           city,
           state,
-          serviceRadius,
           coordinates: coordinates ? { ...coordinates } : null,
           services: JSON.parse(JSON.stringify(services)),
           credentials: JSON.parse(JSON.stringify(credentials)),
@@ -288,7 +296,6 @@ export default function EditProviderProfileScreen() {
     profilePhoto,
     city,
     state,
-    serviceRadius,
     coordinates,
     services,
     credentials,
@@ -319,11 +326,6 @@ export default function EditProviderProfileScreen() {
             center?: { lat?: number; lng?: number };
             radius?: number;
           };
-
-          if (serviceArea.radius) {
-            const radiusInMiles = (serviceArea.radius / 1.60934).toFixed(0);
-            setServiceRadius(radiusInMiles);
-          }
 
           if (serviceArea.center && serviceArea.center.lat && serviceArea.center.lng) {
             setCoordinates({
@@ -358,11 +360,12 @@ export default function EditProviderProfileScreen() {
             description: service.description || '',
             price: parseFloat(service.price.toString()).toFixed(2),
             duration: service.duration.toString(),
+            durationUnit: 'min' as const,
           }));
           setServices(formattedServices);
         } else {
           // If no services, ensure at least one empty service for adding
-          setServices([{ name: '', description: '', price: '0.00', duration: '' }]);
+          setServices([{ name: '', description: '', price: '', duration: '', durationUnit: 'min' }]);
         }
 
         // Load credentials
@@ -415,9 +418,12 @@ export default function EditProviderProfileScreen() {
         // Load Stripe Connect payout status
         try {
           const stripeStatus = await stripeConnectService.getStatus();
-          if (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) {
+          const isConnected =
+            (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) ||
+            stripeStatus?.detailsSubmitted === true;
+          if (isConnected) {
             setBankAccountConnected(true);
-            if (stripeStatus.bankAccount?.bankName && stripeStatus.bankAccount?.last4) {
+            if (stripeStatus?.bankAccount?.bankName && stripeStatus?.bankAccount?.last4) {
               setBankAccountInfo({
                 accountName: stripeStatus.bankAccount.bankName,
                 accountMask: stripeStatus.bankAccount.last4,
@@ -504,9 +510,11 @@ export default function EditProviderProfileScreen() {
     try {
       setLoading(true);
       const status = await stripeConnectService.getStatus();
-      if (status?.chargesEnabled && status?.payoutsEnabled) {
+      const isConnected =
+        (status?.chargesEnabled && status?.payoutsEnabled) || status?.detailsSubmitted === true;
+      if (isConnected) {
         setBankAccountConnected(true);
-        if (status.bankAccount?.bankName && status.bankAccount?.last4) {
+        if (status?.bankAccount?.bankName && status?.bankAccount?.last4) {
           setBankAccountInfo({
             accountName: status.bankAccount.bankName,
             accountMask: status.bankAccount.last4,
@@ -553,7 +561,7 @@ export default function EditProviderProfileScreen() {
   const handleSaveLocation = async () => {
     setLoading(true);
     try {
-      const radiusInMiles = parseFloat(serviceRadius) || 15;
+      const radiusInMiles = 15;
       const radius = radiusInMiles * 1.60934;
 
       let coords = coordinates;
@@ -614,7 +622,7 @@ export default function EditProviderProfileScreen() {
         }
       }
 
-      const radiusInMiles = parseFloat(serviceRadius) || 15;
+      const radiusInMiles = 15;
       const radius = radiusInMiles * 1.60934;
       const serviceArea = {
         center: coordinates || { lat: 0, lng: 0 },
@@ -665,14 +673,14 @@ export default function EditProviderProfileScreen() {
             name: service.name,
             description: service.description,
             price: parseFloat(service.price),
-            duration: parseInt(service.duration, 10),
+            duration: durationToMinutes(service.duration, service.durationUnit),
           });
         } else {
           await onboardingService.createService({
             name: service.name,
             description: service.description,
             price: parseFloat(service.price),
-            duration: parseInt(service.duration, 10),
+            duration: durationToMinutes(service.duration, service.durationUnit),
           });
         }
       }
@@ -797,8 +805,7 @@ export default function EditProviderProfileScreen() {
     // Compare location
     if (
       city !== originalState.city ||
-      state !== originalState.state ||
-      serviceRadius !== originalState.serviceRadius
+      state !== originalState.state
     )
       return true;
     if (
@@ -861,7 +868,7 @@ export default function EditProviderProfileScreen() {
       }
 
       // Save profile (bio, specialties, service area)
-      const radiusInMiles = parseFloat(serviceRadius) || 15;
+      const radiusInMiles = 15;
       const radius = radiusInMiles * 1.60934;
 
       let coords = coordinates;
@@ -941,14 +948,14 @@ export default function EditProviderProfileScreen() {
             name: service.name,
             description: service.description,
             price: parseFloat(service.price),
-            duration: parseInt(service.duration, 10),
+            duration: durationToMinutes(service.duration, service.durationUnit),
           });
         } else {
           await onboardingService.createService({
             name: service.name,
             description: service.description,
             price: parseFloat(service.price),
-            duration: parseInt(service.duration, 10),
+            duration: durationToMinutes(service.duration, service.durationUnit),
           });
         }
       }
@@ -1127,7 +1134,6 @@ export default function EditProviderProfileScreen() {
         profilePhoto: profilePhoto || null,
         city,
         state,
-        serviceRadius,
         coordinates: coords ? { ...coords } : null,
         services: JSON.parse(JSON.stringify(services)),
         credentials: JSON.parse(JSON.stringify(updatedCredentials)),
@@ -1175,12 +1181,22 @@ export default function EditProviderProfileScreen() {
   };
 
   // Helper functions for managing arrays
-  const addSpecialty = () => {
-    if (specialtyInput.trim()) {
-      setSpecialties([...specialties, specialtyInput.trim()]);
+  const addSpecialty = (value?: string) => {
+    const toAdd = (value ?? specialtyInput.trim()).trim();
+    if (toAdd && !specialties.includes(toAdd)) {
+      setSpecialties([...specialties, toAdd]);
       setSpecialtyInput('');
+      setShowSpecialtyDropdown(false);
     }
   };
+
+  const selectSpecialty = (option: SpecialtyOption) => {
+    addSpecialty(option.value);
+  };
+
+  const specialtySuggestions = filterSpecialties(specialtyInput).filter(
+    (s) => !specialties.includes(s.value)
+  );
 
   const removeSpecialty = (index: number) => {
     setSpecialties(specialties.filter((_, i) => i !== index));
@@ -1211,17 +1227,31 @@ export default function EditProviderProfileScreen() {
   };
 
   const addService = () => {
-    setServices([...services, { name: '', description: '', price: '0.00', duration: '' }]);
+    setServices([
+      ...services,
+      { name: '', description: '', price: '', duration: '', durationUnit: 'min' as const },
+    ]);
+    setDurationUnitDropdownOpen(null);
   };
 
   const removeService = (index: number) => {
     setServices(services.filter((_, i) => i !== index));
+    setDurationUnitDropdownOpen(null);
   };
 
-  const updateService = (index: number, field: string, value: string) => {
+  const updateService = (index: number, field: string, value: string | 'min' | 'hr') => {
     const updated = [...services];
-    updated[index] = { ...updated[index], [field]: value };
+    if (field === 'durationUnit') {
+      updated[index] = { ...updated[index], durationUnit: value as 'min' | 'hr' };
+    } else {
+      updated[index] = { ...updated[index], [field]: value };
+    }
     setServices(updated);
+  };
+
+  const durationToMinutes = (value: string, unit: 'min' | 'hr'): number => {
+    const num = parseFloat(value) || 0;
+    return unit === 'hr' ? Math.round(num * 60) : Math.round(num);
   };
 
   const formatPrice = (value: string): string => {
@@ -1435,60 +1465,57 @@ export default function EditProviderProfileScreen() {
   };
 
   const renderLocationSection = () => (
-    <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Service Area</Text>
-      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Set your location and service radius to help clients find you.
-      </Text>
-
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: themeHook.colors.text }]}>City</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
-          placeholder="Enter your city"
-          placeholderTextColor={themeHook.colors.textTertiary}
-          value={city}
-          onChangeText={setCity}
-          autoCapitalize="words"
-        />
+    <ScrollView style={styles.sectionContent} contentContainerStyle={styles.stepContentContainer} showsVerticalScrollIndicator={false}>
+      <View style={[styles.stepHero, { backgroundColor: themeHook.colors.primaryLight + '40', borderColor: themeHook.colors.primary + '30' }]}>
+        <View style={styles.stepHeroRow}>
+          <View style={[styles.stepHeroIcon, { backgroundColor: themeHook.colors.primary }]}>
+            <Ionicons name="location" size={28} color={themeHook.colors.white} />
+          </View>
+          <Text style={[styles.stepTitle, { color: themeHook.colors.text }]}>Service Area</Text>
+        </View>
+        <Text style={[styles.stepDescription, { color: themeHook.colors.textSecondary }]}>
+          Set your location and service radius to help clients find you.
+        </Text>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: themeHook.colors.text }]}>State</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
-          placeholder="Enter your state"
-          placeholderTextColor={themeHook.colors.textTertiary}
-          value={state}
-          onChangeText={setState}
-          autoCapitalize="characters"
-        />
-      </View>
+      <View style={[styles.formCard, { backgroundColor: themeHook.colors.surface }]}>
+        <Text style={[styles.cardSectionTitle, { color: themeHook.colors.text }]}>Your base location</Text>
+        <Text style={[styles.cardSectionHint, { color: themeHook.colors.textSecondary }]}>
+          Enter the city and state where you typically provide services.
+        </Text>
+        <View style={styles.formCardSpacer} />
+        <View style={styles.locationInputWrapper}>
+          <LocationAutocomplete
+            city={city}
+            state={state}
+            onCityChange={setCity}
+            onStateChange={setState}
+            onCoordinatesSelect={(lat, lng) => setCoordinates({ lat, lng })}
+            cityPlaceholder="Tap to choose or type to search"
+            statePlaceholder="e.g. California"
+          />
+        </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: themeHook.colors.text }]}>Service Range (mi)</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, serviceRadiusFocused && styles.inputFocused, serviceRadiusFocused && { borderColor: themeHook.colors.primary }]}
-          placeholder="15"
-          placeholderTextColor={themeHook.colors.textTertiary}
-          value={serviceRadius}
-          onChangeText={setServiceRadius}
-          onFocus={() => setServiceRadiusFocused(true)}
-          onBlur={() => setServiceRadiusFocused(false)}
-          keyboardType="numeric"
-        />
-        <Text style={[styles.hint, { color: themeHook.colors.textSecondary }]}>The distance you're willing to travel to clients</Text>
       </View>
     </ScrollView>
   );
 
   const renderBankSection = () => (
-    <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Payout account</Text>
-      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Connect your bank account to receive payments from clients. Powered by Stripe.
-      </Text>
+    <ScrollView style={styles.sectionContent} contentContainerStyle={styles.stepContentContainer} showsVerticalScrollIndicator={false}>
+      <View style={[styles.stepHero, { backgroundColor: themeHook.colors.primaryLight + '40', borderColor: themeHook.colors.primary + '30' }]}>
+        <View style={styles.stepHeroRow}>
+          <View style={[styles.stepHeroIcon, { backgroundColor: themeHook.colors.primary }]}>
+            <Ionicons name="card" size={28} color={themeHook.colors.white} />
+          </View>
+          <Text style={[styles.stepTitle, { color: themeHook.colors.text }]}>Set up payouts</Text>
+        </View>
+        <Text style={[styles.stepDescription, { color: themeHook.colors.textSecondary }]}>
+          Connect your bank account with Stripe to receive payments from clients. You'll get paid
+          securely after each completed session—no upfront fees.
+        </Text>
+      </View>
 
+      <View style={[styles.formCard, { backgroundColor: themeHook.colors.surface }]}>
       {bankAccountConnected && bankAccountInfo ? (
         <View style={[styles.bankCard, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border }]}>
           <View style={styles.bankCardStatusRow}>
@@ -1581,18 +1608,27 @@ export default function EditProviderProfileScreen() {
         <Ionicons name="refresh-outline" size={14} color={themeHook.colors.textTertiary} />
         <Text style={[styles.bankRefreshLinkText, { color: themeHook.colors.textTertiary }]}>Refresh status</Text>
       </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 
   const renderProfileSection = () => (
-    <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Profile Information</Text>
-      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Update your name, bio, specialties, and profile photo.
-      </Text>
+    <ScrollView style={styles.sectionContent} contentContainerStyle={styles.stepContentContainer} showsVerticalScrollIndicator={false}>
+      <View style={[styles.stepHero, { backgroundColor: themeHook.colors.primaryLight + '40', borderColor: themeHook.colors.primary + '30' }]}>
+        <View style={styles.stepHeroRow}>
+          <View style={[styles.stepHeroIcon, { backgroundColor: themeHook.colors.primary }]}>
+            <Ionicons name="person" size={28} color={themeHook.colors.white} />
+          </View>
+          <Text style={[styles.stepTitle, { color: themeHook.colors.text }]}>Profile Information</Text>
+        </View>
+        <Text style={[styles.stepDescription, { color: themeHook.colors.textSecondary }]}>
+          Update your name, bio, specialties, and profile photo.
+        </Text>
+      </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: themeHook.colors.text }]}>Profile Photo</Text>
+      <View style={[styles.formCard, styles.section, { backgroundColor: themeHook.colors.surface }]}>
+        <Text style={[styles.cardSectionTitle, { color: themeHook.colors.text }]}>Profile Photo</Text>
+        <View style={styles.formCardSpacer} />
         <TouchableOpacity style={[styles.photoButton, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.primary }]} onPress={pickImage}>
           {profilePhoto ? (
             <View style={styles.photoPreview}>
@@ -1611,46 +1647,48 @@ export default function EditProviderProfileScreen() {
             </View>
           ) : (
             <View style={styles.photoPlaceholder}>
-              <Ionicons name="camera-outline" size={32} color="#2563eb" />
+              <Ionicons name="camera-outline" size={32} color={themeHook.colors.primary} />
               <Text style={styles.photoButtonText}>Add Photo</Text>
             </View>
           )}
         </TouchableOpacity>
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: themeHook.colors.text }]}>Name</Text>
-        <View style={styles.row}>
-          <View style={styles.halfInput}>
-            <TextInput
-              style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, firstNameFocused && styles.inputFocused, firstNameFocused && { borderColor: themeHook.colors.primary }]}
-              placeholder="First name"
-              placeholderTextColor={themeHook.colors.textTertiary}
-              value={firstName}
-              onChangeText={setFirstName}
-              onFocus={() => setFirstNameFocused(true)}
-              onBlur={() => setFirstNameFocused(false)}
-            />
-          </View>
-          <View style={styles.halfInput}>
-            <TextInput
-              style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, lastNameFocused && styles.inputFocused, lastNameFocused && { borderColor: themeHook.colors.primary }]}
-              placeholder="Last name"
-              placeholderTextColor={themeHook.colors.textTertiary}
-              value={lastName}
-              onChangeText={setLastName}
-              onFocus={() => setLastNameFocused(true)}
-              onBlur={() => setLastNameFocused(false)}
-            />
-          </View>
+      <View style={[styles.formCard, styles.section, { backgroundColor: themeHook.colors.surface }]}>
+        <Text style={[styles.cardSectionTitle, { color: themeHook.colors.text }]}>Name</Text>
+        <View style={styles.formCardSpacer} />
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: themeHook.colors.text }]}>First Name</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, firstNameFocused && styles.inputFocused, firstNameFocused && { borderColor: themeHook.colors.primary }]}
+            placeholder="Enter first name"
+            placeholderTextColor={themeHook.colors.textTertiary}
+            value={firstName}
+            onChangeText={setFirstName}
+            onFocus={() => setFirstNameFocused(true)}
+            onBlur={() => setFirstNameFocused(false)}
+          />
+        </View>
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: themeHook.colors.text }]}>Last Name</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, lastNameFocused && styles.inputFocused, lastNameFocused && { borderColor: themeHook.colors.primary }]}
+            placeholder="Enter last name"
+            placeholderTextColor={themeHook.colors.textTertiary}
+            value={lastName}
+            onChangeText={setLastName}
+            onFocus={() => setLastNameFocused(true)}
+            onBlur={() => setLastNameFocused(false)}
+          />
         </View>
       </View>
 
-      <View style={styles.section}>
+      <View style={[styles.formCard, styles.section, { backgroundColor: themeHook.colors.surface }]}>
         <View style={styles.labelRow}>
-          <Text style={[styles.label, { color: themeHook.colors.text }]}>Bio *</Text>
+          <Text style={[styles.cardSectionTitle, { color: themeHook.colors.text }]}>Bio *</Text>
           <Text style={[styles.charCount, { color: themeHook.colors.textTertiary }]}>{bio.length} / 500</Text>
         </View>
+        <View style={styles.formCardSpacer} />
         <TextInput
           style={[styles.textArea, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, bioFocused && styles.textAreaFocused, bioFocused && { borderColor: themeHook.colors.primary }]}
           placeholder="Tell clients about your experience and approach..."
@@ -1670,26 +1708,88 @@ export default function EditProviderProfileScreen() {
         />
       </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.label, { color: themeHook.colors.text }]}>Specialties</Text>
-        <View style={styles.specialtyInputContainer}>
-          <TextInput
-            style={[styles.specialtyInput, { backgroundColor: themeHook.colors.surface, borderColor: specialtyInputFocused ? themeHook.colors.primary : themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }, specialtyInputFocused && styles.inputFocused, specialtyInputFocused && { borderColor: themeHook.colors.primary }]}
-            placeholder="e.g., Personal Training, Yoga"
-            placeholderTextColor={themeHook.colors.textTertiary}
-            value={specialtyInput}
-            onChangeText={setSpecialtyInput}
-            onFocus={() => setSpecialtyInputFocused(true)}
-            onBlur={() => setSpecialtyInputFocused(false)}
-            onSubmitEditing={addSpecialty}
-          />
-          <TouchableOpacity
-            style={[styles.addButton, { backgroundColor: themeHook.colors.primary }, !specialtyInput.trim() && styles.addButtonDisabled, !specialtyInput.trim() && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
-            onPress={addSpecialty}
-            disabled={!specialtyInput.trim()}
+      <View style={[styles.formCard, styles.section, { backgroundColor: themeHook.colors.surface }]}>
+        <Text style={[styles.cardSectionTitle, { color: themeHook.colors.text }]}>Specialties</Text>
+        <Text style={[styles.cardSectionHint, { color: themeHook.colors.textSecondary }]}>
+          Select your areas of expertise from the list, or add your own
+        </Text>
+        <View style={styles.formCardSpacer} />
+        <View style={styles.specialtyInputWrapper}>
+          <View
+            style={[
+              styles.specialtyInputContainer,
+              { borderColor: specialtyInputFocused ? themeHook.colors.primary : themeHook.colors.border },
+              specialtyInputFocused && styles.inputFocused,
+            ]}
           >
-            <Ionicons name="add" size={20} color={themeHook.colors.white} />
-          </TouchableOpacity>
+            <TextInput
+              style={[styles.specialtyInput, { backgroundColor: themeHook.colors.surface, color: themeHook.colors.text }]}
+              placeholder="Tap to choose or type to search..."
+              placeholderTextColor={themeHook.colors.textTertiary}
+              value={specialtyInput}
+              onChangeText={setSpecialtyInput}
+              onFocus={() => {
+                setSpecialtyInputFocused(true);
+                setShowSpecialtyDropdown(true);
+              }}
+              onBlur={() => {
+                setSpecialtyInputFocused(false);
+                setTimeout(() => setShowSpecialtyDropdown(false), 200);
+              }}
+              onSubmitEditing={() => addSpecialty()}
+            />
+            <TouchableOpacity
+              style={[styles.addButton, { backgroundColor: themeHook.colors.primary }, !specialtyInput.trim() && styles.addButtonDisabled, !specialtyInput.trim() && { backgroundColor: themeHook.colors.buttonDisabledBackground }]}
+              onPress={() => addSpecialty()}
+              disabled={!specialtyInput.trim()}
+            >
+              <Ionicons name="add" size={20} color={themeHook.colors.white} />
+            </TouchableOpacity>
+          </View>
+          {showSpecialtyDropdown && (
+            <View
+              style={[
+                styles.specialtyDropdown,
+                { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border },
+              ]}
+            >
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled
+                style={styles.specialtyDropdownScroll}
+              >
+                {specialtySuggestions.length > 0 ? (
+                  specialtySuggestions.map((option, index) => (
+                    <TouchableOpacity
+                      key={option.value}
+                      style={[
+                        styles.specialtyDropdownItem,
+                        index < specialtySuggestions.length - 1 && {
+                          borderBottomWidth: 1,
+                          borderBottomColor: themeHook.colors.border,
+                        },
+                      ]}
+                      onPress={() => selectSpecialty(option)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.specialtyDropdownItemText, { color: themeHook.colors.text }]}>
+                        {option.value}
+                      </Text>
+                      <Text style={[styles.specialtyDropdownItemNiche, { color: themeHook.colors.textTertiary }]}>
+                        {option.niche}
+                      </Text>
+                    </TouchableOpacity>
+                  ))
+                ) : (
+                  <View style={[styles.specialtyDropdownEmpty, { padding: theme.spacing.lg }]}>
+                    <Text style={[styles.specialtyDropdownEmptyText, { color: themeHook.colors.textTertiary }]}>
+                      No matching specialties. Type and press + to add your own.
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          )}
         </View>
         {specialties.length > 0 && (
           <View style={styles.specialtyTags}>
@@ -1708,73 +1808,199 @@ export default function EditProviderProfileScreen() {
   );
 
   const renderServicesSection = () => (
-    <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Services</Text>
-      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Manage the services you offer and their pricing.
-      </Text>
+    <ScrollView style={styles.sectionContent} contentContainerStyle={styles.stepContentContainer} showsVerticalScrollIndicator={false}>
+      <View style={[styles.stepHero, { backgroundColor: themeHook.colors.primaryLight + '40', borderColor: themeHook.colors.primary + '30' }]}>
+        <View style={styles.stepHeroRow}>
+          <View style={[styles.stepHeroIcon, { backgroundColor: themeHook.colors.primary }]}>
+            <Ionicons name="briefcase" size={28} color={themeHook.colors.white} />
+          </View>
+          <Text style={[styles.stepTitle, { color: themeHook.colors.text }]}>Your Services</Text>
+        </View>
+        <Text style={[styles.stepDescription, { color: themeHook.colors.textSecondary }]}>
+          Manage the services you offer and their pricing.
+        </Text>
+      </View>
 
       {services.map((service, index) => (
-        <View key={index} style={[styles.serviceCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
-          <View style={styles.serviceHeader}>
-            <Text style={[styles.serviceNumber, { color: themeHook.colors.text }]}>Service {index + 1}</Text>
-            {services.length > 1 && (
-              <TouchableOpacity onPress={() => removeService(index)}>
-                <Ionicons name="trash-outline" size={20} color={themeHook.colors.error} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
-            placeholder="Service name *"
-            placeholderTextColor={themeHook.colors.textTertiary}
-            value={service.name}
-            onChangeText={(value) => updateService(index, 'name', value)}
-          />
-          <TextInput
-            style={[styles.input, styles.textArea, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
-            placeholder="Description"
-            placeholderTextColor={themeHook.colors.textTertiary}
-            value={service.description}
-            onChangeText={(value) => updateService(index, 'description', value)}
-            multiline
-            numberOfLines={3}
-            textAlignVertical="top"
-          />
-          <View style={styles.row}>
-            <View style={styles.halfInput}>
-              <View style={[styles.inputWithPrefix, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
-                <Text style={[styles.inputPrefix, { color: themeHook.colors.text }]}>$</Text>
-                <TextInput
-                  style={[styles.input, styles.inputWithSuffixInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
-                  placeholder="0.00"
-                  placeholderTextColor={themeHook.colors.textTertiary}
-                  value={service.price}
-                  onChangeText={(value) => updateService(index, 'price', value)}
-                  onBlur={() => handlePriceBlur(index, service.price)}
-                  keyboardType="numeric"
-                />
-              </View>
+        <View
+          key={index}
+          style={[
+            styles.serviceCardOnboarding,
+            { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary },
+          ]}
+        >
+          <View style={styles.serviceCardContent}>
+            <View style={[styles.serviceHeader, styles.serviceCardHeader]}>
+              <Text style={[styles.serviceNumber, { color: themeHook.colors.text }]}>Service {index + 1}</Text>
+              {services.length > 1 && (
+                <TouchableOpacity onPress={() => removeService(index)}>
+                  <Ionicons name="trash-outline" size={20} color={themeHook.colors.error} />
+                </TouchableOpacity>
+              )}
             </View>
-            <View style={styles.halfInput}>
-              <View style={[styles.inputWithSuffix, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
-                <TextInput
-                  style={[styles.input, styles.inputWithSuffixInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
-                  placeholder="0"
-                  placeholderTextColor={themeHook.colors.textTertiary}
-                  value={service.duration}
-                  onChangeText={(value) => updateService(index, 'duration', value)}
-                  keyboardType="numeric"
-                />
-                <Text style={[styles.inputSuffix, { color: themeHook.colors.textSecondary }]}>min</Text>
+
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.border,
+                  color: themeHook.colors.text,
+                },
+                focusedInputId === `svc-${index}-name` && styles.inputFocused,
+              ]}
+              placeholder="Service name *"
+              placeholderTextColor={themeHook.colors.textTertiary}
+              value={service.name}
+              onChangeText={(value) => updateService(index, 'name', value)}
+              onFocus={() => setFocusedInputId(`svc-${index}-name`)}
+              onBlur={() => setFocusedInputId(null)}
+            />
+            <TextInput
+              style={[
+                styles.input,
+                styles.textArea,
+                {
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.border,
+                  color: themeHook.colors.text,
+                },
+                focusedInputId === `svc-${index}-desc` && styles.inputFocused,
+              ]}
+              placeholder="Description"
+              placeholderTextColor={themeHook.colors.textTertiary}
+              value={service.description}
+              onChangeText={(value) => updateService(index, 'description', value)}
+              onFocus={() => setFocusedInputId(`svc-${index}-desc`)}
+              onBlur={() => setFocusedInputId(null)}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
+            <View style={styles.row}>
+              <View style={styles.halfInput}>
+                <View
+                  style={[
+                    styles.inputWithPrefix,
+                    {
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor:
+                        focusedInputId === `svc-${index}-price`
+                          ? themeHook.colors.primary
+                          : themeHook.colors.border,
+                      borderWidth: focusedInputId === `svc-${index}-price` ? 2 : 1,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.inputPrefix, { color: themeHook.colors.text }]}>$</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.inputWithSuffixInput,
+                      { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text },
+                    ]}
+                    placeholder="0.00"
+                    placeholderTextColor={themeHook.colors.textTertiary}
+                    value={service.price}
+                    onChangeText={(value) => updateService(index, 'price', value)}
+                    onFocus={() => setFocusedInputId(`svc-${index}-price`)}
+                    onBlur={() => {
+                      setFocusedInputId(null);
+                      handlePriceBlur(index, service.price);
+                    }}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+              <View style={styles.durationInputWrapper}>
+                <View style={styles.durationRow}>
+                  <View
+                    style={[
+                      styles.durationInputContainer,
+                      {
+                        backgroundColor: themeHook.colors.surface,
+                        borderColor:
+                          focusedInputId === `svc-${index}-duration`
+                            ? themeHook.colors.primary
+                            : themeHook.colors.border,
+                        borderWidth: focusedInputId === `svc-${index}-duration` ? 2 : 1,
+                      },
+                    ]}
+                  >
+                    <TextInput
+                      style={[styles.durationInput, { color: themeHook.colors.text }]}
+                      placeholder="0"
+                      placeholderTextColor={themeHook.colors.textTertiary}
+                      value={service.duration}
+                      onChangeText={(value) => updateService(index, 'duration', value)}
+                      onFocus={() => setFocusedInputId(`svc-${index}-duration`)}
+                      onBlur={() => setFocusedInputId(null)}
+                      keyboardType="numeric"
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.durationUnitButton,
+                      {
+                        backgroundColor: themeHook.colors.surface,
+                        borderColor:
+                          durationUnitDropdownOpen === index
+                            ? themeHook.colors.primary
+                            : themeHook.colors.border,
+                        borderWidth: durationUnitDropdownOpen === index ? 2 : 1,
+                      },
+                    ]}
+                    onPress={() =>
+                      setDurationUnitDropdownOpen(durationUnitDropdownOpen === index ? null : index)
+                    }
+                  >
+                    <Text style={[styles.durationUnitButtonText, { color: themeHook.colors.text }]}>
+                      {service.durationUnit}
+                    </Text>
+                    <Ionicons name="chevron-down" size={16} color={themeHook.colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+                {durationUnitDropdownOpen === index && (
+                  <View
+                    style={[
+                      styles.durationUnitDropdown,
+                      {
+                        backgroundColor: themeHook.colors.surface,
+                        borderColor: themeHook.colors.border,
+                      },
+                    ]}
+                  >
+                    {durationUnitOptions.map((opt) => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[
+                          styles.durationUnitOption,
+                          opt.value === service.durationUnit && {
+                            backgroundColor: themeHook.colors.primaryLight,
+                          },
+                        ]}
+                        onPress={() => {
+                          updateService(index, 'durationUnit', opt.value);
+                          setDurationUnitDropdownOpen(null);
+                        }}
+                      >
+                        <Text style={[styles.durationUnitOptionText, { color: themeHook.colors.text }]}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
               </View>
             </View>
           </View>
         </View>
       ))}
 
-      <TouchableOpacity style={styles.addServiceButton} onPress={addService}>
+      <TouchableOpacity
+        style={[styles.addServiceButton, { borderColor: themeHook.colors.primary, borderWidth: 2, borderRadius: 12 }]}
+        onPress={addService}
+      >
         <Ionicons name="add-circle-outline" size={20} color={themeHook.colors.primary} />
         <Text style={[styles.addServiceButtonText, { color: themeHook.colors.primary }]}>Add Another Service</Text>
       </TouchableOpacity>
@@ -1782,79 +2008,149 @@ export default function EditProviderProfileScreen() {
   );
 
   const renderCredentialsSection = () => (
-    <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Credentials</Text>
-      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>
-        Showcase your certifications and qualifications.
-      </Text>
+    <ScrollView style={styles.sectionContent} contentContainerStyle={styles.stepContentContainer} showsVerticalScrollIndicator={false}>
+      <View style={[styles.stepHero, { backgroundColor: themeHook.colors.primaryLight + '40', borderColor: themeHook.colors.primary + '30' }]}>
+        <View style={styles.stepHeroRow}>
+          <View style={[styles.stepHeroIcon, { backgroundColor: themeHook.colors.primary }]}>
+            <Ionicons name="school" size={28} color={themeHook.colors.white} />
+          </View>
+          <Text style={[styles.stepTitle, { color: themeHook.colors.text }]}>Credentials</Text>
+        </View>
+        <Text style={[styles.stepDescription, { color: themeHook.colors.textSecondary }]}>
+          Showcase your certifications and qualifications.
+        </Text>
+      </View>
 
       {credentials.map((credential, index) => (
-        <View key={index} style={[styles.serviceCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
-          <View style={styles.serviceHeader}>
-            <Text style={[styles.serviceNumber, { color: themeHook.colors.text }]}>Credential {index + 1}</Text>
-            {credentials.length > 1 && (
-              <TouchableOpacity onPress={() => removeCredential(index)}>
-                <Ionicons name="trash-outline" size={20} color={themeHook.colors.error} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
-            placeholder="Credential name *"
-            placeholderTextColor={themeHook.colors.textTertiary}
-            value={credential.name}
-            onChangeText={(value) => updateCredential(index, 'name', value)}
-          />
-          <TextInput
-            style={[styles.input, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1, color: themeHook.colors.text }]}
-            placeholder="Issuing organization"
-            placeholderTextColor={themeHook.colors.textTertiary}
-            value={credential.issuer}
-            onChangeText={(value) => updateCredential(index, 'issuer', value)}
-          />
-          <View style={[styles.row, styles.dateRow]}>
-            <View style={styles.halfInput}>
-              <Text style={[styles.label, { color: themeHook.colors.text }]}>Issue date</Text>
-              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
-                <TextInput
-                  style={[styles.input, styles.dateInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
-                  placeholder="MM-DD-YYYY"
-                  placeholderTextColor={themeHook.colors.textTertiary}
-                  value={credential.issueDate}
-                  onChangeText={(value) => updateCredential(index, 'issueDate', value)}
-                />
-                <TouchableOpacity
-                  style={styles.calendarButton}
-                  onPress={() => openDatePicker('issue', index)}
-                >
-                  <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
+        <View
+          key={index}
+          style={[
+            styles.serviceCardOnboarding,
+            { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary },
+          ]}
+        >
+          <View style={styles.credentialCardContent}>
+            <View style={[styles.serviceHeader, styles.serviceCardHeader]}>
+              <Text style={[styles.serviceNumber, { color: themeHook.colors.text }]}>Credential {index + 1}</Text>
+              {credentials.length > 1 && (
+                <TouchableOpacity onPress={() => removeCredential(index)}>
+                  <Ionicons name="trash-outline" size={20} color={themeHook.colors.error} />
                 </TouchableOpacity>
-              </View>
+              )}
             </View>
-            <View style={styles.halfInput}>
-              <Text style={[styles.label, { color: themeHook.colors.text }]}>Expiry date</Text>
-              <View style={[styles.dateInputContainer, { backgroundColor: themeHook.colors.surface, borderColor: themeHook.colors.border, borderWidth: 1 }]}>
-                <TextInput
-                  style={[styles.input, styles.dateInput, { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text }]}
-                  placeholder="MM-DD-YYYY"
-                  placeholderTextColor={themeHook.colors.textTertiary}
-                  value={credential.expiryDate}
-                  onChangeText={(value) => updateCredential(index, 'expiryDate', value)}
-                />
-                <TouchableOpacity
-                  style={styles.calendarButton}
-                  onPress={() => openDatePicker('expiry', index)}
+
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.border,
+                  color: themeHook.colors.text,
+                },
+                focusedInputId === `cred-${index}-name` && styles.inputFocused,
+              ]}
+              placeholder="Qualification Title"
+              placeholderTextColor={themeHook.colors.textTertiary}
+              value={credential.name}
+              onChangeText={(value) => updateCredential(index, 'name', value)}
+              onFocus={() => setFocusedInputId(`cred-${index}-name`)}
+              onBlur={() => setFocusedInputId(null)}
+            />
+            <TextInput
+              style={[
+                styles.input,
+                {
+                  backgroundColor: themeHook.colors.surface,
+                  borderColor: themeHook.colors.border,
+                  color: themeHook.colors.text,
+                },
+                focusedInputId === `cred-${index}-issuer` && styles.inputFocused,
+              ]}
+              placeholder="Issuing Organization"
+              placeholderTextColor={themeHook.colors.textTertiary}
+              value={credential.issuer}
+              onChangeText={(value) => updateCredential(index, 'issuer', value)}
+              onFocus={() => setFocusedInputId(`cred-${index}-issuer`)}
+              onBlur={() => setFocusedInputId(null)}
+            />
+            <View style={[styles.row, styles.dateRow]}>
+              <View style={styles.halfInput}>
+                <Text style={[styles.label, { color: themeHook.colors.text }]}>Issue date</Text>
+                <View
+                  style={[
+                    styles.dateInputContainer,
+                    {
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor:
+                        focusedInputId === `cred-${index}-issueDate`
+                          ? themeHook.colors.primary
+                          : themeHook.colors.border,
+                      borderWidth: focusedInputId === `cred-${index}-issueDate` ? 2 : 1,
+                    },
+                  ]}
                 >
-                  <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
-                </TouchableOpacity>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.credentialDateInput,
+                      styles.dateInput,
+                      { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text },
+                    ]}
+                    placeholder="MM-DD-YYYY"
+                    placeholderTextColor={themeHook.colors.textTertiary}
+                    value={credential.issueDate}
+                    onChangeText={(value) => updateCredential(index, 'issueDate', value)}
+                    onFocus={() => setFocusedInputId(`cred-${index}-issueDate`)}
+                    onBlur={() => setFocusedInputId(null)}
+                  />
+                  <TouchableOpacity style={styles.calendarButton} onPress={() => openDatePicker('issue', index)}>
+                    <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              <View style={styles.halfInput}>
+                <Text style={[styles.label, { color: themeHook.colors.text }]}>Expiry date</Text>
+                <View
+                  style={[
+                    styles.dateInputContainer,
+                    {
+                      backgroundColor: themeHook.colors.surface,
+                      borderColor:
+                        focusedInputId === `cred-${index}-expiryDate`
+                          ? themeHook.colors.primary
+                          : themeHook.colors.border,
+                      borderWidth: focusedInputId === `cred-${index}-expiryDate` ? 2 : 1,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    style={[
+                      styles.input,
+                      styles.credentialDateInput,
+                      styles.dateInput,
+                      { backgroundColor: 'transparent', borderWidth: 0, color: themeHook.colors.text },
+                    ]}
+                    placeholder="MM-DD-YYYY"
+                    placeholderTextColor={themeHook.colors.textTertiary}
+                    value={credential.expiryDate}
+                    onChangeText={(value) => updateCredential(index, 'expiryDate', value)}
+                    onFocus={() => setFocusedInputId(`cred-${index}-expiryDate`)}
+                    onBlur={() => setFocusedInputId(null)}
+                  />
+                  <TouchableOpacity style={styles.calendarButton} onPress={() => openDatePicker('expiry', index)}>
+                    <Ionicons name="calendar-outline" size={20} color={themeHook.colors.primary} />
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
         </View>
       ))}
 
-      <TouchableOpacity style={styles.addServiceButton} onPress={addCredential}>
+      <TouchableOpacity
+        style={[styles.addServiceButton, { borderColor: themeHook.colors.primary, borderWidth: 2, borderRadius: 12 }]}
+        onPress={addCredential}
+      >
         <Ionicons name="add-circle-outline" size={20} color={themeHook.colors.primary} />
         <Text style={[styles.addServiceButtonText, { color: themeHook.colors.primary }]}>Add Another Credential</Text>
       </TouchableOpacity>
@@ -1862,14 +2158,23 @@ export default function EditProviderProfileScreen() {
   );
 
   const renderAvailabilitySection = () => (
-    <ScrollView style={styles.sectionContent}>
-      <Text style={[styles.sectionTitle, { color: themeHook.colors.text }]}>Availability</Text>
-      <Text style={[styles.sectionDescription, { color: themeHook.colors.textSecondary }]}>Set when you're available for bookings.</Text>
+    <ScrollView style={styles.sectionContent} contentContainerStyle={styles.stepContentContainer} showsVerticalScrollIndicator={false}>
+      <View style={[styles.stepHero, { backgroundColor: themeHook.colors.primaryLight + '40', borderColor: themeHook.colors.primary + '30' }]}>
+        <View style={styles.stepHeroRow}>
+          <View style={[styles.stepHeroIcon, { backgroundColor: themeHook.colors.primary }]}>
+            <Ionicons name="calendar" size={28} color={themeHook.colors.white} />
+          </View>
+          <Text style={[styles.stepTitle, { color: themeHook.colors.text }]}>Availability</Text>
+        </View>
+        <Text style={[styles.stepDescription, { color: themeHook.colors.textSecondary }]}>
+          Set when you're available for bookings.
+        </Text>
+      </View>
 
       {daysOfWeek.map((day, dayIndex) => {
         const slot = availability.find((a) => a.dayOfWeek === dayIndex);
         return (
-          <View key={dayIndex} style={[styles.availabilityCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: themeHook.colors.primary }]}>
+          <View key={dayIndex} style={[styles.availabilityCard, { backgroundColor: themeHook.colors.surfaceElevated, borderColor: '#000000' }]}>
             <TouchableOpacity
               style={styles.availabilityHeader}
               onPress={() => toggleAvailability(dayIndex)}
@@ -2213,8 +2518,66 @@ const styles = StyleSheet.create({
   },
   sectionContent: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing['2xl'],
+    paddingBottom: 100,
+  },
+  stepContentContainer: {
+    paddingBottom: theme.spacing['2xl'] * 2,
+    maxWidth: 520,
+    alignSelf: 'center' as const,
+    width: '100%',
+  },
+  stepHero: {
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    borderRadius: theme.radii.lg,
+    borderWidth: 1,
+    marginBottom: theme.spacing.lg,
+    alignItems: 'center',
+  },
+  stepHeroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+    gap: theme.spacing.md,
+  },
+  stepHeroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    flex: 1,
+  },
+  stepDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  formCard: {
+    padding: theme.spacing.xl,
+    borderRadius: theme.radii.lg,
+    borderWidth: 2,
+    borderColor: '#000000',
+    marginBottom: theme.spacing.xl,
+    ...theme.shadows.card,
+  },
+  cardSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: theme.spacing.xs,
+  },
+  cardSectionHint: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  formCardSpacer: {
+    height: theme.spacing.lg,
   },
   universalSaveContainer: {
     paddingHorizontal: 20,
@@ -2367,20 +2730,73 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  specialtyInputWrapper: {
+    marginBottom: 12,
+    position: 'relative',
+  },
   specialtyInputContainer: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
   },
   specialtyInput: {
     flex: 1,
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
+    borderWidth: 0,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
     fontSize: 16,
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),
+  },
+  specialtyDropdown: {
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    maxHeight: 220,
+    zIndex: 9999,
+    elevation: 9999,
+    ...(Platform.OS === 'web' && {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15,
+      shadowRadius: 8,
+    }),
+  },
+  specialtyDropdownScroll: {
+    maxHeight: 220,
+  },
+  specialtyDropdownItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    gap: 8,
+  },
+  specialtyDropdownItemText: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
+  },
+  specialtyDropdownItemNiche: {
+    fontSize: 12,
+  },
+  specialtyDropdownEmpty: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  specialtyDropdownEmptyText: {
+    fontSize: 14,
+  },
+  locationInputWrapper: {
+    paddingBottom: theme.spacing.md,
   },
   addButton: {
     backgroundColor: '#2563eb',
@@ -2418,6 +2834,24 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#2563eb',
   },
+  serviceCardOnboarding: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 2,
+  },
+  serviceCardContent: {
+    gap: 10,
+  },
+  serviceCardHeader: {
+    marginBottom: 0,
+  },
+  credentialCardContent: {
+    gap: 10,
+  },
+  credentialDateInput: {
+    fontSize: 14.5,
+  },
   serviceHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -2438,6 +2872,60 @@ const styles = StyleSheet.create({
   },
   halfInput: {
     flex: 1,
+  },
+  durationInputWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
+  durationRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  durationInputContainer: {
+    width: 72,
+    borderRadius: 12,
+    justifyContent: 'center',
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
+  },
+  durationInput: {
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    fontSize: 16,
+    textAlign: 'center',
+    ...(Platform.OS === 'web' && {
+      outlineStyle: 'none',
+    }),
+  },
+  durationUnitButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    minWidth: 72,
+    gap: 4,
+  },
+  durationUnitButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  durationUnitDropdown: {
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    overflow: 'hidden',
+    zIndex: 9999,
+  },
+  durationUnitOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  durationUnitOptionText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
   inputWithPrefix: {
     flexDirection: 'row',
@@ -2517,20 +3005,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 12,
+    paddingRight: 8,
+    overflow: 'hidden',
     ...(Platform.OS === 'web' && {
       outlineStyle: 'none',
     }),
   },
   dateInput: {
     flex: 1,
+    minWidth: 0,
     borderWidth: 0,
     marginBottom: 0,
+    paddingRight: 4,
   },
   calendarButton: {
-    padding: -10,
-    paddingRight: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 4,
   },
   datePickerOverlay: {
     flex: 1,

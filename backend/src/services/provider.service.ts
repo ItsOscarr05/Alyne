@@ -222,13 +222,15 @@ export const providerService = {
     }
   },
 
-  async getProviderById(providerId: string) {
-    // Try cache first
-    const cacheKey = cacheKeys.provider(providerId);
-    const cached = await getCache<any>(cacheKey);
-    if (cached) {
-      logger.debug('Provider cache hit', { providerId });
-      return cached;
+  async getProviderById(providerId: string, options?: { skipCache?: boolean }) {
+    // Try cache first (skip when loading own profile for fresh counts)
+    if (!options?.skipCache) {
+      const cacheKey = cacheKeys.provider(providerId);
+      const cached = await getCache<any>(cacheKey);
+      if (cached) {
+        logger.debug('Provider cache hit', { providerId });
+        return cached;
+      }
     }
 
     const provider = await prisma.user.findUnique({
@@ -315,8 +317,11 @@ export const providerService = {
       isVerified: provider.isVerified,
     };
 
-    // Cache for 5 minutes
-    await setCache(cacheKey, result, 300);
+    // Cache for 5 minutes (skip when loading own profile)
+    if (!options?.skipCache) {
+      const cacheKey = cacheKeys.provider(providerId);
+      await setCache(cacheKey, result, 300);
+    }
     return result;
   },
 
@@ -379,7 +384,7 @@ export const providerService = {
   },
 
   async getProviderByUserId(userId: string) {
-    return this.getProviderById(userId);
+    return this.getProviderById(userId, { skipCache: true });
   },
 
   async createOrUpdateProfile(userId: string, profileData: any) {

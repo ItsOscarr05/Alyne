@@ -611,39 +611,45 @@ export default function BookingsScreen() {
               <TouchableOpacity
                 style={[
                   styles.tab,
+                  { backgroundColor: themeHook.colors.surface },
                   activeTab === 'upcoming' && styles.tabActive,
                   activeTab === 'upcoming' && styles.tabActiveUpcoming,
+                  activeTab === 'upcoming' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
                 ]}
                 onPress={() => handleTabChange('upcoming')}
                 activeOpacity={0.8}
               >
-                <Text style={activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText}>
+                <Text style={[activeTab === 'upcoming' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'upcoming' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                   Upcoming
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.tab,
+                  { backgroundColor: themeHook.colors.surface },
                   activeTab === 'past' && styles.tabActive,
                   activeTab === 'past' && styles.tabActiveCompleted,
+                  activeTab === 'past' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
                 ]}
                 onPress={() => handleTabChange('past')}
                 activeOpacity={0.8}
               >
-                <Text style={activeTab === 'past' ? styles.tabActiveText : styles.tabText}>
+                <Text style={[activeTab === 'past' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'past' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                   Completed
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
                   styles.tab,
+                  { backgroundColor: themeHook.colors.surface },
                   activeTab === 'declined' && styles.tabActive,
                   activeTab === 'declined' && styles.tabActiveDeclined,
+                  activeTab === 'declined' && { backgroundColor: isDark ? themeHook.colors.surfaceElevated : themeHook.colors.white },
                 ]}
                 onPress={() => handleTabChange('declined')}
                 activeOpacity={0.8}
               >
-                <Text style={activeTab === 'declined' ? styles.tabActiveText : styles.tabText}>
+                <Text style={[activeTab === 'declined' ? styles.tabActiveText : styles.tabText, { color: activeTab === 'declined' ? themeHook.colors.text : themeHook.colors.textSecondary }]}>
                   Declined
                 </Text>
               </TouchableOpacity>
@@ -653,16 +659,16 @@ export default function BookingsScreen() {
             {activeTab === 'upcoming' ? (
               <AnimatedEmptyState style={styles.emptyState}>
                 <Ionicons name="calendar-outline" size={160} color="#A855F7" />
-                <Text style={styles.emptyTitle}>No upcoming bookings</Text>
-                <Text style={styles.emptyText}>
+                <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No upcoming bookings</Text>
+                <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                   When you schedule a session, it will appear here.
                 </Text>
               </AnimatedEmptyState>
             ) : activeTab === 'declined' ? (
               <AnimatedEmptyState style={styles.emptyState}>
                 <Ionicons name="close-circle-outline" size={160} color="#EF4444" />
-                <Text style={styles.emptyTitle}>No declined bookings</Text>
-                <Text style={styles.emptyText}>
+                <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No declined bookings</Text>
+                <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                   {user?.userType === 'PROVIDER'
                     ? 'Bookings that you declined will appear here.'
                     : 'Bookings that were declined by the provider will appear here.'}
@@ -670,9 +676,9 @@ export default function BookingsScreen() {
               </AnimatedEmptyState>
             ) : (
               <AnimatedEmptyState style={styles.emptyState}>
-                <Ionicons name="checkmark-circle-outline" size={160} color={theme.colors.semantic.success} />
-                <Text style={styles.emptyTitle}>No completed bookings yet</Text>
-                <Text style={styles.emptyText}>
+                <Ionicons name="checkmark-circle-outline" size={160} color={themeHook.colors.success} />
+                <Text style={[styles.emptyTitle, { color: themeHook.colors.text }]}>No completed bookings yet</Text>
+                <Text style={[styles.emptyText, { color: themeHook.colors.textSecondary }]}>
                   Completed and cancelled sessions will appear here.
                 </Text>
               </AnimatedEmptyState>

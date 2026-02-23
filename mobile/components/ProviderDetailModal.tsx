@@ -1001,7 +1001,7 @@ const styles = StyleSheet.create({
   specialtyTag: {
     paddingHorizontal: theme.spacing.sm,
     paddingVertical: 4,
-    borderRadius: theme.radii.sm,
+    borderRadius: theme.radii.full,
   },
   specialtyText: {
     fontSize: 12,

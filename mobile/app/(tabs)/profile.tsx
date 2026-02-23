@@ -12,11 +12,11 @@ import {
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../hooks/useAuth';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { providerService } from '../../services/provider';
 import { bookingService, BookingDetail } from '../../services/booking';
 import { paymentService } from '../../services/payment';
@@ -91,6 +91,17 @@ export default function ProfileScreen() {
       loadClientData();
     }
   }, [user]);
+
+  // Refresh profile when screen gains focus (e.g. after completing Stripe Connect in onboarding or edit-profile)
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.userType === 'PROVIDER') {
+        loadProviderProfile();
+      } else if (user?.userType === 'CLIENT') {
+        loadClientData();
+      }
+    }, [user?.userType, user?.id])
+  );
 
   const loadClientData = async () => {
     if (!user?.id) return;
@@ -175,8 +186,8 @@ export default function ProfileScreen() {
     setIsLoadingProfile(true);
     try {
       logger.debug('Loading provider profile for user', { userId: user.id });
-      // Get provider profile using the user's own ID
-      const profile = await providerService.getById(user.id);
+      // Use getMyProfile to bypass cache and get fresh service/credential/availability counts
+      const profile = await providerService.getMyProfile();
       logger.debug('Provider profile loaded', {
         hasProfile: !!profile,
         specialtiesCount: Array.isArray(profile?.specialties) ? profile.specialties.length : 0,
@@ -184,14 +195,17 @@ export default function ProfileScreen() {
       });
 
       if (profile) {
-        // Stripe Connect payout status
+        // Stripe Connect payout status (consider connected if payouts enabled OR details submitted)
         let bankAccountVerified = false;
         let bankAccountMask: string | null = null;
         try {
           const stripeStatus = await stripeConnectService.getStatus();
-          if (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) {
+          const isConnected =
+            (stripeStatus?.chargesEnabled && stripeStatus?.payoutsEnabled) ||
+            stripeStatus?.detailsSubmitted === true;
+          if (isConnected) {
             bankAccountVerified = true;
-            if (stripeStatus.bankAccount?.last4) {
+            if (stripeStatus?.bankAccount?.last4) {
               bankAccountMask = stripeStatus.bankAccount.last4;
             }
           }
@@ -613,7 +627,9 @@ export default function ProfileScreen() {
                   >
                     <Ionicons name="calendar-outline" size={24} color="#16A34A" />
                     <Text style={[styles.quickStatNumber, { color: themeHook.colors.text }]}>
-                      {providerProfile.availability?.length || 0}
+                      {providerProfile.availability?.length
+                        ? new Set(providerProfile.availability.map((a) => a.dayOfWeek)).size
+                        : 0}
                     </Text>
                     <Text style={[styles.quickStatLabel, { color: themeHook.colors.textSecondary }]}>Days Available</Text>
                   </TouchableOpacity>
@@ -1328,12 +1344,12 @@ const styles = StyleSheet.create({
   },
   specialtyTag: {
     borderWidth: 1,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.radii.sm,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: theme.radii.full,
   },
   specialtyText: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '500',
   },
   statsRow: {
