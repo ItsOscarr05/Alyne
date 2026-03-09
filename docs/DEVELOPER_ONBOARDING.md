@@ -397,6 +397,9 @@ pnpm test
 ## Resources
 
 ### Internal Documentation
+- [Setup Guide](./SETUP.md)
+- [Product Requirements Document](./PRD.md)
+- [Technology Stack](./TECH_STACK.md)
 - [Environment Setup Guide](../backend/ENVIRONMENT_SETUP.md)
 - [Deployment Guide](../backend/DEPLOYMENT.md)
 - [Security Guide](../backend/SECURITY.md)

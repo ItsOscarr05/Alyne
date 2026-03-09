@@ -170,8 +170,10 @@ Alyne/
 │   ├── prisma/         # Prisma schema and migrations
 │   └── scripts/        # PowerShell setup scripts
 │
-├── PRD.md              # Product Requirements Document
-├── TECH_STACK.md       # Technology stack
+├── docs/               # Documentation
+│   ├── PRD.md         # Product Requirements Document
+│   ├── TECH_STACK.md  # Technology stack
+│   └── ...
 └── README.md           # Project overview
 ```
 
@@ -324,4 +326,4 @@ Or permanently in your PowerShell profile:
 
 ---
 
-**Need help?** Refer to the PRD.md for feature specifications and TECH_STACK.md for technology details.
+**Need help?** Refer to the [PRD.md](./PRD.md) for feature specifications and [TECH_STACK.md](./TECH_STACK.md) for technology details.

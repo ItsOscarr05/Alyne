@@ -90,8 +90,10 @@ Alyne/
 │   │   └── types/         # TypeScript types
 │   └── prisma/            # Prisma schema and migrations
 │
-├── PRD.md                 # Product Requirements Document
-└── TECH_STACK.md          # Technology stack documentation
+├── docs/                  # Documentation
+│   ├── PRD.md            # Product Requirements Document
+│   ├── TECH_STACK.md     # Technology stack documentation
+│   └── ...
 ```
 
 ## 🔑 Key Features (MVP)
@@ -109,7 +111,7 @@ Alyne/
 
 ## 🛠️ Technology Stack
 
-See [TECH_STACK.md](./TECH_STACK.md) for detailed technology choices.
+See [TECH_STACK.md](./docs/TECH_STACK.md) for detailed technology choices.
 
 ## 📱 Development
 
@@ -183,8 +185,9 @@ The `.vscode/settings.json` file is configured to use PowerShell as the default 
 
 ## 📚 Documentation
 
-- [Product Requirements Document](./PRD.md)
-- [Technology Stack](./TECH_STACK.md)
+- [Product Requirements Document](./docs/PRD.md)
+- [Technology Stack](./docs/TECH_STACK.md)
+- [Setup Guide](./docs/SETUP.md)
 
 ## 🤝 Contributing
 
