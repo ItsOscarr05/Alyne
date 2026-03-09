@@ -72,7 +72,33 @@ pnpm run dev
 
 The backend will run on `http://localhost:3000`
 
-### 3. Mobile App Setup
+### 3. Web App Setup
+
+#### Manual Setup
+
+```powershell
+cd ..\web-app
+pnpm install
+```
+
+#### Configure Environment Variables
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edit `.env` and configure:
+- `VITE_API_BASE_URL` - Backend API URL (e.g., `http://localhost:3000/api`)
+
+#### Start Web App
+
+```powershell
+pnpm dev
+```
+
+The web app will run on `http://localhost:5173`
+
+### 4. Mobile App Setup
 
 #### Quick Setup (Using Script)
 
@@ -127,6 +153,13 @@ Alyne/
 │   ├── types/          # TypeScript types
 │   └── scripts/        # PowerShell setup scripts
 │
+├── web-app/            # React web application
+│   ├── src/           # Source code
+│   │   ├── main.tsx   # Entry point
+│   │   └── App.tsx    # Root component
+│   ├── index.html     # HTML template
+│   └── vite.config.ts # Vite configuration
+│
 ├── backend/            # Node.js API server
 │   ├── src/
 │   │   ├── routes/     # API routes
@@ -144,7 +177,7 @@ Alyne/
 
 ## Development Workflow
 
-### Running Both Services
+### Running All Services
 
 1. **PowerShell Terminal 1 - Backend:**
    ```powershell
@@ -152,7 +185,13 @@ Alyne/
    pnpm run dev
    ```
 
-2. **PowerShell Terminal 2 - Mobile:**
+2. **PowerShell Terminal 2 - Web App:**
+   ```powershell
+   cd web-app
+   pnpm dev
+   ```
+
+3. **PowerShell Terminal 3 - Mobile:**
    ```powershell
    cd mobile
    pnpm start
@@ -170,11 +209,15 @@ pnpm exec prisma generate
 
 ### Code Quality
 
-Both projects use ESLint and Prettier:
+All projects use ESLint and Prettier:
 
 ```powershell
 # Mobile
 cd mobile
+pnpm run lint
+
+# Web App
+cd web-app
 pnpm run lint
 
 # Backend

@@ -50,7 +50,24 @@ pnpm exec prisma db seed
 pnpm run dev
 ```
 
-### 3. Mobile App Setup
+### 3. Web App Setup
+
+```powershell
+cd ..\web-app
+
+# Install dependencies
+pnpm install
+
+# Copy environment file
+Copy-Item .env.example .env
+
+# Edit .env with your local configuration
+
+# Start development server
+pnpm dev
+```
+
+### 4. Mobile App Setup
 
 ```powershell
 cd ..\mobile
@@ -85,6 +102,19 @@ backend/
 │   └── migrations/      # Database migrations
 ├── tests/               # Test files
 └── scripts/             # Utility scripts
+```
+
+### Web App Structure
+
+```
+web-app/
+├── src/
+│   ├── main.tsx        # React entry point
+│   ├── App.tsx         # Root component
+│   └── index.css       # Base styles
+├── index.html          # HTML template
+├── vite.config.ts      # Vite configuration
+└── tsconfig.json       # TypeScript configuration
 ```
 
 ### Mobile Structure
@@ -122,6 +152,10 @@ mobile/
    ```powershell
    # Backend tests
    cd backend
+   pnpm test
+   
+   # Web app tests
+   cd ..\web-app
    pnpm test
    
    # Mobile tests
@@ -220,6 +254,10 @@ When modifying the database schema:
 cd backend
 pnpm test
 
+# Web App
+cd ..\web-app
+pnpm test
+
 # Mobile
 cd ..\mobile
 pnpm test
@@ -302,7 +340,7 @@ pnpm test
    app.use('/api/your-feature', yourFeatureRoutes);
    ```
 
-### Adding a New Screen
+### Adding a New Screen (Mobile)
 
 1. **Create Screen File**
    ```typescript
@@ -319,6 +357,26 @@ pnpm test
 3. **Create Service (if needed)**
    ```typescript
    // mobile/services/your-feature.ts
+   export const yourFeatureService = { ... };
+   ```
+
+### Adding a New Page (Web App)
+
+1. **Create Page Component**
+   ```typescript
+   // web-app/src/pages/YourFeature.tsx
+   export default function YourFeaturePage() { ... }
+   ```
+
+2. **Add Route**
+   ```typescript
+   // web-app/src/App.tsx or router config
+   <Route path="/your-feature" element={<YourFeaturePage />} />
+   ```
+
+3. **Create Service (if needed)**
+   ```typescript
+   // web-app/src/services/your-feature.ts
    export const yourFeatureService = { ... };
    ```
 

@@ -8,9 +8,10 @@ Alyne solves the dual-sided marketplace problem: professionals struggle to find 
 
 ## 🏗️ Architecture
 
-This project consists of two main components:
+This project consists of three main components:
 
 - **Mobile App** (`/mobile`) - React Native with Expo (iOS, Android, Web)
+- **Web App** (`/web-app`) - React with Vite and TypeScript
 - **Backend API** (`/backend`) - Node.js with TypeScript and Express
 
 ## 🚀 Quick Start
@@ -31,6 +32,16 @@ pnpm install
 Copy-Item .env.example .env
 # Edit .env with your configuration
 pnpm start
+```
+
+### Web App Setup
+
+```powershell
+cd web-app
+pnpm install
+Copy-Item .env.example .env
+# Edit .env with your configuration
+pnpm dev
 ```
 
 ### Backend Setup
@@ -60,6 +71,13 @@ Alyne/
 │   ├── hooks/             # Custom React hooks
 │   ├── utils/             # Utility functions
 │   └── types/             # TypeScript types
+│
+├── web-app/                # React web application
+│   ├── src/               # Source code
+│   │   ├── main.tsx       # Entry point
+│   │   └── App.tsx        # Root component
+│   ├── index.html         # HTML template
+│   └── vite.config.ts     # Vite configuration
 │
 ├── backend/               # Node.js API server
 │   ├── src/
@@ -103,6 +121,14 @@ pnpm start
 # Press 'i' for iOS simulator, 'a' for Android emulator, 'w' for web
 ```
 
+### Running the Web App
+
+```powershell
+cd web-app
+pnpm dev
+# Web app runs on http://localhost:5173
+```
+
 ### Running the Backend
 
 ```powershell
@@ -125,7 +151,7 @@ pnpm test
 
 ## 📝 Environment Variables
 
-Copy `.env.example` to `.env` in both `mobile/` and `backend/` directories using PowerShell:
+Copy `.env.example` to `.env` in `mobile/`, `web-app/`, and `backend/` directories using PowerShell:
 
 ```powershell
 # Backend
@@ -134,6 +160,10 @@ Copy-Item .env.example .env
 
 # Mobile
 cd ..\mobile
+Copy-Item .env.example .env
+
+# Web App
+cd ..\web-app
 Copy-Item .env.example .env
 ```
 
