@@ -1,0 +1,25 @@
+.authLayout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-xl);
+}
+
+.logo {
+  margin-bottom: var(--spacing-2xl);
+  font-size: var(--font-h1-size);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 400px;
+}

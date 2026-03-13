@@ -1,0 +1,39 @@
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-xs) var(--spacing-md);
+  background-color: var(--color-primary-light);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radii-full);
+  font-size: 13px;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+.chip:hover {
+  background-color: var(--color-primary);
+  color: var(--color-white);
+}
+
+.clearAll {
+  padding: var(--spacing-xs) var(--spacing-md);
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.clearAll:hover {
+  color: var(--color-text);
+}

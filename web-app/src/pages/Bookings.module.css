@@ -1,0 +1,126 @@
+.page {
+  max-width: 720px;
+}
+
+.title {
+  font-size: var(--font-h1-size);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-xl);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  background: none;
+  font-size: var(--font-body-size);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab:hover {
+  color: var(--color-text);
+}
+
+.tabActive {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}
+
+.empty {
+  padding: var(--spacing-2xl);
+  color: var(--color-text-secondary);
+}
+
+.error {
+  padding: var(--spacing-md);
+  color: var(--color-error);
+  margin-bottom: var(--spacing-md);
+}
+
+.retryLink {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--color-surface);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radii-lg);
+  padding: var(--spacing-xl);
+  max-width: 400px;
+  width: 90%;
+}
+
+.modal h2 {
+  font-size: 18px;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text);
+}
+
+.modal p {
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-lg);
+}
+
+.modalActions {
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+}
+
+.cancelButton {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-error);
+  color: white;
+  border: none;
+  border-radius: var(--radii-md);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.cancelButton:hover {
+  opacity: 0.9;
+}
+
+.closeButton {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-surface-elevated);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radii-md);
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: var(--color-border);
+}

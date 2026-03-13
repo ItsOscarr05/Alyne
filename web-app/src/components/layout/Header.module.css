@@ -1,0 +1,134 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-md) var(--spacing-xl);
+  margin: 0 auto;
+}
+
+.logo {
+  font-size: var(--font-h1-size);
+  font-weight: 700;
+  color: var(--color-primary);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.logo:hover {
+  color: var(--color-primary-dark);
+}
+
+.search {
+  flex: 1;
+  max-width: 480px;
+  margin: 0 var(--spacing-lg);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.navLink {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radii-md);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: var(--font-body-size);
+  font-weight: 500;
+}
+
+.navLink:hover {
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+.navLinkActive {
+  color: var(--color-primary);
+  background-color: var(--color-primary-light);
+}
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  margin-left: auto;
+}
+
+.profileDropdown {
+  position: relative;
+}
+
+.profileButton {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radii-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--font-body-size);
+  cursor: pointer;
+}
+
+.profileButton:hover {
+  background-color: var(--color-background);
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: var(--spacing-xs);
+  min-width: 160px;
+  padding: var(--spacing-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radii-md);
+  box-shadow: 0 10px 40px var(--color-overlay);
+}
+
+.dropdownMenu a,
+.dropdownMenu button {
+  display: block;
+  width: 100%;
+  padding: var(--spacing-md);
+  text-align: left;
+  border: none;
+  background: none;
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--font-body-size);
+  cursor: pointer;
+  border-radius: var(--radii-sm);
+}
+
+.dropdownMenu a:hover,
+.dropdownMenu button:hover {
+  background-color: var(--color-background);
+}
+
+.authLink {
+  padding: var(--spacing-sm) var(--spacing-md);
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: var(--font-body-size);
+}
+
+.authLink:hover {
+  color: var(--color-primary-dark);
+}

@@ -26,7 +26,7 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   path: '/socket.io/',
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:8081',
+    origin: process.env.FRONTEND_URL?.split(',') || ['http://localhost:5173', 'http://localhost:8081'],
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -77,9 +77,11 @@ const getAllowedOrigins = (): string[] => {
   }
   // Development: Allow common localhost ports
   const defaultOrigins = [
+    'http://localhost:5173', // Vite web app
     'http://localhost:8081',
     'http://localhost:19006', // Expo web default port
     'http://localhost:3000', // Alternative web port
+    'http://127.0.0.1:5173',
     'http://127.0.0.1:8081',
     'http://127.0.0.1:19006',
     'http://127.0.0.1:3000',

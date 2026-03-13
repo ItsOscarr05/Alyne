@@ -1,15 +1,15 @@
+import { ThemeProvider } from './theme/ThemeProvider';
+import { AuthProvider } from './hooks/useAuth.tsx';
+import { AppRouter } from './routes';
+
 function App() {
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>Alyne</h1>
-        <p>Wellness Marketplace - Web App</p>
-      </header>
-      <main>
-        <p>Web app MVP coming soon...</p>
-      </main>
-    </div>
-  )
+    <ThemeProvider>
+      <AuthProvider>
+        <AppRouter />
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
-export default App
+export default App;

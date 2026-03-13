@@ -1,0 +1,44 @@
+.container {
+  padding: var(--spacing-xl);
+  text-align: center;
+}
+
+.iconContainer {
+  margin-bottom: var(--spacing-lg);
+  display: flex;
+  justify-content: center;
+}
+
+.iconSuccess {
+  color: var(--color-success);
+}
+
+.iconError {
+  color: var(--color-error);
+}
+
+.iconWarning {
+  color: #f59e0b;
+}
+
+.iconInfo {
+  color: var(--color-primary);
+}
+
+.title {
+  font-size: var(--font-h2-size);
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: var(--spacing-md);
+}
+
+.message {
+  font-size: var(--font-body-size);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-xl);
+  line-height: 1.5;
+}
+
+.buttonContainer {
+  width: 100%;
+}
