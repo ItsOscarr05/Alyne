@@ -5,6 +5,7 @@ import { FilterSidebar, type DiscoveryFilters } from '../components/filters/Filt
 import { ActiveFilters, type ActiveFilterItem } from '../components/filters/ActiveFilters';
 import { SortDropdown, type SortOption } from '../components/filters/SortDropdown';
 import { providerService } from '../services/provider';
+import { getUserFriendlyError } from '../utils/errorMessages';
 import type { ProviderCardData } from '../components/cards/ProviderCard';
 import styles from './Discover.module.css';
 
@@ -82,7 +83,7 @@ export function Discover() {
       const result = await providerService.discover(apiFilters);
       setProviders(result.data);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load providers');
+      setError(getUserFriendlyError(err));
       setProviders([]);
     } finally {
       setLoading(false);

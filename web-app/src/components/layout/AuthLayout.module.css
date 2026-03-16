@@ -7,11 +7,20 @@
 }
 
 .logo {
+  display: flex;
+  align-items: center;
   margin-bottom: var(--spacing-2xl);
-  font-size: var(--font-h1-size);
-  font-weight: 700;
-  color: var(--color-primary);
   text-decoration: none;
+}
+
+.logoImg {
+  height: 52px;
+  width: auto;
+  display: block;
+}
+
+.logo:hover .logoImg {
+  opacity: 0.9;
 }
 
 .content {

@@ -36,6 +36,24 @@
 
   /* Rating star color */
   --color-rating: #fbbf24;
+
+  /* Blue scale - dark to white for gradients and accents */
+  --color-blue-900: #1e3a8a;
+  --color-blue-800: #1d4ed8;
+  --color-blue-700: #2563eb;
+  --color-blue-600: #2563eb;
+  --color-blue-500: #3b82f6;
+  --color-blue-400: #60a5fa;
+  --color-blue-300: #93c5fd;
+  --color-blue-200: #bfdbfe;
+  --color-blue-100: #dbeafe;
+  --color-blue-50: #eff6ff;
+
+  /* Landing page radii - softer, more rounded */
+  --radii-landing-sm: 12px;
+  --radii-landing-md: 16px;
+  --radii-landing-lg: 24px;
+  --radii-landing-xl: 32px;
 }
 
 /* Light theme (default) */

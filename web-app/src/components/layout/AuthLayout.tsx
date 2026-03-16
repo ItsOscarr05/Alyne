@@ -5,8 +5,8 @@ import styles from './AuthLayout.module.css';
 export function AuthLayout() {
   return (
     <div className={styles.authLayout}>
-      <Link to="/discover" className={styles.logo}>
-        Alyne
+      <Link to="/" className={styles.logo}>
+        <img src="/logo.png" alt="Alyne" className={styles.logoImg} />
       </Link>
       <div className={styles.content}>
         <Outlet />

@@ -19,6 +19,9 @@ import { Onboarding } from './pages/provider/Onboarding';
 import { ClientOnboarding } from './pages/client/Onboarding';
 import { ProviderDetail } from './pages/ProviderDetail';
 import { ChatThread } from './pages/ChatThread';
+import { Privacy } from './pages/Privacy';
+import { Terms } from './pages/Terms';
+import { CookiePolicy } from './pages/CookiePolicy';
 
 const router = createBrowserRouter([
   {
@@ -84,6 +87,9 @@ const router = createBrowserRouter([
   { path: '/login', element: <Navigate to="/auth/login" replace /> },
   { path: '/register', element: <Navigate to="/auth/register" replace /> },
   { path: '/welcome', element: <Navigate to="/auth/welcome" replace /> },
+  { path: '/privacy', element: <Privacy /> },
+  { path: '/terms', element: <Terms /> },
+  { path: '/cookies', element: <CookiePolicy /> },
 ]);
 
 export function AppRouter() {
